@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#071a26">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="준자 낚시왕">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <title>준자의 낚시왕 RPG</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="authScreen" class="auth-screen">
+    <div class="auth-art">
+      <div class="auth-logo">🎣</div>
+      <div class="auth-kicker">ONLINE FISHING RPG</div>
+      <h1>준자의<br>낚시왕 RPG</h1>
+      <p>낚고, 팔고, 장비를 맞추고, 더 깊은 물로 나아가라.<br>친구들과 같은 낚시터에서 실시간으로 만나는 온라인 육성 RPG.</p>
+      <div class="feature-chips"><span>실시간 멀티</span><span>대물 수집</span><span>레벨 성장</span><span>장비 파밍</span></div>
+    </div>
+    <div class="auth-card glass">
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-auth="login">로그인</button>
+        <button class="auth-tab" data-auth="register">새 계정</button>
+      </div>
+      <form id="loginForm" class="auth-form active">
+        <label>아이디<input name="username" autocomplete="username" minlength="3" maxlength="20" placeholder="영문/숫자 3~20자" required></label>
+        <label>비밀번호<input name="password" type="password" autocomplete="current-password" minlength="6" maxlength="64" placeholder="6자 이상" required></label>
+        <button class="primary big" type="submit">낚시터 입장</button>
+      </form>
+      <form id="registerForm" class="auth-form">
+        <label>아이디<input name="username" autocomplete="username" minlength="3" maxlength="20" placeholder="예: junja77" required></label>
+        <label>닉네임<input name="nickname" minlength="2" maxlength="12" placeholder="게임에서 보일 이름" required></label>
+        <label>비밀번호<input name="password" type="password" autocomplete="new-password" minlength="6" maxlength="64" placeholder="6자 이상" required></label>
+        <button class="primary big" type="submit">캐릭터 생성</button>
+      </form>
+      <div id="authMsg" class="auth-msg"></div>
+      <div class="auth-note">계정 데이터는 이 게임 서버의 SQLite DB에 저장됩니다.</div>
+    </div>
+  </div>
+
+  <div id="game" class="game hidden">
+    <header class="topbar glass">
+      <div class="brand"><span class="brand-mark">🎣</span><div><b>준자의 낚시왕</b><small>ONLINE RPG</small></div></div>
+      <div class="profile-hud">
+        <div class="level-medal">LV <b id="levelText">1</b></div>
+        <div class="xp-wrap"><div class="xp-row"><span id="nickText">조사</span><span id="xpText">0 / 120 XP</span></div><div class="xp-bar"><i id="xpFill"></i></div></div>
+        <div class="gold">🪙 <b id="goldText">0</b></div>
+      </div>
+      <div class="top-actions">
+        <div class="online-pill"><i></i><span id="onlineText">1명 접속</span></div>
+        <button id="installBtn" class="icon-btn install-btn" title="홈 화면에 설치">⬇️</button>
+        <button id="shareBtn" class="icon-btn" title="친구에게 공유">↗️</button>
+        <button id="soundBtn" class="icon-btn" title="사운드">🔊</button>
+        <button id="logoutBtn" class="small-btn desktop-logout">로그아웃</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="left-col">
+        <section class="glass card character-card">
+          <div class="section-title"><span>MY ANGLER</span><small>육성 정보</small></div>
+          <div class="angler-preview">
+            <div class="angler-avatar"><div class="hat"></div><div class="head"></div><div class="body"></div><div class="rod-mini"></div></div>
+            <div class="angler-info"><b id="charNick">-</b><span id="charTitle">초보 조사</span><small id="charZone">초록빛 저수지</small></div>
+          </div>
+          <div class="stats">
+            <div><span>낚시력</span><b id="powerStat">100</b></div><div><span>행운</span><b id="luckStat">0%</b></div><div><span>총 어획</span><b id="catchStat">0</b></div>
+          </div>
+          <div class="equip-box"><span>장착 낚싯대</span><b id="rodName">낡은 대나무 낚싯대</b><small id="rodDesc">기본 장비</small></div>
+        </section>
+
+        <section class="glass card zone-card">
+          <div class="section-title"><span>FISHING MAP</span><small>지역 해금</small></div>
+          <div id="zoneList" class="zone-list"></div>
+        </section>
+      </aside>
+
+      <section class="center-col">
+        <div class="world-shell glass">
+          <div class="world-top">
+            <div><div class="weather-dot"></div><b id="zoneName">초록빛 저수지</b><span id="zoneDesc">잔잔한 초보 낚시터</span></div>
+            <div class="world-actions"><button id="moveSpotBtn" class="small-btn">자리 이동</button><span id="zoneOnline">0명 낚시 중</span></div>
+          </div>
+          <div class="mobile-status-strip">
+            <span id="mobileZoneLabel">🌿 초록빛 저수지</span>
+            <b id="mobileOnlineLabel">● 1명</b>
+          </div>
+          <div id="world" class="world pond">
+            <canvas id="worldCanvas"></canvas>
+            <div id="playersLayer" class="players-layer"></div>
+            <div class="shore-fx"></div>
+            <div id="biteBadge" class="bite-badge">HIT!</div>
+            <button id="hookBtn" class="hook-btn">⚡ 챔질!</button>
+            <div id="castStatus" class="cast-status">물가가 잔잔하다…</div>
+          </div>
+          <div class="fishing-console">
+            <div class="bait-control"><label>미끼</label><div id="baitSelector" class="bait-selector"></div></div>
+            <button id="castBtn" class="cast-btn"><span class="cast-icon">🎣</span><span><b>CAST</b><small>낚싯줄 던지기</small></span></button>
+            <div class="hint-box"><span>오늘의 팁</span><b id="tipText">장력이 너무 높으면 줄이 끊어진다.</b></div>
+          </div>
+        </div>
+
+        <section class="glass card feed-card">
+          <div class="section-title"><span>낚시터 소식</span><small>실시간 대물 알림</small></div>
+          <div id="eventFeed" class="event-feed"><div class="feed-empty">아직 특별한 소식이 없습니다.</div></div>
+        </section>
+      </section>
+
+      <aside class="right-col glass card management">
+        <div class="management-tabs">
+          <button class="mg-tab active" data-tab="bag">가방</button>
+          <button class="mg-tab" data-tab="shop">상점</button>
+          <button class="mg-tab" data-tab="dex">도감</button>
+          <button class="mg-tab" data-tab="rank">랭킹</button>
+        </div>
+        <div class="tab-pane active" id="tab-bag">
+          <div class="pane-head"><div><b>어획 가방</b><span id="bagCount">0마리</span></div><button id="sellAllBtn" class="sell-all">모두 판매</button></div>
+          <div id="catchList" class="scroll-list"></div>
+        </div>
+        <div class="tab-pane" id="tab-shop">
+          <div class="pane-head"><div><b>낚시 상점</b><span>장비 & 미끼</span></div></div>
+          <div id="shopList" class="scroll-list"></div>
+        </div>
+        <div class="tab-pane" id="tab-dex">
+          <div class="pane-head"><div><b>물고기 도감</b><span id="dexCount">0종 발견</span></div></div>
+          <div id="dexList" class="scroll-list"></div>
+        </div>
+        <div class="tab-pane" id="tab-rank">
+          <div class="pane-head"><div><b>조사 랭킹</b><span>서버 TOP 30</span></div><button id="refreshRankBtn" class="refresh-btn">↻</button></div>
+          <div id="rankList" class="scroll-list"></div>
+        </div>
+      </aside>
+    </main>
+
+    <nav id="mobileNav" class="mobile-nav glass" aria-label="모바일 메뉴">
+      <button class="mobile-nav-btn active" data-mobile-view="fish"><span>🎣</span><b>낚시</b></button>
+      <button class="mobile-nav-btn" data-mobile-view="map"><span>🗺️</span><b>지도</b></button>
+      <button class="mobile-nav-btn" data-mobile-view="bag"><span>🎒</span><b>가방</b></button>
+      <button class="mobile-nav-btn" data-mobile-view="shop"><span>🛒</span><b>상점</b></button>
+      <button class="mobile-nav-btn" data-mobile-view="dex"><span>📖</span><b>도감</b></button>
+    </nav>
+
+    <div id="installHelp" class="install-help glass hidden">
+      <button id="installHelpClose" class="modal-x">×</button>
+      <b>📱 홈 화면에 게임 설치</b>
+      <p id="installHelpText">브라우저 메뉴에서 ‘홈 화면에 추가’를 선택하면 앱처럼 실행할 수 있습니다.</p>
+    </div>
+
+    <section class="chat glass">
+      <button id="chatToggle" class="chat-head"><span>💬 낚시터 채팅</span><i id="chatUnread"></i></button>
+      <div id="chatBody" class="chat-body">
+        <div id="chatMessages" class="chat-messages"></div>
+        <form id="chatForm" class="chat-form"><input id="chatInput" maxlength="100" placeholder="같은 낚시터 유저에게 메시지…"><button>전송</button></form>
+      </div>
+    </section>
+  </div>
+
+  <div id="fightModal" class="modal hidden">
+    <div class="fight-card glass">
+      <div class="fight-head"><div><span>FISH ON!</span><b id="fightHint">힘이 센 녀석</b></div><div id="fightTimer">15.0s</div></div>
+      <div class="fight-stage">
+        <div class="fish-shadow" id="fishShadow">➤</div>
+        <div class="fight-water"><i></i><i></i><i></i></div>
+        <svg class="fight-line" viewBox="0 0 600 250" preserveAspectRatio="none"><path id="fightLine" d="M60 20 Q 280 80 500 170"></path></svg>
+      </div>
+      <div class="fight-ui">
+        <div class="tension-wrap">
+          <div class="meter-label"><span>LINE TENSION</span><b id="tensionPct">35%</b></div>
+          <div class="tension-meter"><div class="safe-zone"></div><i id="tensionFill"></i><span class="danger-mark"></span></div>
+          <small>초록 구간을 유지하며 릴을 감아라. 빨간 구간이 오래 지속되면 줄이 끊어진다.</small>
+        </div>
+        <div class="landing-wrap"><div class="meter-label"><span>LANDING</span><b id="landingPct">0%</b></div><div class="landing-meter"><i id="landingFill"></i></div></div>
+      </div>
+      <button id="reelBtn" class="reel-btn"><b>REEL</b><span>누르고 있기 · SPACE</span></button>
+      <div id="fightMessage" class="fight-message">물고기의 움직임을 읽어!</div>
+    </div>
+  </div>
+
+  <div id="catchModal" class="modal hidden">
+    <div class="catch-card glass">
+      <div id="rarityGlow" class="rarity-glow"></div>
+      <button id="closeCatch" class="modal-x">×</button>
+      <div class="catch-kicker">NEW CATCH</div>
+      <div id="catchRarity" class="catch-rarity">희귀</div>
+      <div class="catch-fish-icon">🐟</div>
+      <h2 id="catchFishName">물고기</h2>
+      <div class="catch-measure"><div><span>길이</span><b id="catchLength">0 cm</b></div><div><span>무게</span><b id="catchWeight">0 kg</b></div><div><span>가치</span><b id="catchValue">0 G</b></div></div>
+      <div id="catchTrophy" class="trophy-tag hidden">🏆 개인급 대물 사이즈!</div>
+      <div id="levelUpBox" class="level-up hidden">LEVEL UP! <b id="newLevel">2</b></div>
+      <button id="catchConfirm" class="primary big">가방에 넣기</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+준자의 낚시왕 RPG v0.2.0
+Mobile Multiplayer PWA Build

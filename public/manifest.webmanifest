@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "준자의 낚시왕 RPG",
+  "short_name": "준자 낚시왕",
+  "description": "친구들과 실시간으로 즐기는 모바일 온라인 낚시 RPG",
+  "lang": "ko-KR",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#06131a",
+  "theme_color": "#071a26",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {"src":"/icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"/icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}

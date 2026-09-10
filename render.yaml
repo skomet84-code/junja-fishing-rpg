@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: junja-fishing-rpg
+    runtime: docker
+    healthCheckPath: /healthz
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+    disk:
+      name: fishing-data
+      mountPath: /var/data
+      sizeGB: 1
