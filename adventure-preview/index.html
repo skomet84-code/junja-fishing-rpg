@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <meta name="theme-color" content="#101710" />
+  <title>준자 어드벤처 — 이미지 그래픽 프로토타입</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main id="game" class="game loading">
+    <div id="world" class="world village"></div>
+    <div class="shade"></div>
+
+    <header class="hud">
+      <div class="profile">
+        <div class="avatar" id="avatar"></div>
+        <div class="profile-copy">
+          <div class="name-row"><strong>준자</strong><span id="levelText">Lv.1</span></div>
+          <div class="bar hp"><i style="width:100%"></i></div>
+          <div class="bar exp"><i id="expBar" style="width:0%"></i></div>
+          <small id="expText">EXP 0 / 60</small>
+        </div>
+      </div>
+      <button id="resetBtn" class="mini">초기화</button>
+    </header>
+
+    <section id="villagePanel" class="panel quest">
+      <b>[메인] 다람쥐의 위협</b>
+      <span>마을 밖 다람쥐 숲으로 가서 수련을 시작하자.</span>
+      <button id="goForest">다람쥐 숲 입장</button>
+    </section>
+
+    <section id="forestPanel" class="panel hunt hidden">
+      <div class="hunt-title">
+        <div>
+          <b>다람쥐 Lv.<span id="enemyLevel">1</span></b>
+          <small id="enemyState">야생 다람쥐</small>
+        </div>
+        <span id="killText">처치 0마리</span>
+      </div>
+      <div class="enemy-hp"><i id="enemyHpBar" style="width:100%"></i></div>
+      <div class="loot" id="lootText">공격 버튼을 눌러 사냥</div>
+    </section>
+
+    <div id="damage" class="damage"></div>
+    <div id="toast" class="toast"></div>
+
+    <nav class="bottom">
+      <button id="goVillage" class="nav-btn active">마을</button>
+      <button id="forestTab" class="nav-btn">사냥터</button>
+      <button id="attackBtn" class="attack" disabled>⚔<span>공격</span></button>
+    </nav>
+
+    <div id="loading" class="loading-card">
+      <b>JUNJA ADVENTURE</b>
+      <span>이미지 에셋 불러오는 중…</span>
+    </div>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
