@@ -3,60 +3,62 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
-  <meta name="theme-color" content="#101710" />
-  <title>준자 어드벤처 — 이미지 그래픽 프로토타입</title>
+  <meta name="theme-color" content="#0b120d" />
+  <title>준자 어드벤처 — 이동 플레이 프로토타입</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <main id="game" class="game loading">
-    <div id="world" class="world village"></div>
-    <div class="shade"></div>
-
-    <header class="hud">
-      <div class="profile">
-        <div class="avatar" id="avatar"></div>
-        <div class="profile-copy">
-          <div class="name-row"><strong>준자</strong><span id="levelText">Lv.1</span></div>
-          <div class="bar hp"><i style="width:100%"></i></div>
-          <div class="bar exp"><i id="expBar" style="width:0%"></i></div>
-          <small id="expText">EXP 0 / 60</small>
-        </div>
+<main id="game" class="game loading">
+  <div id="viewport" class="viewport">
+    <div id="world" class="world">
+      <div id="forestMark" class="forest-mark">↓ 다람쥐 숲</div>
+      <div id="targetMarker" class="target-marker"></div>
+      <div id="enemies" class="enemies"></div>
+      <div id="hero" class="hero">
+        <div class="hero-name">준자</div>
+        <img id="heroImg" alt="준자" draggable="false" />
+        <div class="hero-shadow"></div>
       </div>
-      <button id="resetBtn" class="mini">초기화</button>
-    </header>
-
-    <section id="villagePanel" class="panel quest">
-      <b>[메인] 다람쥐의 위협</b>
-      <span>마을 밖 다람쥐 숲으로 가서 수련을 시작하자.</span>
-      <button id="goForest">다람쥐 숲 입장</button>
-    </section>
-
-    <section id="forestPanel" class="panel hunt hidden">
-      <div class="hunt-title">
-        <div>
-          <b>다람쥐 Lv.<span id="enemyLevel">1</span></b>
-          <small id="enemyState">야생 다람쥐</small>
-        </div>
-        <span id="killText">처치 0마리</span>
-      </div>
-      <div class="enemy-hp"><i id="enemyHpBar" style="width:100%"></i></div>
-      <div class="loot" id="lootText">공격 버튼을 눌러 사냥</div>
-    </section>
-
-    <div id="damage" class="damage"></div>
-    <div id="toast" class="toast"></div>
-
-    <nav class="bottom">
-      <button id="goVillage" class="nav-btn active">마을</button>
-      <button id="forestTab" class="nav-btn">사냥터</button>
-      <button id="attackBtn" class="attack" disabled>⚔<span>공격</span></button>
-    </nav>
-
-    <div id="loading" class="loading-card">
-      <b>JUNJA ADVENTURE</b>
-      <span>이미지 에셋 불러오는 중…</span>
     </div>
-  </main>
-  <script type="module" src="./app.js"></script>
+  </div>
+
+  <header class="hud">
+    <div class="profile">
+      <div id="avatar" class="avatar"></div>
+      <div class="profile-copy">
+        <div class="name-row"><strong>준자</strong><span id="levelText">Lv.1</span></div>
+        <div class="bar hp"><i></i></div>
+        <div class="bar exp"><i id="expBar"></i></div>
+        <small id="expText">EXP 0 / 60</small>
+      </div>
+    </div>
+    <div class="hud-right">
+      <div id="killText" class="kill-chip">다람쥐 0</div>
+      <button id="resetBtn" class="mini">초기화</button>
+    </div>
+  </header>
+
+  <div id="mission" class="mission">
+    <b>화면을 터치해서 이동</b>
+    <span>아래쪽 다람쥐 숲으로 직접 걸어가 보세요.</span>
+  </div>
+
+  <div id="enemyInfo" class="enemy-info hidden">
+    <div><b id="enemyName">다람쥐 Lv.1</b><span id="enemyDistance"></span></div>
+    <div class="enemy-big-hp"><i id="enemyHpBar"></i></div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <button id="attackBtn" class="attack" disabled>
+    <span class="sword">⚔</span><strong>공격</strong><small id="attackHint">가까이 이동</small>
+  </button>
+
+  <div id="loading" class="loading-card">
+    <b>JUNJA ADVENTURE</b>
+    <span>실제 이동 월드를 준비하는 중…</span>
+  </div>
+</main>
+<script type="module" src="./app.js"></script>
 </body>
 </html>
