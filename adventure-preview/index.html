@@ -1,63 +1,63 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
-  <meta name="theme-color" content="#0b120d" />
-  <title>준자 어드벤처 — 이동 플레이 프로토타입</title>
-  <link rel="stylesheet" href="./style.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<meta name="theme-color" content="#0b120d" />
+<title>준자 어드벤처</title>
+<link rel="stylesheet" href="./style.css" />
 </head>
 <body>
 <main id="game" class="game loading">
   <div id="viewport" class="viewport">
     <div id="world" class="world">
-      <div id="forestMark" class="forest-mark">↓ 다람쥐 숲</div>
+      <div id="portal" class="portal"><span id="portalText">다람쥐 숲</span></div>
       <div id="targetMarker" class="target-marker"></div>
-      <div id="enemies" class="enemies"></div>
-      <div id="hero" class="hero">
-        <div class="hero-name">준자</div>
-        <img id="heroImg" alt="준자" draggable="false" />
-        <div class="hero-shadow"></div>
-      </div>
+      <div id="enemyLayer" class="enemy-layer"></div>
+      <div id="hero" class="hero"><div class="hero-label">준자</div><img id="heroImg" draggable="false" alt="준자"/><div class="shadow"></div></div>
     </div>
   </div>
 
-  <header class="hud">
-    <div class="profile">
-      <div id="avatar" class="avatar"></div>
-      <div class="profile-copy">
-        <div class="name-row"><strong>준자</strong><span id="levelText">Lv.1</span></div>
-        <div class="bar hp"><i></i></div>
-        <div class="bar exp"><i id="expBar"></i></div>
-        <small id="expText">EXP 0 / 60</small>
+  <header class="top-hud">
+    <section class="profile-card">
+      <img id="portrait" class="portrait" alt="준자" />
+      <div class="profile-meta">
+        <div class="profile-line"><strong>준자</strong><span id="levelText">Lv.1</span></div>
+        <div class="gauge hp"><i id="hpBar"></i></div>
+        <div class="gauge exp"><i id="expBar"></i></div>
+        <div class="profile-sub"><span id="expText">EXP 0 / 60</span><span id="goldText">0 G</span></div>
       </div>
-    </div>
-    <div class="hud-right">
-      <div id="killText" class="kill-chip">다람쥐 0</div>
-      <button id="resetBtn" class="mini">초기화</button>
-    </div>
+    </section>
+    <div class="zone-card"><strong id="zoneText">준자마을</strong><small id="saveText">자동저장</small></div>
   </header>
 
-  <div id="mission" class="mission">
-    <b>화면을 터치해서 이동</b>
-    <span>아래쪽 다람쥐 숲으로 직접 걸어가 보세요.</span>
-  </div>
+  <section id="questCard" class="quest-card">
+    <div class="quest-head"><b id="questTitle">[메인] 작은 다람쥐의 위협</b><button id="questToggle">−</button></div>
+    <div id="questBody" class="quest-body"></div>
+  </section>
 
-  <div id="enemyInfo" class="enemy-info hidden">
-    <div><b id="enemyName">다람쥐 Lv.1</b><span id="enemyDistance"></span></div>
-    <div class="enemy-big-hp"><i id="enemyHpBar"></i></div>
-  </div>
+  <section id="targetPanel" class="target-panel hidden">
+    <div class="target-head"><b id="targetName">다람쥐 Lv.1</b><span id="targetRange">0m</span></div>
+    <div class="target-hp"><i id="targetHp"></i></div>
+  </section>
 
+  <section id="dialogue" class="dialogue hidden"><b id="dialogueName"></b><p id="dialogueText"></p><button id="dialogueNext">확인</button></section>
   <div id="toast" class="toast"></div>
 
-  <button id="attackBtn" class="attack" disabled>
-    <span class="sword">⚔</span><strong>공격</strong><small id="attackHint">가까이 이동</small>
-  </button>
+  <nav class="actions">
+    <button id="contextBtn" class="round secondary hidden"><span>💬</span><small>대화</small></button>
+    <button id="autoBtn" class="round secondary"><span>↻</span><small>자동</small></button>
+    <button id="skillBtn" class="round skill" disabled><span>✦</span><small id="skillHint">Lv.2</small></button>
+    <button id="attackBtn" class="round attack" disabled><span>⚔</span><small id="attackHint">공격</small></button>
+  </nav>
 
-  <div id="loading" class="loading-card">
-    <b>JUNJA ADVENTURE</b>
-    <span>실제 이동 월드를 준비하는 중…</span>
-  </div>
+  <nav class="utility">
+    <button id="bagBtn">가방</button><button id="homeBtn">마을</button><button id="resetBtn">초기화</button>
+  </nav>
+
+  <section id="bag" class="modal hidden"><div class="modal-card"><div class="modal-head"><b>가방</b><button id="bagClose">×</button></div><div class="inventory"><div>🪶 낡은 꼬리털 <strong id="tailCount">0</strong></div><div class="potion-row"><span>🧪 초보 물약 <strong id="potionCount">0</strong></span><button id="usePotionBtn">사용</button></div><div>🪙 골드 <strong id="bagGold">0</strong></div></div><p>사냥 보상은 자동으로 저장됩니다.</p></div></section>
+
+  <div id="loading" class="loading"><b>JUNJA ADVENTURE</b><span>월드 불러오는 중…</span></div>
 </main>
 <script type="module" src="./app.js"></script>
 </body>
