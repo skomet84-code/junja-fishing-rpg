@@ -1,0 +1,38 @@
+name: Generate final motion sprites
+
+on:
+  push:
+    branches: [junja-adventure-preview]
+    paths:
+      - 'tools/motion/generate-motion.mjs'
+      - '.github/workflows/generate-motion.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  motion-sprites:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate 12-frame motion sheets
+        run: |
+          npm install --no-save sharp@0.33.5
+          node tools/motion/generate-motion.mjs
+      - name: Commit generated motion assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add adventure-preview/assets/*-motion.webp adventure-online/image-prototype/assets/*-motion.webp
+          if git diff --cached --quiet; then
+            echo "Motion assets already current."
+            exit 0
+          fi
+          git commit -m "Generate 12-frame final motion sprites"
+          git push origin HEAD:${{ github.ref_name }}
