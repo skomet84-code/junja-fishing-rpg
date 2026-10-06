@@ -12,3 +12,142 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .resource{position:absolute;transform:translate(-50%,-50%);border:1px solid #a4cf8a;background:#183b22e8;border-radius:14px;padding:5px 8px;font-size:11px;white-space:nowrap;box-shadow:0 0 16px #8ecc5944;min-height:38px}.resource:active{transform:translate(-50%,-50%) scale(.96)}.resource.depleted{opacity:.55;box-shadow:none}.enemy.elite .sprite{filter:hue-rotate(315deg) saturate(1.7) drop-shadow(0 0 7px #ea8768)}.enemy.elite .entity-name{color:#ffaf79}.enemy.named .sprite{filter:hue-rotate(185deg) saturate(1.5) drop-shadow(0 0 14px #d5a1ff)}.enemy.named .entity-name{color:#efd278;font-size:13px}#world[data-zone=cave]{background-color:#162039;background-blend-mode:luminosity}#world[data-zone=abyss]{background-color:#301d48;background-blend-mode:luminosity}#world[data-zone=celestial]{background-color:#3a344f;background-blend-mode:luminosity}.legendary{color:#ffcf5c!important;text-shadow:0 0 8px #d6a34388}.hero[data-weapon='3'] .gear-weapon,.hero[data-armor='3'] .gear-armor,.hero[data-cape='3'] .gear-cape{display:block;background:linear-gradient(#fffbd4,#e4b749,#a57928);box-shadow:0 0 18px #fff09b}.hero[data-weapon='3'] .gear-weapon{width:7%}.hero[data-armor='3'] .sprite{filter:drop-shadow(0 0 8px #ffe4a0)}#socialAlert{position:absolute;top:148px;right:12px;z-index:4;background:#6a4329f2;border-color:#efca70;font-size:12px}#duelHud{position:absolute;top:55px;left:50%;transform:translateX(-50%);z-index:4;padding:10px;background:#551e29ef;border:1px solid #ecadab;border-radius:12px;white-space:nowrap;font-size:12px}.recipe{background:#142b24;border:1px solid #55724f;border-radius:10px;padding:12px;margin:10px 0}.recipe p{font-size:12px;line-height:1.6;margin:8px 0}.player-list>div{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:12px 0;padding:10px;border:1px solid #536e52;border-radius:10px}.player-list b{width:100%;font-size:12px}.player-list button{font-size:12px}.trade-items{display:grid;gap:5px;max-height:180px;overflow:auto}.trade-items label{display:flex;align-items:center;gap:8px;font-size:12px}.trade-items input{width:18px;min-height:20px;margin:0}#tradeForm label{font-size:12px}#tradeSummary{border:1px solid #c1a874;padding:10px;border-radius:10px;font-size:12px}.utility{flex-wrap:wrap;max-width:60%;gap:5px}.utility button{min-width:48px}
 @media(max-width:600px){.utility{max-width:calc(100% - 16px);flex-wrap:nowrap;gap:3px}.utility button{min-width:38px;padding:5px;font-size:9px}.utility #bagBtn{min-width:55px}.utility #socialBtn{min-width:55px}#socialAlert{top:141px;right:8px;font-size:10px;min-height:34px}#duelHud{top:185px;font-size:10px}.resource{font-size:10px}}
 .enemy.mmo-monster{width:125px;height:84px}.enemy.mmo-monster.boss{width:190px;height:128px}.enemy.mmo-monster .sprite{background-size:400% 400%}.enemy.mmo-monster .entity-name{white-space:nowrap;max-width:220px;left:50%;transform:translateX(-50%)}
+
+
+/* ===== Motion engine v1: grounded locomotion + hand-bound weapon animation ===== */
+.entity.hero{--bob:0px;--lean:0deg;--squash:1;--flip:1;--weapon-angle:0deg;--attack-power:0}
+.entity.hero>.sprite{
+ transform-origin:50% 91%;
+ transform:translateY(var(--bob)) rotate(var(--lean)) scaleX(var(--flip)) scaleY(var(--squash));
+ will-change:transform,background-position;
+ backface-visibility:hidden;
+}
+.entity.hero>.shadow{
+ transform:scaleX(.94);
+ opacity:.72;
+ transition:transform 70ms linear,opacity 70ms linear;
+}
+.entity.hero>.gear-layers{
+ transform-origin:50% 91%;
+ transform:translateY(var(--bob)) rotate(var(--lean)) scaleX(var(--flip)) scaleY(var(--squash));
+ will-change:transform;
+ z-index:2;
+}
+.entity.hero[data-motion='walk']>.sprite,.entity.hero[data-motion='walk']>.gear-layers{transition:transform 45ms linear}
+.entity.hero[data-motion='idle']>.sprite,.entity.hero[data-motion='idle']>.gear-layers{transition:transform 120ms ease-out}
+.entity.hero[data-motion='attack']>.sprite,.entity.hero[data-motion='attack']>.gear-layers{transition:none}
+
+.gear-weapon{
+ display:block!important;
+ left:67%;
+ top:37%;
+ width:7%;
+ height:47%;
+ border-radius:4px 4px 35% 35%;
+ background:linear-gradient(90deg,#7d8b90 0 18%,#eff8f1 35% 62%,#92aab2 80%,#566970);
+ box-shadow:0 0 5px #dce9dd99;
+ transform-origin:50% 91%;
+ transform:rotate(calc(-22deg + var(--weapon-angle)));
+ will-change:transform,filter;
+ z-index:5;
+}
+.gear-weapon:before{
+ content:'';
+ position:absolute;
+ top:71%;
+ left:-135%;
+ width:370%;
+ height:7%;
+ border-radius:4px;
+ background:linear-gradient(90deg,#5d341e,#d4aa5d,#6e4127);
+ box-shadow:0 1px 2px #0008;
+}
+.gear-weapon:after{
+ content:'';
+ position:absolute;
+ pointer-events:none;
+ opacity:0;
+ left:-520%;
+ top:-28%;
+ width:1050%;
+ height:135%;
+ border-radius:50%;
+ border:8px solid transparent;
+ border-right-color:#fff1a6;
+ filter:drop-shadow(0 0 7px #ffc96f);
+ transform:rotate(-9deg);
+}
+.hero.attacking[data-job='warrior'] .gear-weapon:after,
+.hero.attacking[data-job='rogue'] .gear-weapon:after{opacity:calc(var(--attack-power) * .85)}
+.hero.attacking .gear-weapon{filter:brightness(1.28) drop-shadow(0 0 8px #ffe09b)}
+
+.hero[data-job='warrior'] .gear-weapon{height:50%;width:7%;left:68%;top:34%}
+.hero[data-job='rogue'] .gear-weapon{height:36%;width:6%;left:68%;top:43%;transform:rotate(calc(-32deg + var(--weapon-angle)))}
+.hero[data-job='rogue'] .gear-weapon:before{top:68%;height:8%}
+.hero[data-job='rogue'] .gear-weapon:after{border-right-color:#ffd0df;filter:drop-shadow(0 0 6px #f58db4)}
+.hero[data-job='rogue'] .gear-layers:after{
+ content:'';
+ position:absolute;
+ left:27%;
+ top:44%;
+ width:6%;
+ height:35%;
+ border-radius:4px;
+ background:linear-gradient(90deg,#6f777e,#eef4f6,#819097);
+ box-shadow:0 0 5px #f3c4d4;
+ transform-origin:50% 90%;
+ transform:rotate(calc(30deg - var(--weapon-angle)));
+ z-index:5;
+}
+.hero[data-job='mage'] .gear-weapon{
+ left:66%;top:34%;width:6%;height:52%;border-radius:45% 45% 4px 4px;
+ background:linear-gradient(90deg,#59336f,#aa72d2,#503060);
+ box-shadow:0 -8px 14px #bc87ff;
+ transform:rotate(calc(-13deg + var(--weapon-angle)));
+}
+.hero[data-job='mage'] .gear-weapon:before{
+ top:-8%;left:-120%;width:340%;height:18%;border-radius:50%;
+ background:radial-gradient(circle,#fff 0 15%,#d9a2ff 30%,#7d3fc5 60%,transparent 72%);
+ box-shadow:0 0 13px #be7fff;
+}
+.hero[data-job='mage'] .gear-weapon:after{
+ opacity:calc(var(--attack-power) * .9);left:-430%;top:-56%;width:900%;height:90%;
+ border:0;background:radial-gradient(circle,#d8a8ff99 0 15%,#8b4bd355 35%,transparent 68%);
+ filter:blur(2px);
+}
+.hero[data-job='healer'] .gear-weapon{
+ left:63%;top:43%;width:22%;height:20%;
+ clip-path:polygon(50% 100%,0 0,100% 0);
+ border-radius:0;background:linear-gradient(90deg,#e8f2b6,#8fd4aa,#f5e39f);
+ box-shadow:0 0 9px #bbf1bd;
+ transform:rotate(calc(-8deg + var(--weapon-angle)));
+}
+.hero[data-job='healer'] .gear-weapon:before{display:none}
+.hero[data-job='healer'] .gear-weapon:after{
+ opacity:calc(var(--attack-power) * .85);left:-110%;top:-140%;width:320%;height:320%;
+ border:2px solid #d6ffb8;border-radius:50%;filter:drop-shadow(0 0 8px #9fffb3);
+}
+
+.hero[data-weapon='0'] .gear-weapon,
+.hero[data-weapon='1'] .gear-weapon,
+.hero[data-weapon='2'] .gear-weapon,
+.hero[data-weapon='3'] .gear-weapon{display:block}
+.hero[data-weapon='2'] .gear-weapon{background:linear-gradient(90deg,#817142,#fff4bd,#d29d51);box-shadow:0 0 10px #f6cf66}
+.hero[data-weapon='3'] .gear-weapon{background:linear-gradient(90deg,#725a9e,#f8f3ff,#c78cff);box-shadow:0 0 15px #c38bff,0 0 26px #8f6fff66}
+.hero[data-weapon='3'].attacking .gear-weapon:after{filter:drop-shadow(0 0 12px #d19cff)}
+
+#hero.attacking #swing{border-right-width:0;animation:none}
+#hero.attacking #swing:after{
+ content:'';
+ position:absolute;
+ inset:0;
+ border-radius:50%;
+ border-right:7px solid #fff0a1;
+ opacity:calc(var(--attack-power) * .75);
+ transform:rotate(calc(-55deg + var(--weapon-angle)));
+ filter:drop-shadow(0 0 7px #ffd86f);
+}
+
+/* feet stay visually planted while the torso breathes / bobs */
+.entity.hero[data-motion='walk']{filter:drop-shadow(0 1px 0 #0000)}
+.entity.hero[data-motion='attack'] .entity-name{transform:translateX(-50%) translateY(-2px)}
