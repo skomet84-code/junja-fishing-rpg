@@ -143,7 +143,7 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
  inset:0;
  border-radius:50%;
  border-right:7px solid #fff0a1;
- opacity:calc(var(--attack-power) * .75);
+ opacity:var(--attack-power);
  transform:rotate(calc(-55deg + var(--weapon-angle)));
  filter:drop-shadow(0 0 7px #ffd86f);
 }
@@ -233,3 +233,153 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .entity.hero>.sprite-a,.entity.hero>.sprite-b{filter:inherit}
 .entity.hero[data-motion='walk']>.sprite-b{mix-blend-mode:normal}
 .entity.hero[data-motion='attack']>.sprite-b{filter:brightness(1.035)}
+
+
+/* ===== Motion engine FINAL: diagonal body projection, directional lunges, weapon trails ===== */
+.entity.hero{
+ --dir-skew:0deg;--dir-depth:1;--lunge-x:0px;--lunge-y:0px;
+}
+.entity.hero>.sprite{
+ transform:
+  translate(var(--lunge-x),calc(var(--bob) + var(--lunge-y)))
+  skewX(var(--dir-skew))
+  rotate(var(--lean))
+  scaleX(var(--flip))
+  scaleY(var(--squash))
+  scaleY(var(--dir-depth));
+}
+.entity.hero>.gear-layers,
+.entity.hero>.weapon-rig{
+ transform:
+  translate(var(--lunge-x),calc(var(--bob) + var(--lunge-y)))
+  skewX(var(--dir-skew))
+  rotate(var(--lean))
+  scaleX(var(--flip))
+  scaleY(var(--squash))
+  scaleY(var(--dir-depth));
+}
+.entity.hero[data-diagonal='1']>.shadow{transform:scaleX(.88) scaleY(.78)}
+.entity.hero[data-diagonal='1'][data-face='2']>.sprite,
+.entity.hero[data-diagonal='1'][data-face='2']>.gear-layers,
+.entity.hero[data-diagonal='1'][data-face='2']>.weapon-rig{transform-origin:50% 92%}
+
+/* Body continuity: hide the cross-fade seam during the strongest in-between poses */
+.entity.hero[data-motion='walk']>.sprite-a,
+.entity.hero[data-motion='walk']>.sprite-b{transition:opacity 25ms linear}
+.entity.hero[data-motion='attack']>.sprite-a,
+.entity.hero[data-motion='attack']>.sprite-b{transition:opacity 18ms linear}
+.entity.hero[data-motion='walk']>.sprite{filter:drop-shadow(0 1px 0 #0000)}
+.entity.hero[data-motion='attack']>.sprite{filter:contrast(1.015)}
+
+/* The arm, hand and weapon travel as one rig. */
+.entity.hero[data-motion='attack'] .weapon-core{
+ filter:drop-shadow(0 2px 2px #0008);
+}
+.entity.hero[data-motion='attack'][data-job='warrior'] .gear-arm{
+ transform:rotate(calc(-9deg + var(--arm-angle)));
+}
+.entity.hero[data-motion='attack'][data-job='rogue'] .gear-arm{
+ transform:rotate(calc(-12deg + var(--arm-angle)));
+}
+.entity.hero[data-motion='attack'][data-job='mage'] .gear-arm{
+ transform:rotate(calc(-4deg + var(--arm-angle)));
+}
+.entity.hero[data-motion='attack'][data-job='healer'] .gear-arm{
+ transform:rotate(calc(-2deg + var(--arm-angle)));
+}
+
+/* Weapon motion trails are attached to the weapon, not to the character box. */
+.weapon-core:before{
+ content:'';
+ position:absolute;
+ left:57%;top:27%;
+ width:46%;height:66%;
+ border-radius:50%;
+ border:8px solid transparent;
+ border-right-color:#ffe8a0;
+ opacity:0;
+ transform:rotate(-18deg) scale(.72);
+ filter:drop-shadow(0 0 6px #ffc15c);
+ pointer-events:none;
+ z-index:2;
+}
+.hero.attacking[data-job='warrior'] .weapon-core:before{
+ opacity:var(--attack-power);
+ transform:rotate(calc(-38deg + var(--trail-angle))) scale(var(--trail-scale));
+}
+.hero.attacking[data-job='rogue'] .weapon-core:before{
+ opacity:var(--attack-power);
+ border-right-color:#ffb5cb;
+ border-width:6px;
+ transform:rotate(calc(-25deg + var(--trail-angle))) scaleX(1.18);
+ filter:drop-shadow(0 0 6px #ff7da7);
+}
+.hero.attacking[data-job='mage'] .weapon-core:before{
+ left:49%;top:20%;width:52%;height:52%;
+ opacity:var(--attack-power);
+ border:3px solid #d7a5ff;
+ box-shadow:0 0 13px #b46cff, inset 0 0 12px #9b5bd488;
+ background:radial-gradient(circle,transparent 35%,#bf83ff33 58%,transparent 72%);
+ transform:rotate(var(--trail-angle)) scale(var(--trail-scale));
+}
+.hero.attacking[data-job='healer'] .weapon-core:before{
+ left:48%;top:23%;width:50%;height:50%;
+ opacity:var(--attack-power);
+ border:3px solid #c9f3ad;
+ box-shadow:0 0 13px #9be0a3, inset 0 0 10px #d7efaa66;
+ background:radial-gradient(circle,#dff7b622 0 30%,transparent 68%);
+ transform:rotate(var(--trail-angle)) scale(var(--trail-scale));
+}
+
+/* Three basic attack variants prevent the repeated 'same swing' feel. */
+.hero[data-job='warrior'][data-attack-variant='1'] .weapon-core:before{border-left-color:#ffe8a0;border-right-color:transparent}
+.hero[data-job='warrior'][data-attack-variant='2'] .weapon-core:before{transform-origin:55% 90%;border-top-color:#fff1bc;border-right-color:transparent}
+.hero[data-job='rogue'][data-attack-variant='1'] .weapon-core:after{
+ content:'';
+ position:absolute;left:27%;top:25%;width:46%;height:61%;border-radius:50%;
+ border:5px solid transparent;border-left-color:#ffb4cd;
+ opacity:var(--attack-power);
+ filter:drop-shadow(0 0 6px #ff6f9e);z-index:2;
+}
+
+/* Back-facing characters put the hand/weapon behind the torso; front/side stays in front. */
+.hero[data-face='1']>.weapon-rig{z-index:0}
+.hero[data-face='0']>.weapon-rig,.hero[data-face='2']>.weapon-rig{z-index:4}
+.hero[data-face='1'] .gear-hand{opacity:.82}
+.hero[data-face='1'] .gear-arm{opacity:.78}
+
+/* Strong contact moment without a teleporting body. */
+.entity.hero[data-motion='attack']{will-change:transform}
+.entity.hero[data-motion='attack'][data-job='warrior']{filter:drop-shadow(0 2px 3px #0005)}
+.entity.hero[data-motion='attack'][data-job='rogue']{filter:drop-shadow(0 1px 3px #0006)}
+.entity.hero[data-motion='attack'][data-job='mage'],
+.entity.hero[data-motion='attack'][data-job='healer']{filter:drop-shadow(0 0 5px #ffffff12)}
+
+@media (prefers-reduced-motion:reduce){
+ .entity.hero>.sprite,.entity.hero>.gear-layers,.entity.hero>.weapon-rig,.weapon-core{transition:none!important}
+}
+
+
+/* ===== Contact feedback: the swing visually reaches the target ===== */
+.combat-projectile,.combat-impact{position:absolute;pointer-events:none;z-index:2100}
+.combat-projectile{
+ width:22px;height:22px;border-radius:50%;transform:translate(-50%,-50%);
+ background:radial-gradient(circle,#fff 0 18%,#d9a5ff 28%,#8d55d8 58%,transparent 72%);
+ box-shadow:0 0 14px #b879ff,0 0 28px #8751c588;
+}
+.combat-projectile.healer{
+ background:radial-gradient(circle,#fff 0 18%,#dff5b6 28%,#77c596 58%,transparent 72%);
+ box-shadow:0 0 14px #a6dda0,0 0 28px #6cad7d77;
+}
+.combat-projectile.skill{width:29px;height:29px}
+.combat-impact{
+ width:58px;height:42px;transform:translate(-50%,-50%) scale(.4);
+ border-radius:50%;border:5px solid #ffe6a2;box-shadow:0 0 18px #ffba5e;
+ animation:contactPop .4s ease-out forwards;
+}
+.combat-impact.rogue{border-color:#ffafc8;box-shadow:0 0 18px #ff729e}
+.combat-impact.mage{border-color:#d4a7ff;box-shadow:0 0 22px #9a62e8}
+.combat-impact.healer{border-color:#c9f3ad;box-shadow:0 0 20px #8bd19a}
+.enemy.contact-hit .sprite{animation:contactHit .13s ease-out}
+@keyframes contactPop{0%{opacity:1;transform:translate(-50%,-50%) scale(.35)}60%{opacity:.9;transform:translate(-50%,-50%) scale(1.06)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.35)}}
+@keyframes contactHit{0%{filter:brightness(1)}45%{filter:brightness(1.75)}100%{filter:brightness(1)}}

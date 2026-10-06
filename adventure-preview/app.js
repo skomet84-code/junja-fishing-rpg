@@ -1,5 +1,5 @@
 import {W,H,clamp,distance,walkable,pathfind} from './core.js';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp} from './catalog.js?v=20261006-motion-2';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp} from './catalog.js?v=20261006-motion-final';
 import {mergeSnapshot} from './network.js';
 import {MATERIALS,RECIPES,ZONES,DAILY_TASKS,PROMOTIONS,CHANNEL_CAP,LEVEL_CAP} from './mmo-data.js';
 import {API_URL} from './config.js';
@@ -7,12 +7,17 @@ const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>(
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 let wireSnapshot=null;
 let token='',connectionKey='',legacy=null,roster=[],selectedSlot=0,state=profile(),view={x:768,y:355},connected=false,paused=false,serverNow=0,receivedAt=0,last=0,clock=0,lastSend=0,movePending=false,streamController=null,streamGeneration=0;
-let path=[],selected=null,auto=false,cam={x:0,y:0},scale=1,face=0,flip=false,attackUntil=0,nearNpc=null,npcIntent=null,gesture=null,stick={x:0,y:0};
+let path=[],selected=null,auto=false,cam={x:0,y:0},scale=1,face=0,flip=false,headingX=0,headingY=1,attackUntil=0,attackSerial=0,nearNpc=null,npcIntent=null,gesture=null,stick={x:0,y:0};
 let systems={nodes:[],bosses:[],trade:null,duel:null,daily:null},gatherIntent=null,mmoPanel='';const resourceEls=new Map();
 const keys=new Set(),enemies=new Map(),peers=new Map(),seenEvents=new Set(),npcs=[{id:'elder',x:580,y:330},{id:'merchant',x:1000,y:330}];
 try{token=localStorage.getItem('junja-online-token')||'';const old=localStorage.getItem('junja-adventure-play-v2');if(old)legacy=JSON.parse(old);}catch{}
 if(legacy)$('legacyRow').hidden=false;
-const artReady=Promise.all(['hero','rogue','mage','healer','world','npcs','squirrel','monster-atlas'].map(name=>new Promise((resolve,reject)=>{const im=new Image();im.onload=resolve;im.onerror=()=>reject(Error('캐릭터 이미지를 불러오지 못했어요. 다시 연결해 주세요.'));im.src='./assets/'+name+'.png';})));artReady.catch(()=>{});
+const motionArt=new Set(),characterArt=['hero','rogue','mage','healer'];
+function preload(src,required=true,onload=()=>{}){return new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>{onload();resolve();};im.onerror=()=>required?reject(Error('캐릭터 이미지를 불러오지 못했어요. 다시 연결해 주세요.')):resolve();im.src=src;});}
+const artReady=Promise.all([
+ ...['hero','rogue','mage','healer','world','npcs','squirrel','monster-atlas'].map(name=>preload('./assets/'+name+'.png')),
+ ...characterArt.map(name=>preload('./assets/'+name+'-motion.webp?v='+BUILD,false,()=>motionArt.add(name)))
+]);artReady.catch(()=>{});
 function toast(text){$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').classList.remove('show'),3000);}
 function now(){return serverNow+(performance.now()-receivedAt)/1000;}
 async function api(route,data){const r=await fetch(apiBase+'/api/'+route,{method:data?'POST':'GET',headers:{'content-type':'application/json',...(token?{authorization:'Bearer '+token}:{}),...(connectionKey?{'x-adventure-connection':connectionKey}:{})},body:data?JSON.stringify(data):undefined});const json=await r.json();if(!r.ok)throw Error(json.error||'연결을 확인하세요.');return json;}
@@ -31,9 +36,29 @@ function sprite(el,col,row,rows=3,mirror=false){
  el.style.setProperty('--flip',mirror?-1:1);
 }
 const smoothstep=t=>t*t*(3-2*t);
+function headingPose(dx,dy,fallbackRow=0,fallbackMirror=false){
+ const d=Math.hypot(dx,dy);if(d<.001)return {row:fallbackRow,mirror:fallbackMirror,nx:0,ny:fallbackRow===1?-1:1,skew:0,depth:1};
+ const nx=dx/d,ny=dy/d,ax=Math.abs(nx),ay=Math.abs(ny);
+ let row,mirror=false;if(ay>ax*1.22)row=ny<0?1:0;else{row=2;mirror=nx<0;}
+ const diagonal=ax>.28&&ay>.28,skew=diagonal?(nx*(ny<0?-5.5:5.5)):0,depth=diagonal?.985:1;
+ return {row,mirror,nx,ny,skew,depth};
+}
+function applyHeading(el,dx,dy,fallbackRow=0,fallbackMirror=false){
+ const p=headingPose(dx,dy,fallbackRow,fallbackMirror);
+ el.dataset.face=String(p.row);el.dataset.flip=p.mirror?'1':'0';el.dataset.diagonal=Math.abs(p.nx)>.28&&Math.abs(p.ny)>.28?'1':'0';
+ el.style.setProperty('--dir-skew',p.skew+'deg');el.style.setProperty('--dir-depth',String(p.depth));el.style.setProperty('--flip',p.mirror?-1:1);
+ return p;
+}
+
+function motionSprite(art,frame,state,row,mirror=false){
+ const stateIndex=state==='walk'?1:state==='attack'?2:0,r=stateIndex*3+row,twin=art.parentElement?.querySelector('.sprite-b');
+ art.style.backgroundSize='1200% 900%';art.style.backgroundPosition=`${frame*100/11}% ${r*100/8}%`;art.style.setProperty('--flip',mirror?-1:1);art.style.opacity='1';
+ if(twin){twin.style.opacity='0';twin.style.backgroundSize='1200% 900%';}
+}
 function blendSprite(art,a,b,mix,row,rows=3,mirror=false){
  const twin=art.parentElement?.querySelector('.sprite-b');
  if(!twin){sprite(art,mix<.5?a:b,row,rows,mirror);return;}
+ art.style.backgroundSize='400% 300%';twin.style.backgroundSize='400% 300%';
  const t=smoothstep(Math.max(0,Math.min(1,mix)));
  sprite(art,a,row,rows,mirror);sprite(twin,b,row,rows,mirror);
  art.style.opacity=String(1-t);twin.style.opacity=String(t);
@@ -42,34 +67,46 @@ const MOTION={
  idle:{keys:[0,0],speed:.7},
  walk:{keys:[1,0,2,0],speed:5.7},
 };
-function motion(el,art,mode,row,mirror,time,phase=0){
- const cfg=MOTION[mode]||MOTION.idle,keys=cfg.keys;
+function motion(el,art,mode,row,mirror,time,phase=0,dx=0,dy=0){
+ const pose=applyHeading(el,dx,dy,row,mirror),cfg=MOTION[mode]||MOTION.idle,keys=cfg.keys;
  const pos=((time*cfg.speed+phase)%keys.length+keys.length)%keys.length,idx=Math.floor(pos),mix=pos-idx;
- blendSprite(art,keys[idx],keys[(idx+1)%keys.length],mix,row,3,mirror);
- el.dataset.motion=mode;el.dataset.face=String(row);el.dataset.flip=mirror?'1':'0';el.style.setProperty('--flip',mirror?-1:1);
+ if(el.dataset.motionSheet==='1'){const fps=mode==='walk'?12:6,frame=Math.floor((((time*fps)+(phase*3))%12+12)%12);motionSprite(art,frame,mode,pose.row,pose.mirror);}
+ else blendSprite(art,keys[idx],keys[(idx+1)%keys.length],mix,pose.row,3,pose.mirror);
+ el.dataset.motion=mode;
  const stride=mode==='walk'?Math.sin((pos/keys.length)*Math.PI*2):Math.sin(time*Math.PI*1.4+phase);
  const foot=Math.abs(Math.sin((pos/keys.length)*Math.PI*4));
- el.style.setProperty('--bob',mode==='walk'?(-1.2-foot*2.6)+'px':(-Math.max(0,stride)*.7)+'px');
- el.style.setProperty('--lean',mode==='walk'?(stride*1.45)+'deg':(stride*.28)+'deg');
- el.style.setProperty('--squash',mode==='walk'?(1-foot*.022):(1+stride*.006));
- el.style.setProperty('--weapon-angle',mode==='walk'?(stride*-4.5)+'deg':'0deg');
- el.style.setProperty('--attack-power','0');
+ el.style.setProperty('--bob',mode==='walk'?(-1.1-foot*2.5)+'px':(-Math.max(0,stride)*.65)+'px');
+ el.style.setProperty('--lean',mode==='walk'?(stride*1.35)+'deg':(stride*.25)+'deg');
+ el.style.setProperty('--squash',mode==='walk'?(1-foot*.02):(1+stride*.005));
+ el.style.setProperty('--weapon-angle',mode==='walk'?(stride*-5.5)+'deg':'0deg');
+ el.style.setProperty('--attack-power','0');el.style.setProperty('--arm-angle','0deg');el.style.setProperty('--trail-angle','0deg');el.style.setProperty('--trail-scale','.76');el.style.setProperty('--lunge-x','0px');el.style.setProperty('--lunge-y','0px');
 }
-function attackPose(el,art,row,mirror,started,duration=.44){
- const p=Math.max(0,Math.min(1,(clock-started)/duration)),keys=[0,1,3,3,2,0];
+function attackPose(el,art,row,mirror,started,duration=.44,job='warrior',skill=-1,variant=0,dx=0,dy=0){
+ const pose=applyHeading(el,dx,dy,row,mirror),p=Math.max(0,Math.min(1,(clock-started)/duration));
+ const cast=job==='mage'||job==='healer',rogue=job==='rogue',keys=cast?[0,1,3,1,0]:rogue?[0,1,3,2,3,0]:[0,1,3,3,2,0];
  const z=p*(keys.length-1),i=Math.min(keys.length-2,Math.floor(z)),mix=z-i;
- blendSprite(art,keys[i],keys[i+1],mix,row,3,mirror);
- let lean=0,bob=0,weapon=0,power=0;
- if(p<.20){const q=smoothstep(p/.20);lean=-8*q;weapon=-62*q;bob=1.5*q;power=q*.2;}
- else if(p<.58){const q=smoothstep((p-.20)/.38);lean=-8+20*q;weapon=-62+168*q;bob=-3.5*Math.sin(q*Math.PI);power=.2+.8*Math.sin(q*Math.PI*.82);}
- else{const q=smoothstep((p-.58)/.42);lean=12*(1-q);weapon=106*(1-q);bob=-1.2*(1-q);power=1-q;}
- el.dataset.motion='attack';el.dataset.face=String(row);el.dataset.flip=mirror?'1':'0';el.style.setProperty('--flip',mirror?-1:1);
- el.style.setProperty('--bob',bob+'px');el.style.setProperty('--lean',lean+'deg');el.style.setProperty('--squash',p>.2&&p<.58?.96:1);el.style.setProperty('--weapon-angle',weapon+'deg');el.style.setProperty('--attack-power',String(Math.max(0,power)));
+ if(el.dataset.motionSheet==='1')motionSprite(art,Math.min(11,Math.floor(p*12)),'attack',pose.row,pose.mirror);
+ else blendSprite(art,keys[i],keys[i+1],mix,pose.row,3,pose.mirror);
+ let lean=0,bob=0,weapon=0,power=0,lunge=0;
+ if(cast){
+  const q=smoothstep(Math.min(1,p/.58)),release=smoothstep(Math.max(0,(p-.36)/.32));
+  lean=-3+5*q;bob=-2.2*Math.sin(Math.min(1,p)*Math.PI);weapon=-18+34*q-18*release;power=Math.sin(Math.min(1,p/.82)*Math.PI);lunge=skill>=0?3*Math.sin(p*Math.PI):0;
+ }else if(rogue){
+  const wave=Math.sin(Math.min(1,p/.78)*Math.PI*2);
+  lean=wave*7;bob=-2.2*Math.abs(wave);weapon=variant%2?48-145*smoothstep(p):-48+150*smoothstep(p);power=Math.min(1,Math.abs(wave)*1.3);lunge=8*Math.sin(Math.min(1,p/.7)*Math.PI);
+ }else{
+  if(p<.20){const q=smoothstep(p/.20);lean=-8*q;weapon=(variant%3===1?58:-68)*q;bob=1.2*q;power=q*.18;}
+  else if(p<.60){const q=smoothstep((p-.20)/.40);const from=variant%3===1?58:-68,to=variant%3===1?-108:variant%3===2?42:112;lean=-8+21*q;weapon=from+(to-from)*q;bob=-3.2*Math.sin(q*Math.PI);power=.2+.8*Math.sin(q*Math.PI*.86);lunge=10*Math.sin(q*Math.PI);}
+  else{const q=smoothstep((p-.60)/.40);lean=13*(1-q);weapon=(variant%3===1?-108:variant%3===2?42:112)*(1-q);bob=-1*(1-q);power=1-q;lunge=6*(1-q);}
+ }
+ el.dataset.motion='attack';el.dataset.attackVariant=String(variant%3);el.dataset.attackSkill=String(skill);
+ const armFactor=job==='rogue'?.34:job==='mage'?.16:job==='healer'?.12:.28,trailFactor=job==='rogue'?.23:job==='mage'?.4:job==='healer'?.3:.18;
+ el.style.setProperty('--bob',bob+'px');el.style.setProperty('--lean',lean+'deg');el.style.setProperty('--squash',p>.18&&p<.62?.958:1);el.style.setProperty('--weapon-angle',weapon+'deg');el.style.setProperty('--arm-angle',(weapon*armFactor)+'deg');el.style.setProperty('--trail-angle',(weapon*trailFactor)+'deg');el.style.setProperty('--trail-scale',String(.74+Math.max(0,power)*.28));el.style.setProperty('--attack-power',String(Math.max(0,power)));el.style.setProperty('--lunge-x',(lunge*pose.nx)+'px');el.style.setProperty('--lunge-y',(lunge*pose.ny*.38)+'px');
 }
 function actorArt(el,s){
- const url=`url('./assets/${JOBS[s.job].art}.png')`;
- el.style.backgroundImage=url;
- const twin=el.parentElement?.querySelector('.sprite-b');if(twin)twin.style.backgroundImage=url;
+ const art=JOBS[s.job].art,useMotion=motionArt.has(art),url=`url('./assets/${art}${useMotion?'-motion.webp':'.png'}?v=${BUILD}')`,parent=el.parentElement;
+ if(parent)parent.dataset.motionSheet=useMotion?'1':'0';el.style.backgroundImage=url;
+ const twin=parent?.querySelector('.sprite-b');if(twin){twin.style.backgroundImage=url;twin.style.opacity=useMotion?'0':twin.style.opacity;}
 }
 function decorate(el,s){const eq=s.equipment||{};el.dataset.job=s.job;for(const slot of ['armor','head','weapon','cape','boots'])el.dataset[slot]=ITEMS[eq[slot]]?.tier||0;el.classList.toggle('promoted',!!s.rank);}
 function layers(el){
@@ -84,7 +121,7 @@ function updateSnapshot(data){data=mergeSnapshot(wireSnapshot,data);if(!data)ret
  if(distance(view,state)>165){view={x:state.x,y:state.y};path=[];camera(true);}
  if(auto||state.navMoving){
  const me=data.players.find(p=>p.id===state.id);
- if(me){face=me.face;flip=me.flip;if(me.attacking&&clock>=attackUntil-.04){attackUntil=clock+.44;$('hero').dataset.attackStarted=String(clock);}}
+ if(me){face=me.face;flip=me.flip;if(Number.isFinite(me.dirX)&&Number.isFinite(me.dirY)){headingX=me.dirX;headingY=me.dirY;}if(me.attacking&&clock>=attackUntil-.04){attackUntil=clock+.44;const hero=$('hero');hero.dataset.attackStarted=String(clock);hero.dataset.attackSkill=String(me.attackSkill??-1);hero.dataset.attackVariant=String(attackSerial++%3);}}
 }if(old.job!==state.job||old.rank!==state.rank||$('skillbar').childElementCount!==4)makeSkills();actorArt($('heroArt'),state);decorate($('hero'),state);$('hero').querySelector('.entity-name').textContent=state.name+' · '+jobName(state);document.querySelector('.portrait').style.backgroundImage=`url('./assets/${JOBS[state.job].art}.png')`;
  const mobIds=new Set();for(const e of data.enemies){mobIds.add(e.id);let entry=enemies.get(e.id);if(!entry){const el=entity('enemy'+(e.boss?' boss':''));el.querySelector('b').textContent=e.name||'숲 다람쥐';el.addEventListener('pointerdown',ev=>{ev.stopPropagation();select(e.id);});$('enemyLayer').append(el);entry={el,art:el.querySelector('.sprite'),vx:e.x,vy:e.y};enemies.set(e.id,entry);}Object.assign(entry,e);entry.mmo=!!e.named||e.elite||state.zone!=='surface';entry.el.classList.toggle('mmo-monster',entry.mmo);entry.art.style.backgroundImage=entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=entry.mmo?'400% 400%':'';entry.el.querySelector('b').textContent=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('dead',!e.alive);entry.el.querySelector('.life i').style.width=e.hp/e.max*100+'%';entry.el.querySelector('.tell').hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);}
  for(const [id,e] of enemies)if(!mobIds.has(id)){e.el.remove();enemies.delete(id);}
@@ -107,10 +144,26 @@ async function login(register=false){if(!$('authForm').reportValidity())return;c
  try{const r=await api(register?'register':'login',{username,password,...(register&&legacy&&$('legacyCheck').checked?{legacy}:{})});token=r.token;try{localStorage.setItem('junja-online-token',token);}catch{}$('password').value='';await showSelection();}catch(e){$('authMessage').textContent=e.message;}finally{$('loginBtn').disabled=$('registerBtn').disabled=false;}
 }
 $('authForm').onsubmit=e=>{e.preventDefault();login();};$('registerBtn').onclick=()=>login(true);$('switchAccount').onclick=()=>{token='';try{localStorage.removeItem('junja-online-token');}catch{}$('authPanel').hidden=false;$('selectPanel').hidden=true;$('authMessage').textContent='';};
-async function join(){$('joinBtn').disabled=true;$('loadMessage').textContent='준자마을에 접속 중…';try{await artReady;const r=await api('join',{slot:selectedSlot,channel:$('channelInput').value.trim()});connectionKey=r.connectionKey;state=r.snapshot.self;view={x:state.x,y:state.y};selected=null;path=[];updateSnapshot(r.snapshot);resize();makeSkills();face=0;flip=false;$('hero').style.left=view.x+'px';$('hero').style.top=view.y+'px';$('hero').style.zIndex=Math.round(view.y);sprite($('heroArt'),0,0);$('loading').hidden=true;last=performance.now();consumeStream(++streamGeneration);toast(state.channel+'에 접속했습니다. 친구에게 같은 채널을 알려 주세요.');}catch(e){$('loadMessage').textContent=e.message;}finally{$('joinBtn').disabled=false;}}
+async function join(){$('joinBtn').disabled=true;$('loadMessage').textContent='준자마을에 접속 중…';try{await artReady;const r=await api('join',{slot:selectedSlot,channel:$('channelInput').value.trim()});connectionKey=r.connectionKey;state=r.snapshot.self;view={x:state.x,y:state.y};selected=null;path=[];updateSnapshot(r.snapshot);resize();makeSkills();face=0;flip=false;headingX=0;headingY=1;$('hero').style.left=view.x+'px';$('hero').style.top=view.y+'px';$('hero').style.zIndex=Math.round(view.y);sprite($('heroArt'),0,0);$('loading').hidden=true;last=performance.now();consumeStream(++streamGeneration);toast(state.channel+'에 접속했습니다. 친구에게 같은 채널을 알려 주세요.');}catch(e){$('loadMessage').textContent=e.message;}finally{$('joinBtn').disabled=false;}}
 $('joinBtn').onclick=join;$('retryBtn').onclick=showSelection;
 function select(id){const e=enemies.get(id);if(!e?.alive)return;selected=id;npcIntent=null;path=[];if(distance(view,e)>stats(state).range*.8)go(e.x,e.y);hud();}
-function attack(skill=-1){if(paused||!connected)return;const started=clock,attackDuration=.44;if(systems.duel?.accepted){command({type:'duelAttack',skill});attackUntil=started+attackDuration;$('hero').dataset.attackStarted=String(started);effect(state.job);return;}const ability=JOBS[state.job].skills[skill];if(ability&&['heal','partyHeal','guard','partyGuard'].includes(ability[4])){command({type:'attack',skill});attackUntil=started+attackDuration;$('hero').dataset.attackStarted=String(started);effect(ability[4].toLowerCase().includes('heal')?'heal':'guard');return;}let e=enemies.get(selected);if(!e?.alive)e=[...enemies.values()].filter(e=>e.alive&&distance(view,e)<stats(state).range).sort((a,b)=>distance(a,view)-distance(b,view))[0];if(!e){toast('다람쥐를 선택해 주세요.');return;}selected=e.id;if(distance(state,e)>stats(state).range){go(e.x,e.y);toast('공격 범위까지 이동합니다.');return;}command({type:'attack',skill,target:e.id});attackUntil=started+attackDuration;$('hero').dataset.attackStarted=String(started);face=Math.abs(e.x-view.x)>Math.abs(e.y-view.y)?2:e.y<view.y?1:0;flip=face===2&&e.x<view.x;path=[];if(skill>=0)effect(state.job);hud();}
+function startLocalAttack(skill=-1){
+ const hero=$('hero');attackUntil=clock+.44;hero.dataset.attackStarted=String(clock);hero.dataset.attackSkill=String(skill);hero.dataset.attackVariant=String(attackSerial++%3);
+}
+function attack(skill=-1){if(paused||!connected)return;if(systems.duel?.accepted){command({type:'duelAttack',skill});startLocalAttack(skill);effect(state.job);return;}const ability=JOBS[state.job].skills[skill];if(ability&&['heal','partyHeal','guard','partyGuard'].includes(ability[4])){command({type:'attack',skill});startLocalAttack(skill);effect(ability[4].toLowerCase().includes('heal')?'heal':'guard');return;}let e=enemies.get(selected);if(!e?.alive)e=[...enemies.values()].filter(e=>e.alive&&distance(view,e)<stats(state).range).sort((a,b)=>distance(a,view)-distance(b,view))[0];if(!e){toast('다람쥐를 선택해 주세요.');return;}selected=e.id;if(distance(state,e)>stats(state).range){go(e.x,e.y);toast('공격 범위까지 이동합니다.');return;}command({type:'attack',skill,target:e.id});startLocalAttack(skill);headingX=e.x-view.x;headingY=e.y-view.y;const pose=headingPose(headingX,headingY,face,flip);face=pose.row;flip=pose.mirror;path=[];combatContact(state.job,skill,e);if(skill>=0)effect(state.job);hud();}
+function impact(target,job='warrior'){
+ if(!target)return;const el=document.createElement('div');el.className='combat-impact '+job;el.style.left=target.x+'px';el.style.top=(target.y-34)+'px';$('effects').append(el);
+ target.el?.classList.add('contact-hit');setTimeout(()=>target.el?.classList.remove('contact-hit'),130);setTimeout(()=>el.remove(),420);
+}
+function combatContact(job,skill,target,origin=view){
+ if(!target)return;
+ if(job==='mage'||job==='healer'){
+  const el=document.createElement('div');el.className='combat-projectile '+job+(skill>=0?' skill':'');el.style.left=origin.x+'px';el.style.top=(origin.y-55)+'px';$('effects').append(el);
+  const dx=target.x-origin.x,dy=(target.y-32)-(origin.y-55),anim=el.animate([{transform:'translate(-50%,-50%) scale(.7)',opacity:.7},{transform:`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(1.15)`,opacity:1}],{duration:job==='mage'?250:290,easing:'cubic-bezier(.2,.75,.25,1)',fill:'forwards'});
+  anim.onfinish=()=>{el.remove();impact(target,job);};return;
+ }
+ setTimeout(()=>impact(target,job),job==='rogue'?105:165);
+}
 function effect(kind){const el=document.createElement('div');el.className='skill-effect '+kind;el.style.left=view.x+'px';el.style.top=view.y+'px';$('effects').append(el);setTimeout(()=>el.remove(),650);}
 function makeSkills(){$('skillbar').replaceChildren();JOBS[state.job].skills.forEach((s,i)=>{const b=document.createElement('button');b.id='skill'+i;b.innerHTML=`<b>${s[0]}</b><small>Lv.${s[1]}</small>`;b.onclick=()=>attack(i);$('skillbar').append(b);});}
 function hud(){const st=stats(state),t=now();$('playerName').textContent=state.name||'준자';$('level').textContent='Lv.'+state.level+' '+jobName(state);$('hpText').textContent=Math.ceil(state.hp)+' / '+st.hp;$('hpBar').style.width=state.hp/st.hp*100+'%';$('expBar').style.width=Math.min(100,state.exp/needXp(state.level)*100)+'%';$('expText').textContent='EXP '+state.exp+' / '+needXp(state.level);$('gold').textContent=state.gold.toLocaleString()+' G';$('zone').textContent=(state.zone==='surface'?(view.y>590?'다람쥐 숲':'준자마을'):ZONES[state.zone].name)+' · '+(state.channel||'');$('potionLabel').textContent=state.potions+'개';$('potionBtn').disabled=!connected||state.potions<=0;
@@ -131,7 +184,7 @@ function release(){gesture=null;stick={x:0,y:0};$('joystick').hidden=true;}for(c
 window.addEventListener('keydown',ev=>{if(ev.target.closest('input,textarea'))return;if(paused){if(ev.key==='Escape')closeModal();return;}const key=ev.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d'].includes(key)){ev.preventDefault();keys.add(key);path=[];npcIntent=null;if(auto)command({type:'auto',on:false});if(key===' ')attack();}if(['1','2','3','4'].includes(key))attack(Number(key)-1);if(key==='e'&&nearNpc)talk(nearNpc.id);if(key==='q')attack(0);});window.addEventListener('keyup',ev=>keys.delete(ev.key.toLowerCase()));window.addEventListener('blur',stopMovement);document.addEventListener('visibilitychange',()=>{stopMovement();last=performance.now();});window.addEventListener('resize',resize);
 for(const n of npcs)$(n.id).onclick=()=>distance(view,n)<115?talk(n.id):seekNpc(n.id);$('contextBtn').onclick=()=>nearNpc&&talk(nearNpc.id);$('attackBtn').onclick=()=>attack();$('potionBtn').onclick=()=>command({type:'potion'});$('autoBtn').onclick=()=>{path=[];npcIntent=null;command({type:'auto',on:!auto});toast(!auto?'자동 사냥 ON · 숲에서 작동':'자동 사냥 OFF');};$('homeBtn').onclick=()=>{stopMovement();selected=null;command({type:'home'});};$('questToggle').onclick=()=>{$('quest').classList.toggle('collapsed');$('questToggle').textContent=$('quest').classList.contains('collapsed')?'+':'−';};$('questAction').onclick=()=>{if(['available','ready','complete','bossReady'].includes(state.quest))seekNpc('elder');else if(state.quest==='bossActive'){const e=[...enemies.values()].find(e=>e.boss);if(e?.alive)select(e.id);else toast('왕꼬리 재출현까지 '+Math.max(0,Math.ceil((e?.respawn||0)-now()))+'초');}else go(768,720);};$('bagBtn').onclick=bagWindow;$('jobBtn').onclick=jobWindow;$('onlineBtn').onclick=onlineWindow;$('chatBtn').onclick=chatWindow;$('helpBtn').onclick=()=>modal('모험 안내','<p>빈 곳 터치로 이동. 화면 어디서든 드래그하면 방향 이동합니다. PC: WASD / 방향키, Space 공격, Q 첫 스킬, 1~4 스킬, E 대화.</p><p>촌장 임무 → 다람쥐 10마리 → 왕꼬리 → 정예·던전 → Lv.99 첫 전직. 직업에 따라 공격 범위·스킬이 달라집니다.</p><p>가방에서 장비를 장착하세요. 보스 보상은 공격하거나 도사 회복으로 지원한 참여자에게 따로 지급됩니다.</p><p>성장은 계정에 저장됩니다. 같은 아이디의 동시 접속은 마지막 접속만 유지됩니다.</p>');$('modalClose').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal();};
 let hudAt=0;
-function frame(time){const dt=Math.min(.05,(time-last)/1000||.016);last=time;clock+=dt;if(connected){let dx=0,dy=0,manualMove=false;if(!paused&&!document.hidden){dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0);dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);if(!dx&&!dy&&Math.hypot(stick.x,stick.y)>5){dx=stick.x;dy=stick.y;}manualMove=!!(dx||dy);if(!dx&&!dy&&path.length){if(distance(view,path[0])<16)path.shift();if(path.length){dx=path[0].x-view.x;dy=path[0].y-view.y;}}}const len=Math.hypot(dx,dy);if(len){dx/=len;dy/=len;}if(!auto&&clock>=attackUntil&&len){const x=view.x+dx*250*dt,y=view.y+dy*250*dt;if(walkable(x,view.y))view.x=x;if(walkable(view.x,y))view.y=y;face=Math.abs(dx)>Math.abs(dy)?2:dy<0?1:0;flip=face===2&&dx<0;}if(!len||auto){
+function frame(time){const dt=Math.min(.05,(time-last)/1000||.016);last=time;clock+=dt;if(connected){let dx=0,dy=0,manualMove=false;if(!paused&&!document.hidden){dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0);dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);if(!dx&&!dy&&Math.hypot(stick.x,stick.y)>5){dx=stick.x;dy=stick.y;}manualMove=!!(dx||dy);if(!dx&&!dy&&path.length){if(distance(view,path[0])<16)path.shift();if(path.length){dx=path[0].x-view.x;dy=path[0].y-view.y;}}}const len=Math.hypot(dx,dy);if(len){dx/=len;dy/=len;}if(!auto&&clock>=attackUntil&&len){const x=view.x+dx*250*dt,y=view.y+dy*250*dt;if(walkable(x,view.y))view.x=x;if(walkable(view.x,y))view.y=y;headingX=dx;headingY=dy;const pose=headingPose(dx,dy,face,flip);face=pose.row;flip=pose.mirror;}if(!len||auto){
   const f=1-Math.exp(-11*dt);view.x+=(state.x-view.x)*f;view.y+=(state.y-view.y)*f;
  }else{
   const drift=distance(view,state);
@@ -139,11 +192,11 @@ function frame(time){const dt=Math.min(.05,(time-last)/1000||.016);last=time;clo
  }
  if(clock-lastSend>=.09&&!movePending){lastSend=clock;movePending=true;api('action',{type:'move',x:dx,y:dy,manual:manualMove}).catch(()=>{}).finally(()=>movePending=false);}
  const attacking=clock<attackUntil,hero=$('hero'),heroArt=$('heroArt');
- if(attacking){const started=Number(hero.dataset.attackStarted)||attackUntil-.44;attackPose(hero,heroArt,face,flip,started,.44);}
- else motion(hero,heroArt,len||auto||state.navMoving?'walk':'idle',face,flip,clock);
+ if(attacking){const started=Number(hero.dataset.attackStarted)||attackUntil-.44;attackPose(hero,heroArt,face,flip,started,.44,state.job,Number(hero.dataset.attackSkill??-1),Number(hero.dataset.attackVariant||0),headingX,headingY);}
+ else motion(hero,heroArt,len||auto||state.navMoving?'walk':'idle',face,flip,clock,0,headingX,headingY);
  hero.style.left=view.x+'px';hero.style.top=view.y+'px';hero.style.zIndex=Math.round(view.y);hero.classList.toggle('attacking',attacking);hero.classList.toggle('guarded',(state.guard||0)>now());
  for(const e of enemies.values()){const f=1-Math.exp(-15*dt);e.vx+=(e.x-e.vx)*f;e.vy+=(e.y-e.vy)*f;e.el.style.left=e.vx+'px';e.el.style.top=e.vy+'px';e.el.style.zIndex=Math.round(e.vy);sprite(e.art,e.tellAt?3:1+Math.floor(clock*7)%2,e.mmo?({stoneking:0,shadowking:1,dragon:2}[e.named]??3):(e.boss?1:0),e.mmo?4:2);}
- for(const p of peers.values()){const f=1-Math.exp(-13*dt);p.vx+=(p.x-p.vx)*f;p.vy+=(p.y-p.vy)*f;p.el.style.left=p.vx+'px';p.el.style.top=p.vy+'px';p.el.style.zIndex=Math.round(p.vy);p.el.classList.toggle('attacking',!!p.attacking);if(p.attacking){if(!p.localAttackStarted||clock-p.localAttackStarted>.55)p.localAttackStarted=clock;attackPose(p.el,p.art,p.face,p.flip,p.localAttackStarted,.44);}else{p.localAttackStarted=0;motion(p.el,p.art,p.moving?'walk':'idle',p.face,p.flip,clock,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)*.13);}}nearNpc=state.zone==='surface'?npcs.find(n=>distance(view,n)<115)||null:null;if(gatherIntent){const n=systems.nodes.find(n=>n.id===gatherIntent);if(n&&distance(state,n)<95){gatherIntent=null;command({type:'gather',node:n.id});}}if(npcIntent&&nearNpc?.id===npcIntent&&!path.length){const id=npcIntent;npcIntent=null;talk(id);}camera(false,dt);if(clock-hudAt>.1){hud();hudAt=clock;}}
+ for(const p of peers.values()){const f=1-Math.exp(-13*dt);p.vx+=(p.x-p.vx)*f;p.vy+=(p.y-p.vy)*f;p.el.style.left=p.vx+'px';p.el.style.top=p.vy+'px';p.el.style.zIndex=Math.round(p.vy);p.el.classList.toggle('attacking',!!p.attacking);if(p.attacking){if(!p.localAttackStarted||clock-p.localAttackStarted>.55)p.localAttackStarted=clock;attackPose(p.el,p.art,p.face,p.flip,p.localAttackStarted,.44,p.job,p.attackSkill??-1,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)%3,p.dirX??0,p.dirY??0);}else{p.localAttackStarted=0;motion(p.el,p.art,p.moving?'walk':'idle',p.face,p.flip,clock,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)*.13,p.dirX??0,p.dirY??0);}}nearNpc=state.zone==='surface'?npcs.find(n=>distance(view,n)<115)||null:null;if(gatherIntent){const n=systems.nodes.find(n=>n.id===gatherIntent);if(n&&distance(state,n)<95){gatherIntent=null;command({type:'gather',node:n.id});}}if(npcIntent&&nearNpc?.id===npcIntent&&!path.length){const id=npcIntent;npcIntent=null;talk(id);}camera(false,dt);if(clock-hudAt>.1){hud();hudAt=clock;}}
  requestAnimationFrame(frame);}
 const invite=new URL(location.href).searchParams.get('channel');if(invite&&/^[A-Za-z0-9가-힣_-]{2,16}$/.test(invite))$('channelInput').value=invite;if(innerWidth<600){$('quest').classList.add('collapsed');$('questToggle').textContent='+';}resize();makeSkills();requestAnimationFrame(frame);if(token)showSelection();
 window.__adventure={build:BUILD,snapshot:()=>({...state,systems:structuredClone(systems),connected,paused,auto,selected,peers:[...peers.values()].map(({id,name,x,y,job,equipment})=>({id,name,x,y,job,equipment})),enemies:[...enemies.values()].map(({id,x,y,hp,alive,boss})=>({id,x,y,hp,alive,boss}))})};
