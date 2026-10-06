@@ -1,64 +1,11 @@
-<!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
-<meta name="theme-color" content="#0b120d" />
-<title>준자 어드벤처</title>
-<link rel="stylesheet" href="./style.css" />
-</head>
-<body>
-<main id="game" class="game loading">
-  <div id="viewport" class="viewport">
-    <div id="world" class="world">
-      <div id="portal" class="portal"><span id="portalText">다람쥐 숲</span></div>
-      <div id="targetMarker" class="target-marker"></div>
-      <div id="enemyLayer" class="enemy-layer"></div>
-      <div id="hero" class="hero"><div class="hero-label">준자</div><img id="heroImg" draggable="false" alt="준자"/><div class="shadow"></div></div>
-    </div>
-  </div>
-
-  <header class="top-hud">
-    <section class="profile-card">
-      <img id="portrait" class="portrait" alt="준자" />
-      <div class="profile-meta">
-        <div class="profile-line"><strong>준자</strong><span id="levelText">Lv.1</span></div>
-        <div class="gauge hp"><i id="hpBar"></i></div>
-        <div class="gauge exp"><i id="expBar"></i></div>
-        <div class="profile-sub"><span id="expText">EXP 0 / 60</span><span id="goldText">0 G</span></div>
-      </div>
-    </section>
-    <div class="zone-card"><strong id="zoneText">준자마을</strong><small id="saveText">자동저장</small></div>
-  </header>
-
-  <section id="questCard" class="quest-card">
-    <div class="quest-head"><b id="questTitle">[메인] 작은 다람쥐의 위협</b><button id="questToggle">−</button></div>
-    <div id="questBody" class="quest-body"></div>
-  </section>
-
-  <section id="targetPanel" class="target-panel hidden">
-    <div class="target-head"><b id="targetName">다람쥐 Lv.1</b><span id="targetRange">0m</span></div>
-    <div class="target-hp"><i id="targetHp"></i></div>
-  </section>
-
-  <section id="dialogue" class="dialogue hidden"><b id="dialogueName"></b><p id="dialogueText"></p><button id="dialogueNext">확인</button></section>
-  <div id="toast" class="toast"></div>
-
-  <nav class="actions">
-    <button id="contextBtn" class="round secondary hidden"><span>💬</span><small>대화</small></button>
-    <button id="autoBtn" class="round secondary"><span>↻</span><small>자동</small></button>
-    <button id="skillBtn" class="round skill" disabled><span>✦</span><small id="skillHint">Lv.2</small></button>
-    <button id="attackBtn" class="round attack" disabled><span>⚔</span><small id="attackHint">공격</small></button>
-  </nav>
-
-  <nav class="utility">
-    <button id="bagBtn">가방</button><button id="homeBtn">마을</button><button id="resetBtn">초기화</button>
-  </nav>
-
-  <section id="bag" class="modal hidden"><div class="modal-card"><div class="modal-head"><b>가방</b><button id="bagClose">×</button></div><div class="inventory"><div>🪶 낡은 꼬리털 <strong id="tailCount">0</strong></div><div class="potion-row"><span>🧪 초보 물약 <strong id="potionCount">0</strong></span><button id="usePotionBtn">사용</button></div><div>🪙 골드 <strong id="bagGold">0</strong></div></div><p>사냥 보상은 자동으로 저장됩니다.</p></div></section>
-
-  <div id="loading" class="loading"><b>JUNJA ADVENTURE</b><span>월드 불러오는 중…</span></div>
-</main>
-<script type="module" src="./app.js"></script>
-</body>
-</html>
+<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#18362c"><title>준자 어드벤처</title><link rel="stylesheet" href="./style.css?v=20261006-2"></head><body>
+<main id="game"><div id="viewport" tabindex="0" aria-label="게임 월드. 화면 터치 또는 방향키로 이동"><div id="world"><div id="portal" class="portal">다람쥐 숲 ↓</div><button id="elder" class="npc" aria-label="촌장과 대화"><span class="npc-art"></span><b>촌장 · 퀘스트</b></button><button id="merchant" class="npc" aria-label="상인과 대화"><span class="npc-art"></span><b>약초 상인</b></button><div id="enemyLayer"></div><div id="hero" class="entity hero"><div class="shadow"></div><div id="heroArt" class="sprite"></div><b class="entity-name">준자</b><div id="swing"></div></div><div id="marker"></div><div id="effects"></div></div></div>
+<header><div class="profile"><div class="portrait"></div><div class="stats"><div><b>준자</b><strong id="level"></strong></div><div class="bar hp"><i id="hpBar"></i><span id="hpText"></span></div><div class="bar exp"><i id="expBar"></i></div><small id="expText"></small></div></div><div class="zone"><b id="zone"></b><span id="gold"></span><small id="saveStatus"></small></div></header>
+<section id="quest"><button id="questToggle" aria-label="퀘스트 접기">−</button><b id="questTitle"></b><p id="questText"></p><button id="questAction"></button></section>
+<section id="targetPanel" hidden><b id="targetName"></b><span id="targetRange"></span><div class="bar enemyhp"><i id="targetHp"></i></div></section>
+<div id="hint">빈 곳 터치로 이동 · 다람쥐 터치로 대상 선택</div><div id="toast" role="status" aria-live="polite"></div><div id="joystick" hidden><i></i></div>
+<nav class="utility"><button id="bagBtn">가방</button><button id="homeBtn">귀환</button><button id="helpBtn">조작법</button></nav>
+<nav class="actions"><button id="contextBtn" hidden>대화</button><button id="potionBtn">물약 <small id="potionLabel"></small></button><button id="autoBtn" aria-pressed="false">자동 <small>OFF</small></button><button id="skillBtn">회전베기 <small id="skillLabel">Lv.2</small></button><button id="attackBtn">공격 <small id="attackLabel">대상 선택</small></button></nav>
+<div id="modal" class="overlay" hidden><section class="modal"><button id="modalClose" aria-label="창 닫기">×</button><h2 id="modalTitle"></h2><div id="modalBody"></div><div id="modalActions"></div></section></div>
+<div id="loading" class="overlay"><section class="load-card"><h1>JUNJA<br>ADVENTURE</h1><p id="loadMessage">준자마을을 준비하고 있어요…</p><button id="retryBtn" hidden>다시 불러오기</button></section></div>
+</main><script type="module" src="./app.js?v=20261006-2"></script></body></html>

@@ -1,224 +1,75 @@
-const game=document.querySelector('#game');
-const viewport=document.querySelector('#viewport');
-const world=document.querySelector('#world');
-const hero=document.querySelector('#hero');
-const heroImg=document.querySelector('#heroImg');
-const enemiesLayer=document.querySelector('#enemies');
-const marker=document.querySelector('#targetMarker');
-const levelText=document.querySelector('#levelText');
-const expText=document.querySelector('#expText');
-const expBar=document.querySelector('#expBar');
-const killText=document.querySelector('#killText');
-const mission=document.querySelector('#mission');
-const attackBtn=document.querySelector('#attackBtn');
-const attackHint=document.querySelector('#attackHint');
-const enemyInfo=document.querySelector('#enemyInfo');
-const enemyName=document.querySelector('#enemyName');
-const enemyDistance=document.querySelector('#enemyDistance');
-const enemyHpBar=document.querySelector('#enemyHpBar');
-const toast=document.querySelector('#toast');
-const avatar=document.querySelector('#avatar');
-
-const WORLD_W=1440,WORLD_H=960;
-const BG_W=960,BG_H=640;
-const PLAYER_SPEED=205;
-const ATTACK_RANGE=122;
-
-let bgImage=null,heroAsset='',squirrelAsset='';
-let state={level:1,exp:0,kills:0,gold:0,x:690,y:355};
-try{state={...state,...JSON.parse(localStorage.getItem('junja-adventure-move-v1')||'{}')}}catch{}
-state.x=Number.isFinite(state.x)?state.x:690; state.y=Number.isFinite(state.y)?state.y:355;
-let target={x:state.x,y:state.y};
-let cam={x:0,y:0};
-let last=performance.now();
-let selected=null;
-let attacking=false;
-const enemies=[];
-
-const needExp=()=>60+(state.level-1)*40;
-const enemyMaxHp=()=>30+(state.level-1)*7;
-const save=()=>localStorage.setItem('junja-adventure-move-v1',JSON.stringify(state));
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
-
-function projectWalkable(x,y){
-  y=clamp(y,245,885);
-  if(y<585) x=clamp(x,555,1010);
-  else x=clamp(x,520,1235);
-  return {x,y};
+import {W,H,clamp,distance,walkable,project,pathfind,fresh,normalize,needXp,maxHp,rewardKill,claimQuest} from './core.js';
+const $=id=>document.getElementById(id), KEY='junja-adventure-play-v2', BUILD='20261006-2';
+let state=fresh(),storageOK=true;
+try{const saved=localStorage.getItem(KEY)||localStorage.getItem('junja-adventure-move-v1')||localStorage.getItem('junja-adventure-image-v01');if(saved)state=normalize(JSON.parse(saved));}catch{storageOK=false;}
+let path=[],selected=null,auto=false,paused=false,last=0,clock=0,nextAttack=0,attackUntil=0,pendingHit=null,skillReady=0,face=0,flip=false,dirty=false,lastSave=0,cam={x:0,y:0},scale=1,nearNpc=null,npcIntent=null;
+const keys=new Set(),enemies=[],npcs=[{id:'elder',x:580,y:330},{id:'merchant',x:1000,y:330}];
+let gesture=null,stick={x:0,y:0};
+function toast(text){$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').classList.remove('show'),2100);}
+function save(){if(!dirty)return;try{localStorage.setItem(KEY,JSON.stringify(state));dirty=false;storageOK=true;}catch{storageOK=false;}lastSave=clock;$('saveStatus').textContent=storageOK?'기기에 저장됨':'저장 불가 · 브라우저 설정 확인';}
+function changed(){dirty=true;hud();}
+function go(x,y){path=pathfind(state,{x,y});$('marker').style.left=x+'px';$('marker').style.top=y+'px';$('marker').classList.remove('show');void $('marker').offsetWidth;$('marker').classList.add('show');}
+function home(dead=false){state.x=768;state.y=350;state.hp=maxHp(state.level);path=[];selected=null;auto=false;npcIntent=null;pendingHit=null;attackUntil=0;nextAttack=clock+.5;changed();save();camera(true);toast(dead?'촌장이 치료해 주었습니다. 성장 기록은 유지됩니다.':'준자마을로 귀환했습니다.');}
+function screenToWorld(x,y){const r=$('viewport').getBoundingClientRect();return {x:(x-r.left)/scale+cam.x,y:(y-r.top)/scale+cam.y};}
+function camera(force=false,dt=.016){const vw=$('viewport').clientWidth/scale,vh=$('viewport').clientHeight/scale;const x=clamp(state.x-vw*.5,Math.min(0,(W-vw)/2),Math.max(0,W-vw)),y=clamp(state.y-vh*.53,Math.min(0,(H-vh)/2),Math.max(0,H-vh));const factor=force?1:1-Math.exp(-12*dt);cam.x+=(x-cam.x)*factor;cam.y+=(y-cam.y)*factor;$('world').style.transform=`scale(${scale}) translate3d(${-cam.x}px,${-cam.y}px,0)`;}
+function resize(){scale=innerWidth<600?.85:Math.min(1,innerWidth/1150);camera(true);}
+function move(dx,dy,dt){const d=Math.hypot(dx,dy);if(d<.01)return false;const speed=250*dt,x=state.x+dx/d*speed,y=state.y+dy/d*speed;if(walkable(x,state.y))state.x=x;if(walkable(state.x,y))state.y=y;if(Math.abs(dx)>Math.abs(dy)){face=2;flip=dx<0;}else{face=dy<0?1:0;flip=false;}dirty=true;return true;}
+function sprite(el,col,row,rows=3,mirror=false){el.style.backgroundPosition=`${col*100/3}% ${row*100/(rows-1)}%`;el.style.transform=mirror?'scaleX(-1)':'none';}
+function place(e){e.el.style.left=e.x+'px';e.el.style.top=e.y+'px';e.el.style.zIndex=Math.round(e.y);}
+function createEnemy(id,x,y,boss=false){const el=document.createElement('div');el.className='entity enemy'+(boss?' boss':'');el.innerHTML='<div class="shadow"></div><div class="sprite"></div><b class="entity-name"></b><div class="life"><i></i></div><div class="tell" hidden></div>';const e={id,x,y,homeX:x,homeY:y,hp:boss?240:42,max:boss?240:42,boss,alive:true,next:0,tellAt:0,respawn:0,el,art:el.querySelector('.sprite'),life:el.querySelector('.life i')};el.querySelector('b').textContent=boss?'왕꼬리 다람쥐 · BOSS':'숲 다람쥐';el.addEventListener('pointerdown',ev=>{ev.stopPropagation();select(e);});$('enemyLayer').append(el);enemies.push(e);place(e);}
+function select(e){if(!e.alive)return;selected=e;path=[];npcIntent=null;if(distance(state,e)>92)go(e.x,e.y);hud();}
+function damage(x,y,text,hurt=false){const el=document.createElement('div');el.className='damage'+(hurt?' hurt':'');el.textContent=text;el.style.left=x+'px';el.style.top=(y-85)+'px';el.style.zIndex=2000;$('effects').append(el);setTimeout(()=>el.remove(),750);}
+function doHit(e,power){if(!e.alive||distance(state,e)>140)return; e.hp=Math.max(0,e.hp-power);e.life.style.width=e.hp/e.max*100+'%';e.el.classList.add('hit');setTimeout(()=>e.el.classList.remove('hit'),150);damage(e.x,e.y,power);
+ if(e.hp===0){e.alive=false;e.tellAt=0;e.el.querySelector('.tell').hidden=true;e.el.classList.add('dead');e.respawn=clock+(e.boss?25:7);const reward=rewardKill(state,e.boss);toast(reward.leveled?`레벨 업! Lv.${state.level}`:`${e.boss?'왕꼬리':'다람쥐'} 처치 · EXP +${reward.xp} · ${reward.gold} G`);if(selected===e)selected=null;changed();save();}
 }
-function showToast(t){
-  toast.textContent=t;toast.classList.add('show');
-  clearTimeout(showToast.t);showToast.t=setTimeout(()=>toast.classList.remove('show'),1100);
+function attack(skill=false){if(paused||clock<nextAttack)return;if(skill&&(state.level<2||clock<skillReady))return;if(!selected||!selected.alive){selected=enemies.filter(e=>e.alive&&distance(state,e)<140).sort((a,b)=>distance(a,state)-distance(b,state))[0]||null;}
+ if(!selected){toast('다람쥐를 먼저 선택해 주세요.');return;}if(distance(state,selected)>115){go(selected.x,selected.y);toast('공격 범위까지 이동합니다.');return;}
+ const e=selected;face=Math.abs(e.x-state.x)>Math.abs(e.y-state.y)?2:e.y<state.y?1:0;flip=face===2&&e.x<state.x;
+ nextAttack=clock+(skill?.65:.48);attackUntil=clock+.34;path=[];pendingHit={at:clock+.14,targets:skill?enemies.filter(t=>t.alive&&distance(state,t)<140):[e],power:(10+state.level*3+state.weapon*8)*(skill?2:1)};if(skill)skillReady=clock+5;$('hero').classList.add('attacking');hud();}
+function enemyStep(e,dt){if(!e.alive){if(clock>=e.respawn){e.alive=true;e.hp=e.max;e.x=e.homeX;e.y=e.homeY;e.el.classList.remove('dead');e.life.style.width='100%';}return;}
+ const d=distance(e,state);const aggro=state.y>590&&d<(e.boss?230:165);let moving=false;
+ if(e.tellAt){if(clock>=e.tellAt){e.tellAt=0;e.el.querySelector('.tell').hidden=true;e.next=clock+(e.boss?2.8:2.1);if(d<95&&state.y>590){const power=e.boss?24:8;state.hp=Math.max(0,state.hp-power);damage(state.x,state.y,'−'+power,true);changed();if(state.hp===0)home(true);}}}
+ else if(aggro&&d<=75&&clock>=e.next){e.tellAt=clock+(e.boss?1.1:.75);e.el.querySelector('.tell').hidden=false;}
+ else if(aggro&&d>70){const speed=(e.boss?55:70)*dt;e.x+=(state.x-e.x)/d*speed;e.y+=(state.y-e.y)/d*speed;moving=true;}
+ else if(!aggro){const dx=e.homeX+Math.sin(clock*.45+e.id)*45-e.x,dy=e.homeY+Math.cos(clock*.35+e.id)*20-e.y,len=Math.hypot(dx,dy);if(len>3){const s=Math.min(24*dt,len);e.x+=dx/len*s;e.y+=dy/len*s;moving=true;}}
+ e.x=clamp(e.x,345,1190);e.y=clamp(e.y,640,925);sprite(e.art,e.tellAt?3:moving?1+Math.floor(clock*7)%2:0,e.boss?1:0,2,aggro&&state.x>e.x);place(e);}
+function hud(){
+ $('level').textContent='Lv.'+state.level;$('hpText').textContent=`${Math.ceil(state.hp)} / ${maxHp(state.level)}`;$('hpBar').style.width=state.hp/maxHp(state.level)*100+'%';$('expBar').style.width=Math.min(100,state.exp/needXp(state.level)*100)+'%';$('expText').textContent=`EXP ${state.exp} / ${needXp(state.level)}`;$('gold').textContent=state.gold.toLocaleString()+' G';$('zone').textContent=state.y>590?'다람쥐 숲':'준자마을';$('potionLabel').textContent=state.potions+'개';$('potionBtn').disabled=state.potions<=0;
+ const quests={available:['작은 다람쥐의 위협','촌장에게 말을 걸어 첫 임무를 받아 주세요.','촌장 찾아가기'],active:['작은 다람쥐의 위협',`다람쥐 처치 ${Math.min(10,state.questKills)} / 10 · 보상 200 G, 물약 3개`,'숲으로 이동'],ready:['임무 완료 · 촌장에게 보고','10마리 처치 완료! 마을에서 보상을 받아 주세요.','촌장에게 보고'],complete:['왕꼬리의 흔적','촌장에게 두 번째 임무를 받아 보스에 도전하세요.','촌장 찾아가기'],bossActive:['숲의 수호자 왕꼬리','왕꼬리 다람쥐 1마리 처치 · 빛나는 검 보상','보스 찾아가기'],bossReady:['보스 임무 완료','촌장에게 보고하고 빛나는 검을 받아 주세요.','촌장에게 보고'],done:['준자마을의 수호자','빛나는 검을 얻었습니다. 자유롭게 사냥하며 성장하세요.','숲으로 이동']};const q=quests[state.quest];$('questTitle').textContent=q[0];$('questText').textContent=q[1];$('questAction').textContent=q[2];
+ $('targetPanel').hidden=!selected?.alive;for(const e of enemies)e.el.classList.toggle('selected',e===selected&&e.alive);
+ if(selected?.alive){$('targetName').textContent=selected.boss?'왕꼬리 다람쥐':'숲 다람쥐';$('targetRange').textContent=Math.round(distance(state,selected)/24)+'m';$('targetHp').style.width=selected.hp/selected.max*100+'%';}
+ $('attackBtn').disabled=paused||clock<nextAttack;$('attackLabel').textContent=clock<nextAttack?'공격 중':selected?distance(state,selected)>115?'접근 후 공격':'공격 가능':'대상 선택';$('skillBtn').disabled=paused||state.level<2||clock<skillReady;$('skillLabel').textContent=state.level<2?'Lv.2':clock<skillReady?Math.ceil(skillReady-clock)+'초':'준비';$('autoBtn').setAttribute('aria-pressed',String(auto));$('autoBtn').querySelector('small').textContent=auto?'ON':'OFF';$('contextBtn').hidden=!nearNpc;$('hero').classList.toggle('weapon',state.weapon>0);
 }
-function updateHud(){
-  levelText.textContent='Lv.'+state.level;
-  expText.textContent='EXP '+state.exp+' / '+needExp();
-  expBar.style.width=Math.min(100,state.exp/needExp()*100)+'%';
-  killText.textContent='다람쥐 '+state.kills;
-  const forest=state.y>=585;
-  mission.innerHTML=forest
-    ? '<b>다람쥐 숲</b><span>다람쥐를 터치해 접근한 뒤 공격하세요. 처치하면 경험치를 얻습니다.</span>'
-    : '<b>화면을 터치해서 이동</b><span>아래쪽 다람쥐 숲으로 직접 걸어가 보세요.</span>';
+function modal(title,body,actions=[]){paused=true;keys.clear();stick={x:0,y:0};gesture=null;$('joystick').hidden=true;$('modalTitle').textContent=title;$('modalBody').innerHTML=body;$('modalActions').replaceChildren();for(const [label,fn] of actions){const b=document.createElement('button');b.textContent=label;b.onclick=()=>{closeModal();fn();};$('modalActions').append(b);}$('modal').hidden=false;$('modalClose').focus();}
+function closeModal(){paused=false;$('modal').hidden=true;last=performance.now();$('viewport').focus({preventScroll:true});}
+function talk(id){if(id==='merchant'){modal('약초 상인',`<p>물약 1개는 30 G입니다. 물약은 최대 체력의 50%를 회복합니다.</p><p>보유 골드: ${state.gold.toLocaleString()} G</p>`,[['물약 구매 · 30 G',()=>{if(state.gold<30){toast('골드가 부족합니다.');return;}state.gold-=30;state.potions++;changed();save();toast('물약 1개 구매');}],['치료 · 20 G',()=>{if(state.gold<20){toast('골드가 부족합니다.');return;}state.gold-=20;state.hp=maxHp(state.level);changed();save();toast('체력 회복');}]]);return;}
+ const lines={available:'숲의 다람쥐들이 농작물을 훔쳐 가고 있단다. 10마리를 물리쳐 주겠니?',active:`다람쥐를 ${state.questKills}마리 물리쳤구나. 10마리를 채우고 돌아오렴.`,ready:'고맙다! 골드 200과 경험치 80, 물약 3개를 받아라.',complete:'숲 깊은 곳에 왕꼬리가 나타났단다. 왕꼬리를 물리치면 빛나는 검을 주마.',bossActive:'왕꼬리의 붉은 공격 표시가 보이면 뒤로 피하렴. 물약도 잊지 말고!',bossReady:'왕꼬리까지 물리쳤구나! 골드 500, 경험치 180과 빛나는 검을 받아라.',done:'준자는 이제 마을의 수호자란다. 빛나는 검으로 숲을 지켜 주렴.'};let actions=[];
+ if(state.quest==='available')actions=[['임무 수락',()=>{state.quest='active';state.questKills=0;changed();save();toast('퀘스트 수락 · 다람쥐 10마리');}]];
+ if(state.quest==='complete')actions=[['보스 임무 수락',()=>{state.quest='bossActive';changed();save();toast('퀘스트 수락 · 왕꼬리');}]];
+ if(['ready','bossReady'].includes(state.quest))actions=[['보상 받기',()=>{if(claimQuest(state)){changed();save();toast('퀘스트 보상을 받았습니다.');}}]];
+ modal('준자마을 촌장','<p>'+lines[state.quest]+'</p>',actions);
 }
-function setHeroPos(){
-  hero.style.left=state.x+'px';hero.style.top=state.y+'px';
-}
-function updateCamera(force=false){
-  const vw=viewport.clientWidth,vh=viewport.clientHeight;
-  const tx=clamp(state.x-vw*.50,0,Math.max(0,WORLD_W-vw));
-  const ty=clamp(state.y-vh*.52,0,Math.max(0,WORLD_H-vh));
-  if(force){cam.x=tx;cam.y=ty}else{cam.x+=(tx-cam.x)*.12;cam.y+=(ty-cam.y)*.12}
-  world.style.transform='translate3d('+(-cam.x)+'px,'+(-cam.y)+'px,0)';
-}
-function screenToWorld(clientX,clientY){
-  const r=viewport.getBoundingClientRect();
-  return projectWalkable(clientX-r.left+cam.x,clientY-r.top+cam.y);
-}
-function moveTarget(x,y,show=true){
-  target=projectWalkable(x,y);
-  if(show){
-    marker.style.left=target.x+'px';marker.style.top=target.y+'px';
-    marker.classList.remove('show');void marker.offsetWidth;marker.classList.add('show');
-  }
-}
-function backgroundKeySprite(img,sx,sy,sw,sh,mode){
-  const c=document.createElement('canvas');c.width=sw;c.height=sh;
-  const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,sx,sy,sw,sh,0,0,sw,sh);
-  const data=ctx.getImageData(0,0,sw,sh),p=data.data;
-  const sample=[];
-  const push=(x,y)=>{const i=(y*sw+x)*4;sample.push([p[i],p[i+1],p[i+2]])};
-  for(let x=0;x<sw;x+=4){push(x,0);push(x,sh-1)}
-  for(let y=0;y<sh;y+=4){push(0,y);push(sw-1,y)}
-  const avg=sample.reduce((a,v)=>[a[0]+v[0],a[1]+v[1],a[2]+v[2]],[0,0,0]).map(v=>v/sample.length);
-  for(let i=0;i<p.length;i+=4){
-    const r=p[i],g=p[i+1],b=p[i+2];
-    const d=Math.hypot(r-avg[0],g-avg[1],b-avg[2]);
-    let bg=d<(mode==='grass'?68:58);
-    if(mode==='grass' && g>r*.92 && g>b*1.13) bg=true;
-    if(mode==='stone' && r>105 && g>82 && b<125 && Math.abs(r-g)<75) bg=true;
-    if(bg) p[i+3]=0;
-    else if(d<(mode==='grass'?90:78)) p[i+3]=Math.min(255,Math.max(60,(d-45)*7));
-  }
-  ctx.putImageData(data,0,0);
-  return c.toDataURL('image/png');
-}
-function makeEnemy(i,x,y){
-  const e={id:i,x,y,hp:enemyMaxHp(),maxHp:enemyMaxHp(),alive:true,tx:x,ty:y,nextRoam:performance.now()+600+Math.random()*900};
-  const el=document.createElement('div');el.className='enemy roaming';
-  el.innerHTML='<div class="ename">다람쥐 Lv.'+state.level+'</div><div class="ehp"><i></i></div><img draggable="false" alt="다람쥐">';
-  el.querySelector('img').src=squirrelAsset;e.el=el;e.hpEl=el.querySelector('.ehp i');e.nameEl=el.querySelector('.ename');
-  el.addEventListener('pointerdown',ev=>{
-    ev.preventDefault();ev.stopPropagation();selectEnemy(e);
-    const ang=Math.atan2(e.y-state.y,e.x-state.x);
-    moveTarget(e.x-Math.cos(ang)*92,e.y-Math.sin(ang)*92,false);
-  });
-  enemiesLayer.appendChild(el);enemies.push(e);placeEnemy(e);return e;
-}
-function placeEnemy(e){
-  e.el.style.left=e.x+'px';e.el.style.top=e.y+'px';
-  e.el.classList.toggle('flip',e.tx<e.x);
-}
-function randomEnemyPoint(){
-  return {x:690+Math.random()*485,y:650+Math.random()*205};
-}
-function selectEnemy(e){
-  if(selected&&selected.el)selected.el.classList.remove('selected');
-  selected=e&&e.alive?e:null;
-  if(selected)selected.el.classList.add('selected');
-  refreshEnemyUi();
-}
-function nearestEnemy(){
-  let best=null,bestD=Infinity;
-  for(const e of enemies)if(e.alive){const d=Math.hypot(e.x-state.x,e.y-state.y);if(d<bestD){best=e;bestD=d}}
-  return {e:best,d:bestD};
-}
-function refreshEnemyUi(){
-  if(!selected||!selected.alive){enemyInfo.classList.add('hidden');attackBtn.disabled=true;attackHint.textContent='가까이 이동';return}
-  const d=Math.round(Math.hypot(selected.x-state.x,selected.y-state.y));
-  enemyInfo.classList.remove('hidden');
-  enemyName.textContent='다람쥐 Lv.'+state.level;
-  enemyDistance.textContent=d+'m';
-  enemyHpBar.style.width=(selected.hp/selected.maxHp*100)+'%';
-  attackBtn.disabled=d>ATTACK_RANGE||attacking;
-  attackHint.textContent=d<=ATTACK_RANGE?'사냥 가능':'가까이 이동';
-}
-function respawn(e){
-  const p=randomEnemyPoint();e.x=p.x;e.y=p.y;e.tx=e.x;e.ty=e.y;e.hp=enemyMaxHp();e.maxHp=e.hp;e.alive=true;
-  e.nameEl.textContent='다람쥐 Lv.'+state.level;e.hpEl.style.width='100%';e.el.classList.remove('dead','hit');placeEnemy(e);
-}
-function attack(){
-  if(!selected||!selected.alive||attacking)return;
-  const d=Math.hypot(selected.x-state.x,selected.y-state.y);if(d>ATTACK_RANGE)return;
-  attacking=true;hero.classList.add('attacking');attackBtn.disabled=true;
-  const dmg=9+state.level*2+Math.floor(Math.random()*7);
-  selected.hp-=dmg;selected.hpEl.style.width=Math.max(0,selected.hp/selected.maxHp*100)+'%';
-  selected.el.classList.remove('hit');void selected.el.offsetWidth;selected.el.classList.add('hit');
-  setTimeout(()=>selected?.el?.classList.remove('hit'),220);
-  if(selected.hp<=0){
-    const dead=selected;dead.alive=false;dead.el.classList.add('dead');
-    state.kills++;state.exp+=18+state.level*2;state.gold+=20+state.level*5;
-    while(state.exp>=needExp()){state.exp-=needExp();state.level++;showToast('LEVEL UP!  Lv.'+state.level)}
-    save();updateHud();showToast('다람쥐 처치  EXP +'+(18+state.level*2));
-    selectEnemy(null);setTimeout(()=>respawn(dead),1200);
-  }else refreshEnemyUi();
-  setTimeout(()=>{attacking=false;hero.classList.remove('attacking');refreshEnemyUi()},260);
-}
-function stepEnemies(now,dt){
-  if(state.y<555)return;
-  for(const e of enemies){
-    if(!e.alive)continue;
-    if(now>e.nextRoam){
-      const p=randomEnemyPoint();e.tx=p.x;e.ty=p.y;e.nextRoam=now+1400+Math.random()*1800;
-    }
-    const dx=e.tx-e.x,dy=e.ty-e.y,len=Math.hypot(dx,dy);
-    if(len>3){const s=34*dt;e.x+=dx/len*Math.min(s,len);e.y+=dy/len*Math.min(s,len);placeEnemy(e)}
-  }
-}
-function loop(now){
-  const dt=Math.min(.035,(now-last)/1000);last=now;
-  if(!attacking){
-    const dx=target.x-state.x,dy=target.y-state.y,len=Math.hypot(dx,dy);
-    if(len>3){
-      const step=Math.min(len,PLAYER_SPEED*dt);
-      state.x+=dx/len*step;state.y+=dy/len*step;
-      hero.classList.add('moving');hero.classList.toggle('flip',dx<0);
-      setHeroPos();
-    }else hero.classList.remove('moving');
-  }
-  stepEnemies(now,dt);updateCamera();refreshEnemyUi();
-  requestAnimationFrame(loop);
-}
-viewport.addEventListener('pointerdown',e=>{
-  if(e.target.closest('.enemy'))return;
-  const p=screenToWorld(e.clientX,e.clientY);moveTarget(p.x,p.y,true);
-  if(selected&&Math.hypot(selected.x-p.x,selected.y-p.y)>150)selectEnemy(null);
-});
-attackBtn.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();attack()});
-document.querySelector('#resetBtn').addEventListener('click',()=>{
-  state={level:1,exp:0,kills:0,gold:0,x:690,y:355};target={x:state.x,y:state.y};save();updateHud();setHeroPos();selectEnemy(null);showToast('성장 기록 초기화');
-});
-window.addEventListener('resize',()=>updateCamera(true));
-
-async function loadArt(){
-  try{
-    const names=['bg0.txt','bg1.txt','bg2.txt','bg3.txt','bg4.txt','bg5.txt'];
-    const parts=await Promise.all(names.map(n=>fetch('./'+n).then(r=>{if(!r.ok)throw new Error(n);return r.text()})));
-    const art='data:image/jpeg;base64,'+parts.join('');
-    bgImage=new Image();
-    await new Promise((res,rej)=>{bgImage.onload=res;bgImage.onerror=rej;bgImage.src=art});
-    world.style.backgroundImage='url("'+art+'")';
-    heroAsset=backgroundKeySprite(bgImage,435,205,80,84,'stone');
-    squirrelAsset=backgroundKeySprite(bgImage,713,414,75,66,'grass');
-    heroImg.src=heroAsset;avatar.style.backgroundImage='url("'+heroAsset+'")';
-    setHeroPos();updateHud();updateCamera(true);
-    const starts=[[755,690],[910,670],[1090,705],[815,820],[1035,835]];
-    starts.forEach((p,i)=>makeEnemy(i,p[0],p[1]));
-    game.classList.add('ready');
-    requestAnimationFrame(loop);
-    setTimeout(()=>showToast('빈 곳을 터치하면 준자가 이동합니다'),450);
-  }catch(err){
-    document.querySelector('#loading').innerHTML='<b>월드 로드 실패</b><span>새로고침해 주세요.</span>';
-  }
-}
-loadArt();
+function seekNpc(id){const npc=npcs.find(n=>n.id===id);selected=null;auto=false;go(npc.x,npc.y+50);npcIntent=id;}
+function potion(){if(!state.potions){toast('물약이 없습니다. 상인에게 구매하세요.');return;}if(state.hp>=maxHp(state.level)){toast('체력이 이미 가득 찼습니다.');return;}state.potions--;state.hp=Math.min(maxHp(state.level),state.hp+maxHp(state.level)*.5);changed();save();toast('체력 회복');}
+$('viewport').addEventListener('pointerdown',ev=>{if(paused||ev.target.closest('button,.enemy'))return;selected=null;auto=false;npcIntent=null;const p=screenToWorld(ev.clientX,ev.clientY);go(p.x,p.y);gesture={id:ev.pointerId,x:ev.clientX,y:ev.clientY,drag:false};$('viewport').setPointerCapture(ev.pointerId);});
+$('viewport').addEventListener('pointermove',ev=>{if(!gesture||ev.pointerId!==gesture.id)return;const dx=ev.clientX-gesture.x,dy=ev.clientY-gesture.y;if(Math.hypot(dx,dy)>9)gesture.drag=true;if(gesture.drag){path=[];stick={x:dx,y:dy};$('joystick').hidden=false;$('joystick').style.left=gesture.x+'px';$('joystick').style.top=gesture.y+'px';const d=Math.hypot(dx,dy),r=Math.min(27,d);$('joystick').querySelector('i').style.transform=`translate(${dx/d*r}px,${dy/d*r}px)`;}});
+function release(){gesture=null;stick={x:0,y:0};$('joystick').hidden=true;}
+$('viewport').addEventListener('pointerup',release);$('viewport').addEventListener('pointercancel',release);$('viewport').addEventListener('lostpointercapture',release);
+window.addEventListener('keydown',ev=>{if(paused){if(ev.key==='Escape')closeModal();return;}if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','w','a','s','d','W','A','S','D'].includes(ev.key)){ev.preventDefault();keys.add(ev.key.toLowerCase());path=[];auto=false;npcIntent=null;if(ev.key===' ')attack();}if(ev.key==='e'&&nearNpc)talk(nearNpc.id);if(ev.key==='q')attack(true);});window.addEventListener('keyup',ev=>keys.delete(ev.key.toLowerCase()));window.addEventListener('blur',()=>{keys.clear();release();save();});document.addEventListener('visibilitychange',()=>{keys.clear();release();save();last=performance.now();});window.addEventListener('pagehide',save);window.addEventListener('resize',resize);
+for(const npc of npcs)$(npc.id).onclick=()=>{if(distance(state,npc)<115)talk(npc.id);else seekNpc(npc.id);};$('contextBtn').onclick=()=>nearNpc&&talk(nearNpc.id);$('attackBtn').onclick=()=>attack();$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=potion;$('autoBtn').onclick=()=>{auto=!auto;path=[];npcIntent=null;toast(auto?'자동 사냥 ON · 숲에서 작동합니다.':'자동 사냥 OFF');hud();};$('homeBtn').onclick=()=>home();$('questToggle').onclick=()=>{$('quest').classList.toggle('collapsed');$('questToggle').textContent=$('quest').classList.contains('collapsed')?'+':'−';};$('questAction').onclick=()=>{if(['available','ready','complete','bossReady'].includes(state.quest))seekNpc('elder');else if(state.quest==='bossActive'){const boss=enemies.find(e=>e.boss);if(boss.alive)select(boss);else toast('왕꼬리 재출현까지 '+Math.ceil(boss.respawn-clock)+'초');}else go(768,720);};$('bagBtn').onclick=()=>modal('준자의 가방',`<div class="inventory-row"><span>낡은 꼬리털</span><b>${state.tails}개</b></div><div class="inventory-row"><span>초보 물약</span><b>${state.potions}개</b></div><div class="inventory-row"><span>골드</span><b>${state.gold.toLocaleString()} G</b></div><div class="inventory-row"><span>장착 무기</span><b>${state.weapon?'빛나는 검 · 공격 +8':'수련용 검'}</b></div><p>누적 처치 ${state.kills}마리. 이 브라우저에 자동 저장됩니다.</p>`,[['물약 사용',potion]]);$('helpBtn').onclick=()=>modal('조작법','<p>빈 곳을 터치하면 길을 따라 이동합니다. 화면 아무 곳에서 드래그하면 원하는 방향으로 계속 움직입니다.</p><p>PC: WASD / 방향키 이동, Space 공격, Q 회전베기, E 대화.</p><p>다람쥐를 터치한 뒤 공격하세요. 붉은 공격 전조를 피하고, 물약으로 체력을 회복하세요. 자동 사냥은 숲에서 작동합니다.</p><p>촌장 임무 → 다람쥐 10마리 → 보상 → 왕꼬리 → 빛나는 검. 기록은 현재 기기의 브라우저에 저장됩니다.</p>');$('modalClose').onclick=closeModal;$('modal').onclick=ev=>{if(ev.target===$('modal'))closeModal();};$('retryBtn').onclick=()=>location.reload();
+let hudAt=0;
+function frame(now){const dt=Math.min(.05,(now-last)/1000||.016);last=now;if(!paused&&!document.hidden){clock+=dt;
+ if(pendingHit&&clock>=pendingHit.at){const hit=pendingHit;pendingHit=null;for(const e of hit.targets)doHit(e,hit.power);}
+ let moving=false;if(clock>=attackUntil){$('hero').classList.remove('attacking');const kx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0),ky=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);
+ if(kx||ky)moving=move(kx,ky,dt);else if(Math.hypot(stick.x,stick.y)>5)moving=move(stick.x,stick.y,dt);else{
+ if(auto&&state.y>590){if(!selected?.alive)selected=enemies.filter(e=>e.alive&&!e.boss).sort((a,b)=>distance(a,state)-distance(b,state))[0]||null;if(selected&&distance(state,selected)>90&&(!path.length||clock%1<dt))go(selected.x,selected.y);if(selected&&distance(state,selected)<=115)attack();}
+ if(path.length){const p=path[0],d=distance(state,p);if(d<=250*dt){state.x=p.x;state.y=p.y;path.shift();dirty=true;moving=true;}else moving=move(p.x-state.x,p.y-state.y,dt);}
+ }
+ }
+ sprite($('heroArt'),clock<attackUntil?3:moving?1+Math.floor(clock*9)%2:0,face,3,flip);$('hero').style.left=state.x+'px';$('hero').style.top=state.y+'px';$('hero').style.zIndex=Math.round(state.y);
+ for(const e of enemies)enemyStep(e,dt);nearNpc=npcs.find(n=>distance(state,n)<110)||null;if(npcIntent&&nearNpc?.id===npcIntent&&!path.length){const id=npcIntent;npcIntent=null;talk(id);}camera(false,dt);if(clock-hudAt>.1){hud();hudAt=clock;}if(dirty&&clock-lastSave>=5)save();
+ }requestAnimationFrame(frame);}
+async function init(){try{await Promise.all(['hero','squirrel','world','npcs'].map(name=>new Promise((resolve,reject)=>{const image=new Image();image.onload=resolve;image.onerror=reject;image.src=`./assets/${name}.png`;})));[[600,720],[880,710],[1030,805],[580,870],[820,890]].forEach((p,i)=>createEnemy(i,...p));createEnemy(5,1080,895,true);$('hero').style.left=state.x+'px';$('hero').style.top=state.y+'px';$('hero').style.zIndex=Math.round(state.y);sprite($('heroArt'),0,0);resize();if(innerWidth<600){$('quest').classList.add('collapsed');$('questToggle').textContent='+';}hud();$('saveStatus').textContent=storageOK?'기기에 자동저장':'저장 불가 · 브라우저 설정 확인';$('loading').hidden=true;last=performance.now();requestAnimationFrame(frame);toast('촌장에게 첫 임무를 받아 보세요.');}catch(error){console.error(error);$('loadMessage').textContent='이미지를 불러오지 못했습니다. 연결을 확인해 주세요.';$('retryBtn').hidden=false;}}
+// Read-only diagnostics for integration checks; does not alter player data.
+window.__adventure={build:BUILD,snapshot:()=>({...state,auto,paused,selected:selected?.id,pathLength:path.length,enemies:enemies.map(({id,x,y,hp,alive,boss})=>({id,x,y,hp,alive,boss}))})};
+init();
