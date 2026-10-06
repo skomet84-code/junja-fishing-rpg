@@ -12,3 +12,67 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .resource{position:absolute;transform:translate(-50%,-50%);border:1px solid #a4cf8a;background:#183b22e8;border-radius:14px;padding:5px 8px;font-size:11px;white-space:nowrap;box-shadow:0 0 16px #8ecc5944;min-height:38px}.resource:active{transform:translate(-50%,-50%) scale(.96)}.resource.depleted{opacity:.55;box-shadow:none}.enemy.elite .sprite{filter:hue-rotate(315deg) saturate(1.7) drop-shadow(0 0 7px #ea8768)}.enemy.elite .entity-name{color:#ffaf79}.enemy.named .sprite{filter:hue-rotate(185deg) saturate(1.5) drop-shadow(0 0 14px #d5a1ff)}.enemy.named .entity-name{color:#efd278;font-size:13px}#world[data-zone=cave]{background-color:#162039;background-blend-mode:luminosity}#world[data-zone=abyss]{background-color:#301d48;background-blend-mode:luminosity}#world[data-zone=celestial]{background-color:#3a344f;background-blend-mode:luminosity}.legendary{color:#ffcf5c!important;text-shadow:0 0 8px #d6a34388}.hero[data-weapon='3'] .gear-weapon,.hero[data-armor='3'] .gear-armor,.hero[data-cape='3'] .gear-cape{display:block;background:linear-gradient(#fffbd4,#e4b749,#a57928);box-shadow:0 0 18px #fff09b}.hero[data-weapon='3'] .gear-weapon{width:7%}.hero[data-armor='3'] .sprite{filter:drop-shadow(0 0 8px #ffe4a0)}#socialAlert{position:absolute;top:148px;right:12px;z-index:4;background:#6a4329f2;border-color:#efca70;font-size:12px}#duelHud{position:absolute;top:55px;left:50%;transform:translateX(-50%);z-index:4;padding:10px;background:#551e29ef;border:1px solid #ecadab;border-radius:12px;white-space:nowrap;font-size:12px}.recipe{background:#142b24;border:1px solid #55724f;border-radius:10px;padding:12px;margin:10px 0}.recipe p{font-size:12px;line-height:1.6;margin:8px 0}.player-list>div{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:12px 0;padding:10px;border:1px solid #536e52;border-radius:10px}.player-list b{width:100%;font-size:12px}.player-list button{font-size:12px}.trade-items{display:grid;gap:5px;max-height:180px;overflow:auto}.trade-items label{display:flex;align-items:center;gap:8px;font-size:12px}.trade-items input{width:18px;min-height:20px;margin:0}#tradeForm label{font-size:12px}#tradeSummary{border:1px solid #c1a874;padding:10px;border-radius:10px;font-size:12px}.utility{flex-wrap:wrap;max-width:60%;gap:5px}.utility button{min-width:48px}
 @media(max-width:600px){.utility{max-width:calc(100% - 16px);flex-wrap:nowrap;gap:3px}.utility button{min-width:38px;padding:5px;font-size:9px}.utility #bagBtn{min-width:55px}.utility #socialBtn{min-width:55px}#socialAlert{top:141px;right:8px;font-size:10px;min-height:34px}#duelHud{top:185px;font-size:10px}.resource{font-size:10px}}
 .enemy.mmo-monster{width:125px;height:84px}.enemy.mmo-monster.boss{width:190px;height:128px}.enemy.mmo-monster .sprite{background-size:400% 400%}.enemy.mmo-monster .entity-name{white-space:nowrap;max-width:220px;left:50%;transform:translateX(-50%)}
+
+
+/* Animation overhaul: layered body motion + hand-anchored weapon combat */
+.actor-body,.combat-body{position:absolute;inset:0;transform-origin:50% 88%;pointer-events:none}
+.actor-body{
+  --mirror:1;--bob:0px;--lean:0deg;--stretch:1;
+  transform:translate3d(0,var(--bob),0) rotate(var(--lean)) scaleX(var(--mirror)) scaleY(var(--stretch));
+  will-change:transform;
+}
+.combat-body{
+  --combat-x:0px;--combat-y:0px;--combat-rot:0deg;
+  transform:translate3d(var(--combat-x),var(--combat-y),0) rotate(var(--combat-rot));
+  transform-origin:50% 72%;
+  will-change:transform;
+}
+.actor-body .sprite{transform:none!important;will-change:background-position,opacity}
+.sprite-blend{opacity:0;pointer-events:none}
+.hero .gear-layers{position:absolute;inset:0;transform:none}
+.hero .gear-weapon{
+  left:69%;top:43%;width:6%;height:42%;
+  transform-origin:50% 91%;
+  transform:rotate(var(--weapon-angle,-24deg));
+  will-change:transform;
+  z-index:4;
+}
+.hero[data-weapon='1'] .gear-weapon,
+.hero[data-weapon='2'] .gear-weapon,
+.hero[data-weapon='3'] .gear-weapon{display:block}
+.hero[data-job='warrior'] .gear-weapon{left:69%;top:41%;height:46%;width:6%;border-radius:4px 4px 2px 2px}
+.hero[data-job='rogue'] .gear-weapon{left:70%;top:48%;height:34%;width:5%;background:linear-gradient(#fffbd9,#bcd3d8 60%,#b68a47)}
+.hero[data-job='rogue'] .gear-weapon:after{content:'';position:absolute;left:-230%;top:12%;width:100%;height:84%;border-radius:3px;background:inherit;box-shadow:inherit;transform:rotate(18deg)}
+.hero[data-job='mage'] .gear-weapon{left:68%;top:33%;width:5%;height:52%;border-radius:5px;background:linear-gradient(#d8b5ff,#7961a7 68%,#d1ad6b)}
+.hero[data-job='mage'] .gear-weapon:after{content:'';position:absolute;left:50%;top:-15%;width:270%;aspect-ratio:1;transform:translateX(-50%);border-radius:50%;background:#d9b4ff;box-shadow:0 0 15px #b884ff}
+.hero[data-job='healer'] .gear-weapon{left:64%;top:44%;width:24%;height:20%;transform-origin:25% 80%;clip-path:polygon(0 70%,14% 36%,33% 12%,55% 0,78% 12%,100% 35%,80% 72%,42% 100%);background:linear-gradient(135deg,#fffbd0,#9de9bd)}
+.weapon-trail{
+  --trail-alpha:0;--trail-rot:0deg;
+  position:absolute;left:48%;top:31%;width:66%;height:63%;
+  border-radius:50%;
+  border-top:7px solid #fff2ae;
+  border-right:5px solid #9eeaff;
+  filter:drop-shadow(0 0 7px #ffe49b);
+  opacity:var(--trail-alpha);
+  transform:rotate(var(--trail-rot));
+  transform-origin:10% 80%;
+  pointer-events:none;
+  z-index:5;
+  will-change:transform,opacity;
+}
+.hero[data-job='rogue'] .weapon-trail{border-top-color:#ffd0d5;border-right-color:#f5a9cf}
+.hero[data-job='mage'] .weapon-trail{border-top-color:#dcb8ff;border-right-color:#9b76ff;filter:drop-shadow(0 0 11px #b98cff)}
+.hero[data-job='healer'] .weapon-trail{border-top-color:#d9ffc6;border-right-color:#8debb1;filter:drop-shadow(0 0 10px #91efa9)}
+.hero.attacking .shadow{transform:scaleX(.86);opacity:.8}
+.hero .shadow{transition:transform .09s linear,opacity .09s linear}
+.hero.attacking .entity-name{transform:translateX(-50%) translateY(-2px)}
+
+#hero #swing.weapon-trail{inset:auto;left:48%;top:31%;right:auto;bottom:auto;width:66%;height:63%;border:0;border-top:7px solid #fff2ae;border-right:5px solid #9eeaff;opacity:var(--trail-alpha);animation:none!important;transform:rotate(var(--trail-rot));}
+#hero[data-job='rogue'] #swing.weapon-trail{border-top-color:#ffd0d5;border-right-color:#f5a9cf}
+#hero[data-job='mage'] #swing.weapon-trail{border-top-color:#dcb8ff;border-right-color:#9b76ff}
+#hero[data-job='healer'] #swing.weapon-trail{border-top-color:#d9ffc6;border-right-color:#8debb1}
+
+.hero[data-face='0'] .gear-weapon{left:69%;top:43%}
+.hero[data-face='1'] .gear-weapon{left:62%;top:38%}
+.hero[data-face='2'] .gear-weapon{left:73%;top:44%}
+.hero[data-face='1'] .weapon-trail{top:26%;left:42%;transform-origin:18% 84%}
