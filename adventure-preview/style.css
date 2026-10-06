@@ -151,3 +151,85 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 /* feet stay visually planted while the torso breathes / bobs */
 .entity.hero[data-motion='walk']{filter:drop-shadow(0 1px 0 #0000)}
 .entity.hero[data-motion='attack'] .entity-name{transform:translateX(-50%) translateY(-2px)}
+
+
+/* ===== Motion engine v2: interpolated body poses + independent hand/weapon rig ===== */
+.entity.hero>.sprite{z-index:1}
+.entity.hero>.sprite-a,.entity.hero>.sprite-b{pointer-events:none;will-change:opacity,transform,background-position}
+.entity.hero>.sprite-b{opacity:0}
+.entity.hero>.gear-layers{z-index:2}
+.weapon-rig{
+ position:absolute;inset:0;pointer-events:none;z-index:3;
+ transform-origin:50% 91%;
+ transform:translateY(var(--bob)) rotate(var(--lean)) scaleX(var(--flip)) scaleY(var(--squash));
+ will-change:transform;
+}
+.weapon-core{
+ position:absolute;inset:0;
+ transform-origin:70% 72%;
+ transform:rotate(var(--weapon-angle));
+ will-change:transform;
+}
+.weapon-core i{position:absolute;display:block}
+.weapon-core .gear-weapon{
+ position:absolute!important;
+ transform:none!important;
+ display:block!important;
+}
+.gear-arm{
+ left:55%;top:51%;width:21%;height:9%;
+ border-radius:55% 20% 20% 55%;
+ transform-origin:12% 50%;
+ transform:rotate(-9deg);
+ background:linear-gradient(90deg,#9a6d45,#d2a477 56%,#b77a4d);
+ box-shadow:inset 0 0 3px #fff4,0 1px 2px #0007;
+ z-index:3;
+}
+.gear-hand{
+ left:69%;top:55%;width:8%;height:8%;
+ border-radius:50%;
+ background:radial-gradient(circle at 35% 30%,#edc69d,#b87a4e 70%);
+ box-shadow:0 1px 2px #0008;
+ z-index:6;
+}
+.hero[data-job='warrior'] .gear-arm{background:linear-gradient(90deg,#54442f,#a77d4c 58%,#c39462)}
+.hero[data-job='rogue'] .gear-arm{background:linear-gradient(90deg,#462f38,#7b4454 58%,#bc7d83)}
+.hero[data-job='mage'] .gear-arm{background:linear-gradient(90deg,#3e325c,#72549a 58%,#ac82c7)}
+.hero[data-job='healer'] .gear-arm{background:linear-gradient(90deg,#3d594b,#719a72 58%,#b7c98a)}
+
+.hero[data-face='1']>.weapon-rig{z-index:0}
+.hero[data-face='1'] .weapon-core{transform-origin:34% 70%}
+.hero[data-face='1'] .gear-arm{left:28%;transform:rotate(8deg)}
+.hero[data-face='1'] .gear-hand{left:27%}
+.hero[data-face='1'] .gear-weapon{left:24%!important}
+.hero[data-face='0'] .weapon-core{transform-origin:70% 72%}
+.hero[data-face='2'] .weapon-core{transform-origin:68% 72%}
+
+.hero[data-job='rogue'] .gear-layers:after{display:none!important}
+.hero[data-job='rogue'] .weapon-core:after{
+ content:'';
+ position:absolute;
+ left:29%;top:43%;width:6%;height:36%;
+ border-radius:4px 4px 35% 35%;
+ background:linear-gradient(90deg,#69757b,#f2f6f7,#85959c);
+ box-shadow:0 0 5px #efb8cd;
+ transform-origin:50% 90%;
+ transform:rotate(-38deg);
+ z-index:4;
+}
+.hero[data-job='mage'] .gear-arm{width:24%;height:8%;top:50%}
+.hero[data-job='mage'] .gear-hand{top:54%}
+.hero[data-job='healer'] .gear-arm{width:18%;top:50%}
+.hero[data-job='healer'] .gear-hand{left:67%;top:54%}
+
+/* stronger anticipation/contact without moving the feet off the floor */
+.entity.hero[data-motion='walk']>.shadow{transform:scaleX(.9) scaleY(.82)}
+.entity.hero[data-motion='attack']>.shadow{transform:scaleX(.82) scaleY(.74)}
+.entity.hero[data-motion='attack'] .weapon-core{transition:none}
+.entity.hero[data-motion='idle'] .weapon-core{transition:transform 120ms ease-out}
+.entity.hero[data-motion='walk'] .weapon-core{transition:transform 45ms linear}
+
+/* keep blended sprites visually coherent instead of looking like two ghosts */
+.entity.hero>.sprite-a,.entity.hero>.sprite-b{filter:inherit}
+.entity.hero[data-motion='walk']>.sprite-b{mix-blend-mode:normal}
+.entity.hero[data-motion='attack']>.sprite-b{filter:brightness(1.035)}

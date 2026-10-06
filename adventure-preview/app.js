@@ -1,5 +1,5 @@
 import {W,H,clamp,distance,walkable,pathfind} from './core.js';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp} from './catalog.js?v=20261006-motion-1';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp} from './catalog.js?v=20261006-motion-2';
 import {mergeSnapshot} from './network.js';
 import {MATERIALS,RECIPES,ZONES,DAILY_TASKS,PROMOTIONS,CHANNEL_CAP,LEVEL_CAP} from './mmo-data.js';
 import {API_URL} from './config.js';
@@ -30,39 +30,61 @@ function sprite(el,col,row,rows=3,mirror=false){
  el.style.backgroundPosition=`${col*100/3}% ${row*100/(rows-1)}%`;
  el.style.setProperty('--flip',mirror?-1:1);
 }
+const smoothstep=t=>t*t*(3-2*t);
+function blendSprite(art,a,b,mix,row,rows=3,mirror=false){
+ const twin=art.parentElement?.querySelector('.sprite-b');
+ if(!twin){sprite(art,mix<.5?a:b,row,rows,mirror);return;}
+ const t=smoothstep(Math.max(0,Math.min(1,mix)));
+ sprite(art,a,row,rows,mirror);sprite(twin,b,row,rows,mirror);
+ art.style.opacity=String(1-t);twin.style.opacity=String(t);
+}
 const MOTION={
- idle:{frames:[0],fps:1},
- walk:{frames:[1,0,2,0],fps:11.5},
- attack:{frames:[1,3,3,2,0],fps:15},
+ idle:{keys:[0,0],speed:.7},
+ walk:{keys:[1,0,2,0],speed:5.7},
 };
 function motion(el,art,mode,row,mirror,time,phase=0){
- const cfg=MOTION[mode]||MOTION.idle,frames=cfg.frames,idx=Math.min(frames.length-1,Math.floor((time*cfg.fps+phase)%frames.length));
- sprite(art,frames[idx],row,3,mirror);
- el.dataset.motion=mode;
- const wave=Math.sin(time*(mode==='walk'?Math.PI*2*5.75:Math.PI*2*.9)+phase);
- el.style.setProperty('--bob',mode==='walk'?(-2.2-Math.abs(wave)*2.2)+'px':mode==='idle'?(-Math.max(0,wave)*.7)+'px':'0px');
- el.style.setProperty('--lean',mode==='walk'?(wave*1.6)+'deg':mode==='idle'?(wave*.35)+'deg':'0deg');
- el.style.setProperty('--squash',mode==='walk'?(1-Math.abs(wave)*.025):mode==='idle'?(1+wave*.008):1);
+ const cfg=MOTION[mode]||MOTION.idle,keys=cfg.keys;
+ const pos=((time*cfg.speed+phase)%keys.length+keys.length)%keys.length,idx=Math.floor(pos),mix=pos-idx;
+ blendSprite(art,keys[idx],keys[(idx+1)%keys.length],mix,row,3,mirror);
+ el.dataset.motion=mode;el.dataset.face=String(row);el.dataset.flip=mirror?'1':'0';el.style.setProperty('--flip',mirror?-1:1);
+ const stride=mode==='walk'?Math.sin((pos/keys.length)*Math.PI*2):Math.sin(time*Math.PI*1.4+phase);
+ const foot=Math.abs(Math.sin((pos/keys.length)*Math.PI*4));
+ el.style.setProperty('--bob',mode==='walk'?(-1.2-foot*2.6)+'px':(-Math.max(0,stride)*.7)+'px');
+ el.style.setProperty('--lean',mode==='walk'?(stride*1.45)+'deg':(stride*.28)+'deg');
+ el.style.setProperty('--squash',mode==='walk'?(1-foot*.022):(1+stride*.006));
+ el.style.setProperty('--weapon-angle',mode==='walk'?(stride*-4.5)+'deg':'0deg');
+ el.style.setProperty('--attack-power','0');
 }
-function attackPose(el,art,row,mirror,started,duration=.38){
- const p=Math.max(0,Math.min(1,(clock-started)/duration));
- let col=0,lean=0,bob=0,weapon=0;
- if(p<.24){col=1;lean=-7*(p/.24);weapon=-55*(p/.24);bob=1;}
- else if(p<.56){const q=(p-.24)/.32;col=3;lean=-7+18*q;weapon=-55+150*q;bob=-2.5*Math.sin(q*Math.PI);}
- else{const q=(p-.56)/.44;col=q<.45?2:0;lean=11*(1-q);weapon=95*(1-q);}
- sprite(art,col,row,3,mirror);el.dataset.motion='attack';
- el.style.setProperty('--bob',bob+'px');el.style.setProperty('--lean',lean+'deg');el.style.setProperty('--squash',p>.24&&p<.56?.965:1);el.style.setProperty('--weapon-angle',weapon+'deg');el.style.setProperty('--attack-power',String(Math.sin(Math.min(1,p/.72)*Math.PI)));
+function attackPose(el,art,row,mirror,started,duration=.44){
+ const p=Math.max(0,Math.min(1,(clock-started)/duration)),keys=[0,1,3,3,2,0];
+ const z=p*(keys.length-1),i=Math.min(keys.length-2,Math.floor(z)),mix=z-i;
+ blendSprite(art,keys[i],keys[i+1],mix,row,3,mirror);
+ let lean=0,bob=0,weapon=0,power=0;
+ if(p<.20){const q=smoothstep(p/.20);lean=-8*q;weapon=-62*q;bob=1.5*q;power=q*.2;}
+ else if(p<.58){const q=smoothstep((p-.20)/.38);lean=-8+20*q;weapon=-62+168*q;bob=-3.5*Math.sin(q*Math.PI);power=.2+.8*Math.sin(q*Math.PI*.82);}
+ else{const q=smoothstep((p-.58)/.42);lean=12*(1-q);weapon=106*(1-q);bob=-1.2*(1-q);power=1-q;}
+ el.dataset.motion='attack';el.dataset.face=String(row);el.dataset.flip=mirror?'1':'0';el.style.setProperty('--flip',mirror?-1:1);
+ el.style.setProperty('--bob',bob+'px');el.style.setProperty('--lean',lean+'deg');el.style.setProperty('--squash',p>.2&&p<.58?.96:1);el.style.setProperty('--weapon-angle',weapon+'deg');el.style.setProperty('--attack-power',String(Math.max(0,power)));
 }
-function actorArt(el,s){el.style.backgroundImage=`url('./assets/${JOBS[s.job].art}.png')`;}
+function actorArt(el,s){
+ const url=`url('./assets/${JOBS[s.job].art}.png')`;
+ el.style.backgroundImage=url;
+ const twin=el.parentElement?.querySelector('.sprite-b');if(twin)twin.style.backgroundImage=url;
+}
 function decorate(el,s){const eq=s.equipment||{};el.dataset.job=s.job;for(const slot of ['armor','head','weapon','cape','boots'])el.dataset[slot]=ITEMS[eq[slot]]?.tier||0;el.classList.toggle('promoted',!!s.rank);}
-function layers(el){if(el.querySelector('.gear-layers'))return;const div=document.createElement('div');div.className='gear-layers';div.innerHTML='<i class="gear-cape"></i><i class="gear-armor"></i><i class="gear-head"></i><i class="gear-boots"></i><i class="gear-weapon"></i>';el.append(div);}
+function layers(el){
+ const base=el.querySelector('.sprite');
+ if(base&&!el.querySelector('.sprite-b')){base.classList.add('sprite-a');const twin=base.cloneNode(false);twin.removeAttribute('id');twin.classList.remove('sprite-a');twin.classList.add('sprite-b');twin.style.opacity='0';base.after(twin);}
+ if(!el.querySelector('.gear-layers')){const div=document.createElement('div');div.className='gear-layers';div.innerHTML='<i class="gear-cape"></i><i class="gear-armor"></i><i class="gear-head"></i><i class="gear-boots"></i>';el.append(div);}
+ if(!el.querySelector('.weapon-rig')){const rig=document.createElement('span');rig.className='weapon-rig';rig.innerHTML='<span class="weapon-core"><i class="gear-arm"></i><i class="gear-hand"></i><i class="gear-weapon"></i></span>';el.append(rig);}
+}
 layers($('hero'));
 function entity(type){const el=document.createElement('div');el.className='entity '+type;el.innerHTML='<div class="shadow"></div><div class="sprite"></div><b class="entity-name"></b><div class="life"><i></i></div><div class="tell" hidden></div>';return el;}
 function updateSnapshot(data){data=mergeSnapshot(wireSnapshot,data);if(!data)return;wireSnapshot=data;if(data.disconnected){connected=false;streamController?.abort();toast(data.disconnected);showSelection();return;}if(!data.self)return;serverNow=data.now;receivedAt=performance.now();const old=state;state=data.self;systems={nodes:data.nodes||[],bosses:data.bosses||[],trade:data.trade,duel:data.duel,daily:data.daily};syncMMO();auto=state.auto;connected=true;
  if(distance(view,state)>165){view={x:state.x,y:state.y};path=[];camera(true);}
  if(auto||state.navMoving){
  const me=data.players.find(p=>p.id===state.id);
- if(me){face=me.face;flip=me.flip;if(me.attacking&&clock>=attackUntil-.04){attackUntil=clock+.42;$('hero').dataset.attackStarted=String(clock);}}
+ if(me){face=me.face;flip=me.flip;if(me.attacking&&clock>=attackUntil-.04){attackUntil=clock+.44;$('hero').dataset.attackStarted=String(clock);}}
 }if(old.job!==state.job||old.rank!==state.rank||$('skillbar').childElementCount!==4)makeSkills();actorArt($('heroArt'),state);decorate($('hero'),state);$('hero').querySelector('.entity-name').textContent=state.name+' · '+jobName(state);document.querySelector('.portrait').style.backgroundImage=`url('./assets/${JOBS[state.job].art}.png')`;
  const mobIds=new Set();for(const e of data.enemies){mobIds.add(e.id);let entry=enemies.get(e.id);if(!entry){const el=entity('enemy'+(e.boss?' boss':''));el.querySelector('b').textContent=e.name||'숲 다람쥐';el.addEventListener('pointerdown',ev=>{ev.stopPropagation();select(e.id);});$('enemyLayer').append(el);entry={el,art:el.querySelector('.sprite'),vx:e.x,vy:e.y};enemies.set(e.id,entry);}Object.assign(entry,e);entry.mmo=!!e.named||e.elite||state.zone!=='surface';entry.el.classList.toggle('mmo-monster',entry.mmo);entry.art.style.backgroundImage=entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=entry.mmo?'400% 400%':'';entry.el.querySelector('b').textContent=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('dead',!e.alive);entry.el.querySelector('.life i').style.width=e.hp/e.max*100+'%';entry.el.querySelector('.tell').hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);}
  for(const [id,e] of enemies)if(!mobIds.has(id)){e.el.remove();enemies.delete(id);}
@@ -88,7 +110,7 @@ $('authForm').onsubmit=e=>{e.preventDefault();login();};$('registerBtn').onclick
 async function join(){$('joinBtn').disabled=true;$('loadMessage').textContent='준자마을에 접속 중…';try{await artReady;const r=await api('join',{slot:selectedSlot,channel:$('channelInput').value.trim()});connectionKey=r.connectionKey;state=r.snapshot.self;view={x:state.x,y:state.y};selected=null;path=[];updateSnapshot(r.snapshot);resize();makeSkills();face=0;flip=false;$('hero').style.left=view.x+'px';$('hero').style.top=view.y+'px';$('hero').style.zIndex=Math.round(view.y);sprite($('heroArt'),0,0);$('loading').hidden=true;last=performance.now();consumeStream(++streamGeneration);toast(state.channel+'에 접속했습니다. 친구에게 같은 채널을 알려 주세요.');}catch(e){$('loadMessage').textContent=e.message;}finally{$('joinBtn').disabled=false;}}
 $('joinBtn').onclick=join;$('retryBtn').onclick=showSelection;
 function select(id){const e=enemies.get(id);if(!e?.alive)return;selected=id;npcIntent=null;path=[];if(distance(view,e)>stats(state).range*.8)go(e.x,e.y);hud();}
-function attack(skill=-1){if(paused||!connected)return;const started=clock;if(systems.duel?.accepted){command({type:'duelAttack',skill});attackUntil=started+.42;$('hero').dataset.attackStarted=String(started);effect(state.job);return;}const ability=JOBS[state.job].skills[skill];if(ability&&['heal','partyHeal','guard','partyGuard'].includes(ability[4])){command({type:'attack',skill});attackUntil=started+.42;$('hero').dataset.attackStarted=String(started);effect(ability[4].toLowerCase().includes('heal')?'heal':'guard');return;}let e=enemies.get(selected);if(!e?.alive)e=[...enemies.values()].filter(e=>e.alive&&distance(view,e)<stats(state).range).sort((a,b)=>distance(a,view)-distance(b,view))[0];if(!e){toast('다람쥐를 선택해 주세요.');return;}selected=e.id;if(distance(state,e)>stats(state).range){go(e.x,e.y);toast('공격 범위까지 이동합니다.');return;}command({type:'attack',skill,target:e.id});attackUntil=started+.42;$('hero').dataset.attackStarted=String(started);face=Math.abs(e.x-view.x)>Math.abs(e.y-view.y)?2:e.y<view.y?1:0;flip=face===2&&e.x<view.x;path=[];if(skill>=0)effect(state.job);hud();}
+function attack(skill=-1){if(paused||!connected)return;const started=clock,attackDuration=.44;if(systems.duel?.accepted){command({type:'duelAttack',skill});attackUntil=started+attackDuration;$('hero').dataset.attackStarted=String(started);effect(state.job);return;}const ability=JOBS[state.job].skills[skill];if(ability&&['heal','partyHeal','guard','partyGuard'].includes(ability[4])){command({type:'attack',skill});attackUntil=started+attackDuration;$('hero').dataset.attackStarted=String(started);effect(ability[4].toLowerCase().includes('heal')?'heal':'guard');return;}let e=enemies.get(selected);if(!e?.alive)e=[...enemies.values()].filter(e=>e.alive&&distance(view,e)<stats(state).range).sort((a,b)=>distance(a,view)-distance(b,view))[0];if(!e){toast('다람쥐를 선택해 주세요.');return;}selected=e.id;if(distance(state,e)>stats(state).range){go(e.x,e.y);toast('공격 범위까지 이동합니다.');return;}command({type:'attack',skill,target:e.id});attackUntil=started+attackDuration;$('hero').dataset.attackStarted=String(started);face=Math.abs(e.x-view.x)>Math.abs(e.y-view.y)?2:e.y<view.y?1:0;flip=face===2&&e.x<view.x;path=[];if(skill>=0)effect(state.job);hud();}
 function effect(kind){const el=document.createElement('div');el.className='skill-effect '+kind;el.style.left=view.x+'px';el.style.top=view.y+'px';$('effects').append(el);setTimeout(()=>el.remove(),650);}
 function makeSkills(){$('skillbar').replaceChildren();JOBS[state.job].skills.forEach((s,i)=>{const b=document.createElement('button');b.id='skill'+i;b.innerHTML=`<b>${s[0]}</b><small>Lv.${s[1]}</small>`;b.onclick=()=>attack(i);$('skillbar').append(b);});}
 function hud(){const st=stats(state),t=now();$('playerName').textContent=state.name||'준자';$('level').textContent='Lv.'+state.level+' '+jobName(state);$('hpText').textContent=Math.ceil(state.hp)+' / '+st.hp;$('hpBar').style.width=state.hp/st.hp*100+'%';$('expBar').style.width=Math.min(100,state.exp/needXp(state.level)*100)+'%';$('expText').textContent='EXP '+state.exp+' / '+needXp(state.level);$('gold').textContent=state.gold.toLocaleString()+' G';$('zone').textContent=(state.zone==='surface'?(view.y>590?'다람쥐 숲':'준자마을'):ZONES[state.zone].name)+' · '+(state.channel||'');$('potionLabel').textContent=state.potions+'개';$('potionBtn').disabled=!connected||state.potions<=0;
@@ -109,19 +131,19 @@ function release(){gesture=null;stick={x:0,y:0};$('joystick').hidden=true;}for(c
 window.addEventListener('keydown',ev=>{if(ev.target.closest('input,textarea'))return;if(paused){if(ev.key==='Escape')closeModal();return;}const key=ev.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d'].includes(key)){ev.preventDefault();keys.add(key);path=[];npcIntent=null;if(auto)command({type:'auto',on:false});if(key===' ')attack();}if(['1','2','3','4'].includes(key))attack(Number(key)-1);if(key==='e'&&nearNpc)talk(nearNpc.id);if(key==='q')attack(0);});window.addEventListener('keyup',ev=>keys.delete(ev.key.toLowerCase()));window.addEventListener('blur',stopMovement);document.addEventListener('visibilitychange',()=>{stopMovement();last=performance.now();});window.addEventListener('resize',resize);
 for(const n of npcs)$(n.id).onclick=()=>distance(view,n)<115?talk(n.id):seekNpc(n.id);$('contextBtn').onclick=()=>nearNpc&&talk(nearNpc.id);$('attackBtn').onclick=()=>attack();$('potionBtn').onclick=()=>command({type:'potion'});$('autoBtn').onclick=()=>{path=[];npcIntent=null;command({type:'auto',on:!auto});toast(!auto?'자동 사냥 ON · 숲에서 작동':'자동 사냥 OFF');};$('homeBtn').onclick=()=>{stopMovement();selected=null;command({type:'home'});};$('questToggle').onclick=()=>{$('quest').classList.toggle('collapsed');$('questToggle').textContent=$('quest').classList.contains('collapsed')?'+':'−';};$('questAction').onclick=()=>{if(['available','ready','complete','bossReady'].includes(state.quest))seekNpc('elder');else if(state.quest==='bossActive'){const e=[...enemies.values()].find(e=>e.boss);if(e?.alive)select(e.id);else toast('왕꼬리 재출현까지 '+Math.max(0,Math.ceil((e?.respawn||0)-now()))+'초');}else go(768,720);};$('bagBtn').onclick=bagWindow;$('jobBtn').onclick=jobWindow;$('onlineBtn').onclick=onlineWindow;$('chatBtn').onclick=chatWindow;$('helpBtn').onclick=()=>modal('모험 안내','<p>빈 곳 터치로 이동. 화면 어디서든 드래그하면 방향 이동합니다. PC: WASD / 방향키, Space 공격, Q 첫 스킬, 1~4 스킬, E 대화.</p><p>촌장 임무 → 다람쥐 10마리 → 왕꼬리 → 정예·던전 → Lv.99 첫 전직. 직업에 따라 공격 범위·스킬이 달라집니다.</p><p>가방에서 장비를 장착하세요. 보스 보상은 공격하거나 도사 회복으로 지원한 참여자에게 따로 지급됩니다.</p><p>성장은 계정에 저장됩니다. 같은 아이디의 동시 접속은 마지막 접속만 유지됩니다.</p>');$('modalClose').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal();};
 let hudAt=0;
-function frame(time){const dt=Math.min(.05,(time-last)/1000||.016);last=time;clock+=dt;if(connected){let dx=0,dy=0;if(!paused&&!document.hidden){dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0);dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);if(!dx&&!dy&&Math.hypot(stick.x,stick.y)>5){dx=stick.x;dy=stick.y;}if(!dx&&!dy&&path.length){if(distance(view,path[0])<16)path.shift();if(path.length){dx=path[0].x-view.x;dy=path[0].y-view.y;}}}const len=Math.hypot(dx,dy);if(len){dx/=len;dy/=len;}if(!auto&&clock>=attackUntil&&len){const x=view.x+dx*250*dt,y=view.y+dy*250*dt;if(walkable(x,view.y))view.x=x;if(walkable(view.x,y))view.y=y;face=Math.abs(dx)>Math.abs(dy)?2:dy<0?1:0;flip=face===2&&dx<0;}if(!len||auto){
+function frame(time){const dt=Math.min(.05,(time-last)/1000||.016);last=time;clock+=dt;if(connected){let dx=0,dy=0,manualMove=false;if(!paused&&!document.hidden){dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0);dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);if(!dx&&!dy&&Math.hypot(stick.x,stick.y)>5){dx=stick.x;dy=stick.y;}manualMove=!!(dx||dy);if(!dx&&!dy&&path.length){if(distance(view,path[0])<16)path.shift();if(path.length){dx=path[0].x-view.x;dy=path[0].y-view.y;}}}const len=Math.hypot(dx,dy);if(len){dx/=len;dy/=len;}if(!auto&&clock>=attackUntil&&len){const x=view.x+dx*250*dt,y=view.y+dy*250*dt;if(walkable(x,view.y))view.x=x;if(walkable(view.x,y))view.y=y;face=Math.abs(dx)>Math.abs(dy)?2:dy<0?1:0;flip=face===2&&dx<0;}if(!len||auto){
   const f=1-Math.exp(-11*dt);view.x+=(state.x-view.x)*f;view.y+=(state.y-view.y)*f;
  }else{
   const drift=distance(view,state);
   if(drift>22){const f=1-Math.exp(-(drift>90?6:2.2)*dt);view.x+=(state.x-view.x)*f;view.y+=(state.y-view.y)*f;}
  }
- if(clock-lastSend>=.09&&!movePending){lastSend=clock;movePending=true;api('action',{type:'move',x:dx,y:dy,manual:len>0}).catch(()=>{}).finally(()=>movePending=false);}
+ if(clock-lastSend>=.09&&!movePending){lastSend=clock;movePending=true;api('action',{type:'move',x:dx,y:dy,manual:manualMove}).catch(()=>{}).finally(()=>movePending=false);}
  const attacking=clock<attackUntil,hero=$('hero'),heroArt=$('heroArt');
- if(attacking){const started=Number(hero.dataset.attackStarted)||attackUntil-.42;attackPose(hero,heroArt,face,flip,started,.42);}
+ if(attacking){const started=Number(hero.dataset.attackStarted)||attackUntil-.44;attackPose(hero,heroArt,face,flip,started,.44);}
  else motion(hero,heroArt,len||auto||state.navMoving?'walk':'idle',face,flip,clock);
  hero.style.left=view.x+'px';hero.style.top=view.y+'px';hero.style.zIndex=Math.round(view.y);hero.classList.toggle('attacking',attacking);hero.classList.toggle('guarded',(state.guard||0)>now());
  for(const e of enemies.values()){const f=1-Math.exp(-15*dt);e.vx+=(e.x-e.vx)*f;e.vy+=(e.y-e.vy)*f;e.el.style.left=e.vx+'px';e.el.style.top=e.vy+'px';e.el.style.zIndex=Math.round(e.vy);sprite(e.art,e.tellAt?3:1+Math.floor(clock*7)%2,e.mmo?({stoneking:0,shadowking:1,dragon:2}[e.named]??3):(e.boss?1:0),e.mmo?4:2);}
- for(const p of peers.values()){const f=1-Math.exp(-13*dt);p.vx+=(p.x-p.vx)*f;p.vy+=(p.y-p.vy)*f;p.el.style.left=p.vx+'px';p.el.style.top=p.vy+'px';p.el.style.zIndex=Math.round(p.vy);p.el.classList.toggle('attacking',!!p.attacking);if(p.attacking){if(!p.localAttackStarted||clock-p.localAttackStarted>.55)p.localAttackStarted=clock;attackPose(p.el,p.art,p.face,p.flip,p.localAttackStarted,.42);}else{p.localAttackStarted=0;motion(p.el,p.art,p.moving?'walk':'idle',p.face,p.flip,clock,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)*.13);}}nearNpc=state.zone==='surface'?npcs.find(n=>distance(view,n)<115)||null:null;if(gatherIntent){const n=systems.nodes.find(n=>n.id===gatherIntent);if(n&&distance(state,n)<95){gatherIntent=null;command({type:'gather',node:n.id});}}if(npcIntent&&nearNpc?.id===npcIntent&&!path.length){const id=npcIntent;npcIntent=null;talk(id);}camera(false,dt);if(clock-hudAt>.1){hud();hudAt=clock;}}
+ for(const p of peers.values()){const f=1-Math.exp(-13*dt);p.vx+=(p.x-p.vx)*f;p.vy+=(p.y-p.vy)*f;p.el.style.left=p.vx+'px';p.el.style.top=p.vy+'px';p.el.style.zIndex=Math.round(p.vy);p.el.classList.toggle('attacking',!!p.attacking);if(p.attacking){if(!p.localAttackStarted||clock-p.localAttackStarted>.55)p.localAttackStarted=clock;attackPose(p.el,p.art,p.face,p.flip,p.localAttackStarted,.44);}else{p.localAttackStarted=0;motion(p.el,p.art,p.moving?'walk':'idle',p.face,p.flip,clock,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)*.13);}}nearNpc=state.zone==='surface'?npcs.find(n=>distance(view,n)<115)||null:null;if(gatherIntent){const n=systems.nodes.find(n=>n.id===gatherIntent);if(n&&distance(state,n)<95){gatherIntent=null;command({type:'gather',node:n.id});}}if(npcIntent&&nearNpc?.id===npcIntent&&!path.length){const id=npcIntent;npcIntent=null;talk(id);}camera(false,dt);if(clock-hudAt>.1){hud();hudAt=clock;}}
  requestAnimationFrame(frame);}
 const invite=new URL(location.href).searchParams.get('channel');if(invite&&/^[A-Za-z0-9가-힣_-]{2,16}$/.test(invite))$('channelInput').value=invite;if(innerWidth<600){$('quest').classList.add('collapsed');$('questToggle').textContent='+';}resize();makeSkills();requestAnimationFrame(frame);if(token)showSelection();
 window.__adventure={build:BUILD,snapshot:()=>({...state,systems:structuredClone(systems),connected,paused,auto,selected,peers:[...peers.values()].map(({id,name,x,y,job,equipment})=>({id,name,x,y,job,equipment})),enemies:[...enemies.values()].map(({id,x,y,hp,alive,boss})=>({id,x,y,hp,alive,boss}))})};
