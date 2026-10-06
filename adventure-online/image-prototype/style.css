@@ -76,3 +76,34 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .hero[data-face='1'] .gear-weapon{left:62%;top:38%}
 .hero[data-face='2'] .gear-weapon{left:73%;top:44%}
 .hero[data-face='1'] .weapon-trail{top:26%;left:42%;transform-origin:18% 84%}
+
+
+/* Weapon socket refinement: pivot weapons from the hand, never the feet. */
+.hero .gear-weapon{left:64%;top:14%;height:46%;transform-origin:50% 90%}
+.hero[data-face='0'] .gear-weapon{left:64%;top:14%}
+.hero[data-face='1'] .gear-weapon{left:59%;top:10%}
+.hero[data-face='2'] .gear-weapon{left:68%;top:15%}
+.hero[data-job='warrior'] .gear-weapon{left:64%;top:12%;height:48%}
+.hero[data-job='warrior'][data-face='1'] .gear-weapon{left:59%;top:8%}
+.hero[data-job='warrior'][data-face='2'] .gear-weapon{left:68%;top:13%}
+.hero[data-job='rogue'] .gear-weapon{left:65%;top:20%;height:35%}
+.hero[data-job='rogue'][data-face='1'] .gear-weapon{left:60%;top:17%}
+.hero[data-job='rogue'][data-face='2'] .gear-weapon{left:69%;top:21%}
+
+/* Mage art already carries its staff: equipment upgrades the held focus instead of drawing a second staff. */
+.hero[data-job='mage'] .gear-weapon{
+  left:69%;top:43%;width:14%;height:12%;border-radius:50%;clip-path:none;
+  background:radial-gradient(circle at 35% 30%,#fffbe8 0 13%,#d7b0ff 20%,#855ed0 55%,#4b2c83 76%,transparent 78%);
+  box-shadow:0 0 7px #e3c4ff,0 0 16px #a46cff;
+  transform-origin:50% 50%;
+}
+.hero[data-job='mage'] .gear-weapon:before,.hero[data-job='mage'] .gear-weapon:after{content:none}
+.hero[data-job='mage'][data-weapon='2'] .gear-weapon{box-shadow:0 0 9px #f4d8ff,0 0 22px #bf78ff}
+.hero[data-job='mage'][data-weapon='3'] .gear-weapon{background:radial-gradient(circle at 35% 30%,#fff 0 15%,#fff0a8 23%,#d8a832 56%,#7a5511 76%,transparent 78%);box-shadow:0 0 10px #fff4bb,0 0 25px #e3b63f}
+.hero[data-job='mage'][data-face='0'] .gear-weapon{left:69%;top:43%}
+.hero[data-job='mage'][data-face='1'] .gear-weapon{left:62%;top:38%}
+.hero[data-job='mage'][data-face='2'] .gear-weapon{left:73%;top:44%}
+
+/* Paper doll has no facing state, so use a stable front-hand socket. */
+.doll-actor.hero .gear-weapon{left:64%;top:14%}
+.doll-actor.hero[data-job='mage'] .gear-weapon{left:69%;top:43%}
