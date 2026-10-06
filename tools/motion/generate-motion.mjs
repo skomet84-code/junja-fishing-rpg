@@ -36,8 +36,9 @@ function between(keys,f,loop=true){
 }
 async function build(root,name){
  const src=path.join(root,'assets',name+'.png'),meta=await sharp(src).metadata();
- if(!meta.width||!meta.height||meta.width%4||meta.height%3)throw new Error(src+' must be a 4x3 sprite sheet');
- const cw=meta.width/4,ch=meta.height/3,cells=[];
+ if(!meta.width||!meta.height)throw new Error(src+' has no readable dimensions');
+ const cw=Math.floor(meta.width/4),ch=Math.floor(meta.height/3),cells=[];
+ console.log(src,'source',meta.width+'x'+meta.height,'cell',cw+'x'+ch);
  for(let row=0;row<DIRS;row++){
   const r=[];
   for(let col=0;col<4;col++){
