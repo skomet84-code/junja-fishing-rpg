@@ -1,3 +1,7 @@
+# MMO expansion — 20261006-mmo-3
+
+See `../server/online/README.md` for current rules, schedules and verification. Previous notes below describe the original release.
+
 # JUNJA ADVENTURE · ONLINE
 
 공유 월드 온라인 버전 `20261006-online-2`입니다. 이전 단일 브라우저 전투 방식은 서버 권한 방식으로 교체했습니다.

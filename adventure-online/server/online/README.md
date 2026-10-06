@@ -1,27 +1,35 @@
-# JUNJA ADVENTURE ONLINE
+# JUNJA ADVENTURE MMO — 20261006-mmo-3
 
-Build: `20261006-online-2`. This is the server and client used for the shared-world preview. The original Phaser client and its cloud-save project are separate.
+기존 계정·성장·장비·승급 기록을 유지하는 공유 월드 확장입니다.
 
-## Run
+| 구분 | 규칙 |
+|---|---|
+| 레벨 / 전직 | 최대 399, 99/199/299레벨에 1/2/3차, 보스 1/5/15회, 촌장 근처 |
+| 접속 | 채널 48명 / 단일 프로세스 전체 192명 |
+| 일반 / 정예 / 수련 보스 | 30초 / 180초 / 300초 재등장 |
+| 던전 | 수정 동굴 Lv.30 / 그림자 심연 Lv.100 / 천룡의 유적 Lv.200 |
+| 네임드 시간 | KST 바위 군주 08/18시 / 그림자 군왕 12/20시 / 천룡 22시 |
+| 등장 창 | 1시간, 처치 후 다음 회차, 접속 시 시각에 맞춰 생성 |
+| 전설 | 참여자마다 1%, 전설 3종 균등, Lv.99 장착 |
+| 회차 중복 | 캐릭터별 회차 수령 기록 유지, 채널 변경/재접속 방지 |
+| 채집 | 나무/돌/광석 60/90/120초 개인 재생, 수정 600초 |
+| 희귀 재료 | 던전 마수 수정 20%, 수정 채집 별빛 15%, 네임드 별빛 25% |
+| 제작 | 물약, Lv.15 철제, Lv.50 수정 장비, Lv.199 전설 망토 |
+| 일일 | 토벌 20 / 채집 12 / 던전 5, KST 자정 갱신, 촌장 보상 |
+| PVP | 마을, 쌍방 수락, 3초 준비, 별도 체력 1000, 최대 2분 |
+| PVP 성장 차이 | 장비/전직 보너스 최대 15%, 직업 스킬·범위 유지 |
+| PVP 결과 | 승수, 경험치·골드·장비 손실 없음 |
+| 거래 | 같은 지역 220거리 안, 쌍방 확인, 변경 시 확인 초기화 |
+| 거래 제한 | 장착/수련/퀘스트 무기 제외, 장비 8개, 가방 80개 |
 
-Node 22+, `npm install --prefix server/online`, then set `DATABASE_URL` and run `node server/online/server.mjs`. Listens on `0.0.0.0:$PORT` (default 4174). Serves `image-prototype` itself. Development-only `TEST_MEMORY=1` explicitly selects transient memory; production refuses to start without PostgreSQL.
+전직마다 공격 +30, 방어 +15. 기존 승급 기록은 그대로 유지합니다. 직업 변경은 기존 Lv.10과 500 G. 네 번째 스킬은 전직 기록이 있어야 합니다. 49레벨까지 기존 경험치 곡선을 유지하고 이후 점진적으로 증가합니다. 던전 몬스터 체력/피해/경험치는 지역 레벨에 따라 증가합니다. 던전은 채널 내 별도 공유 인스턴스이며 배경은 기존 지형을 다른 분위기로 렌더링하고 전용 마수 스프라이트를 사용합니다.
 
-## Play
+## Persistence
 
-Create an account, select one of four independently saved character slots, and choose the same channel as your friends. A channel supports 24 people; this single-process build supports 64 connected people total. No additional database, paid plan, trading, PvP, or ranking was added. Free Render can sleep between sessions; the existing database currently expires October 30, 2026 and needs renewal/migration before that date.
+PostgreSQL 트랜잭션과 두 계정 행 잠금으로 거래를 한 번에 저장합니다. 두 번째 쓰기 실패 시 모두 롤백하며 교환 중 중복 확인/구매/캐릭터 변경을 막습니다. 거래·대련은 만료/거리 이탈/접속 종료 시 취소됩니다. 기존 junja_adventure_online roster JSON만 확장하며 카지노 테이블은 변경하지 않습니다.
 
-Warrior / rogue / mage / healer have four distinct abilities each, unlocked at levels 2, 4, 8, and promotion. At level 10 and one boss defeat, speak near the elder to promote. At level 10 the elder also changes profession for 500 G without resetting growth/equipment.
-
-Shared monsters are authoritative on the server: movement/collision, range, damage, cooldowns, deaths, quests, purchases, gear, drops. Boss participants need 25 damage or useful healing to a participant, recent within 45 seconds and nearby at death. Each qualifying person receives separate XP, gold, quest credit, and loot. Boss gear rates: rare 10%, ordinary 30%, none 60%; six rare items have equal conditional chance. Ordinary monsters have a 3% chance of ordinary gear. Full bags receive 100 G in place of a rolled item.
-
-Gear slots: weapon, head, armor, cape, boots, ring, earrings. All affect stats; the first five also use modular field/paperdoll overlays. Ring/earring equipment does not change appearance. Every class has its own generated 4×3 animated atlas. Repeated items can be stored (80 total); equipment is selected from owned items.
-
-## Storage and networking
-
-Accounts use scrypt hashes, random hashed 30-day sessions, and independent roster JSON. PostgreSQL schema `junja_adventure_online` is isolated from the casino's tables. Growth saves every 30 seconds when dirty, with immediate saves after purchases/equipment/quest/promotion/job actions, on disconnect, and on graceful shutdown. Hard process termination can lose the most recent unsaved combat growth (up to 30 seconds). UI explicitly shows save errors; production never substitutes ephemeral storage.
-
-One active character per account; a new join displaces the previous stream. Channel names in invite URLs; no credentials in URLs. Authenticated fetch streaming at 5 updates per second, server simulation 10 Hz, local movement prediction/interpolation, movement heartbeat ~8 Hz. No database polling per frame. Account token remains in this browser; sign in with the same credentials elsewhere for the same saved roster. Previous v2 browser records can be imported into the warrior at account creation once, with bounded legacy values and no imported rare gear. This compatibility import necessarily trusts old client progress; it is not a competitive anti-cheat migration.
+Node22+, `npm install --prefix server/online`, DATABASE_URL을 설정해 `node server/online/server.mjs`. production은 PostgreSQL 없이는 시작하지 않습니다. TEST_MEMORY=1만 개발용 메모리입니다. 성장은 30초/주요 행동/연결 종료/정상 종료에 저장합니다. 비정상 강제 종료는 최근 30초 일반 전투 진행을 잃을 수 있습니다. 네임드 보상은 즉시 저장을 요청합니다. 무료 Render는 비활동 시 쉬며 기존 DB는 2026-10-30 만료 예정입니다.
 
 ## Verification
 
-`node --test server/online/tests/*.test.mjs` covers HTTP streaming/auth/slot isolation/relogin, shared kills/channel isolation, movement/range/cooldowns, healer boss credit, gear, rare-roll boundaries, promotion and replay-safe quest claims. CI also runs four real Chromium/WebKit clients against PostgreSQL, checking shared movement, equipment, chat, UI purchasing, promotion/job change, mobile quest/auto-hunt, and account reload, with screenshot artifacts. Production deployment receives separate health, durable persistence and two-client smoke checks.
+`node --test server/online/tests/*.test.mjs`: 48개 인증 HTTP 스트림 실제 접속과 공유 이동/한도, 192명 시뮬레이션, 전직/전설 1% 경계/중복 회차/리젠/생활/PVP/거래, 실제 PostgreSQL 두 번째 거래 쓰기 실패 롤백 및 재시작 복원. CI Chromium/WebKit에서 PC/아이폰/안드로이드 동시 접속, 쌍방 거래와 대련, 채집/제작/일일/시간표 및 저장 복원을 검사합니다. 네트워크는 5Hz 변경분만 전송하며 대기 중 전체 상태 반복 전송을 줄입니다.
