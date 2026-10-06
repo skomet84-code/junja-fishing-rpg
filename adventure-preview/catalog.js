@@ -1,7 +1,7 @@
 import {normalize} from './core.js';
 import {EXTRA_ITEMS,LEVEL_CAP,MMO_XP,MMO_HP} from './mmo-data.js';
 export {MMO_XP as needXp} from './mmo-data.js';
-export const BUILD='20261006-mmo-3';
+export const BUILD='20261006-motion-1';
 export const JOBS={
  warrior:{name:'전사',title:'검호',role:'근접 · 방어',art:'hero',color:'#efbd68',attack:3,def:4,range:115,skills:[['회전베기',2,5,2,'area'],['철벽',4,12,0,'guard'],['강타',8,8,3.4,'hit'],['검기폭풍',10,15,3,'area']]},
  rogue:{name:'도적',title:'그림자',role:'기습 · 연속공격',art:'rogue',color:'#e791a4',attack:5,def:1,range:120,skills:[['쌍검난무',2,5,2.4,'hit'],['흡혈검',4,9,1.7,'drain'],['그림자 일격',8,8,4,'hit'],['월영참',10,15,3.3,'area']]},
