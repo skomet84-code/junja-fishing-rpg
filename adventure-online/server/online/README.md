@@ -1,6 +1,6 @@
 # JUNJA ADVENTURE ONLINE
 
-Build: `20261006-online-1`. This is the server and client used for the shared-world preview. The original Phaser client and its cloud-save project are separate.
+Build: `20261006-online-2`. This is the server and client used for the shared-world preview. The original Phaser client and its cloud-save project are separate.
 
 ## Run
 

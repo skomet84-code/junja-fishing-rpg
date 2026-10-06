@@ -54,7 +54,7 @@ const server=http.createServer(async(req,res)=>{const url=new URL(req.url,'http:
   if(url.pathname==='/api/events'&&req.method==='GET'){
    const old=streams.get(p.id);if(old)old.end();streams.set(p.id,res);res.writeHead(200,{...headers(req),'content-type':'text/event-stream','connection':'keep-alive','x-accel-buffering':'no'});res.write('data: '+JSON.stringify(world.snapshot(p))+'\n\n');res.on('close',()=>{if(streams.get(p.id)===res){streams.delete(p.id);touch(p);world.players.delete(p.id);flush(a);}});return;
   }
-  if(url.pathname==='/api/action'&&req.method==='POST'){if(!allow('action:'+p.id,35,1)){json(req,res,{error:'요청이 너무 빠릅니다.'},429);return;}const input=await body(req);world.action(p,input);if(!['move','attack','auto','chat'].includes(input.type))await flush(a);json(req,res,{ok:true});return;}
+  if(url.pathname==='/api/action'&&req.method==='POST'){if(!allow('action:'+p.id,35,1)){json(req,res,{error:'요청이 너무 빠릅니다.'},429);return;}const input=await body(req);world.action(p,input);if(!['move','navigate','attack','auto','chat'].includes(input.type))await flush(a);json(req,res,{ok:true});return;}
   if(url.pathname==='/api/logout'&&req.method==='POST'){disconnect(p.id,'로그아웃했습니다.');await flush(a);const token=(req.headers.authorization||'').replace(/^Bearer /,'');sessions.delete(hash(token));if(pool)await pool.query('DELETE FROM junja_adventure_online.sessions WHERE token_hash=$1',[hash(token)]);json(req,res,{ok:true});return;}
   json(req,res,{error:'요청을 찾을 수 없습니다.'},404);return;
  }
