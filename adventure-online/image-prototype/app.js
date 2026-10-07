@@ -1,14 +1,14 @@
 import {W,H,clamp,distance,walkable,pathfind} from './core.js';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp} from './catalog.js?v=20261006-motion-final';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp} from './catalog.js?v=20261007-world-skills-1';
 import {mergeSnapshot} from './network.js';
-import {MATERIALS,RECIPES,ZONES,DAILY_TASKS,PROMOTIONS,CHANNEL_CAP,LEVEL_CAP} from './mmo-data.js';
+import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,CHANNEL_CAP,LEVEL_CAP} from './mmo-data.js';
 import {API_URL} from './config.js';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 let wireSnapshot=null;
 let token='',connectionKey='',legacy=null,roster=[],selectedSlot=0,state=profile(),view={x:768,y:355},connected=false,paused=false,serverNow=0,receivedAt=0,last=0,clock=0,lastSend=0,movePending=false,streamController=null,streamGeneration=0;
 let path=[],selected=null,auto=false,cam={x:0,y:0},scale=1,face=0,flip=false,headingX=0,headingY=1,attackUntil=0,attackSerial=0,nearNpc=null,npcIntent=null,gesture=null,stick={x:0,y:0};
-let systems={nodes:[],bosses:[],trade:null,duel:null,daily:null},gatherIntent=null,mmoPanel='';const resourceEls=new Map();
+let systems={nodes:[],bosses:[],trade:null,duel:null,daily:null},gatherIntent=null,travelIntent=null,mmoPanel='';const resourceEls=new Map(),portalEls=new Map();
 const keys=new Set(),enemies=new Map(),peers=new Map(),seenEvents=new Set(),npcs=[{id:'elder',x:580,y:330},{id:'merchant',x:1000,y:330}];
 try{token=localStorage.getItem('junja-online-token')||'';const old=localStorage.getItem('junja-adventure-play-v2');if(old)legacy=JSON.parse(old);}catch{}
 if(legacy)$('legacyRow').hidden=false;
@@ -123,7 +123,7 @@ function updateSnapshot(data){data=mergeSnapshot(wireSnapshot,data);if(!data)ret
  const me=data.players.find(p=>p.id===state.id);
  if(me){face=me.face;flip=me.flip;if(Number.isFinite(me.dirX)&&Number.isFinite(me.dirY)){headingX=me.dirX;headingY=me.dirY;}if(me.attacking&&clock>=attackUntil-.04){attackUntil=clock+.44;const hero=$('hero');hero.dataset.attackStarted=String(clock);hero.dataset.attackSkill=String(me.attackSkill??-1);hero.dataset.attackVariant=String(attackSerial++%3);}}
 }if(old.job!==state.job||old.rank!==state.rank||$('skillbar').childElementCount!==4)makeSkills();actorArt($('heroArt'),state);decorate($('hero'),state);$('hero').querySelector('.entity-name').textContent=state.name+' · '+jobName(state);document.querySelector('.portrait').style.backgroundImage=`url('./assets/${JOBS[state.job].art}.png')`;
- const mobIds=new Set();for(const e of data.enemies){mobIds.add(e.id);let entry=enemies.get(e.id);if(!entry){const el=entity('enemy'+(e.boss?' boss':''));el.querySelector('b').textContent=e.name||'숲 다람쥐';el.addEventListener('pointerdown',ev=>{ev.stopPropagation();select(e.id);});$('enemyLayer').append(el);entry={el,art:el.querySelector('.sprite'),vx:e.x,vy:e.y};enemies.set(e.id,entry);}Object.assign(entry,e);entry.mmo=!!e.named||e.elite||state.zone!=='surface';entry.el.classList.toggle('mmo-monster',entry.mmo);entry.art.style.backgroundImage=entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=entry.mmo?'400% 400%':'';entry.el.querySelector('b').textContent=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('dead',!e.alive);entry.el.querySelector('.life i').style.width=e.hp/e.max*100+'%';entry.el.querySelector('.tell').hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);}
+ const mobIds=new Set();for(const e of data.enemies){mobIds.add(e.id);let entry=enemies.get(e.id);if(!entry){const el=entity('enemy'+(e.boss?' boss':''));el.querySelector('b').textContent=e.name||'숲 다람쥐';el.addEventListener('pointerdown',ev=>{ev.stopPropagation();select(e.id);});$('enemyLayer').append(el);entry={el,art:el.querySelector('.sprite'),vx:e.x,vy:e.y};enemies.set(e.id,entry);}Object.assign(entry,e);entry.mmo=!!e.named||e.elite||state.zone!=='surface'||(e.skin??0)>0;entry.el.classList.toggle('mmo-monster',entry.mmo);entry.art.style.backgroundImage=entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=entry.mmo?'400% 400%':'';entry.el.querySelector('b').textContent=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('dead',!e.alive);entry.el.querySelector('.life i').style.width=e.hp/e.max*100+'%';entry.el.querySelector('.tell').hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);}
  for(const [id,e] of enemies)if(!mobIds.has(id)){e.el.remove();enemies.delete(id);}
  const peerIds=new Set();for(const p of data.players){if(p.id===state.id)continue;peerIds.add(p.id);let peer=peers.get(p.id);if(!peer){const el=entity('peer hero');layers(el);$('world').append(el);peer={el,art:el.querySelector('.sprite'),vx:p.x,vy:p.y};peers.set(p.id,peer);}Object.assign(peer,p);actorArt(peer.art,p);decorate(peer.el,p);peer.el.querySelector('b').textContent=p.name+' · '+jobName(p);peer.el.querySelector('.life i').style.width=p.hp/p.maxHp*100+'%';}
  for(const [id,p] of peers)if(!peerIds.has(id)){p.el.remove();peers.delete(id);}
@@ -150,7 +150,25 @@ function select(id){const e=enemies.get(id);if(!e?.alive)return;selected=id;npcI
 function startLocalAttack(skill=-1){
  const hero=$('hero');attackUntil=clock+.44;hero.dataset.attackStarted=String(clock);hero.dataset.attackSkill=String(skill);hero.dataset.attackVariant=String(attackSerial++%3);
 }
-function attack(skill=-1){if(paused||!connected)return;if(systems.duel?.accepted){command({type:'duelAttack',skill});startLocalAttack(skill);effect(state.job);return;}const ability=JOBS[state.job].skills[skill];if(ability&&['heal','partyHeal','guard','partyGuard'].includes(ability[4])){command({type:'attack',skill});startLocalAttack(skill);effect(ability[4].toLowerCase().includes('heal')?'heal':'guard');return;}let e=enemies.get(selected);if(!e?.alive)e=[...enemies.values()].filter(e=>e.alive&&distance(view,e)<stats(state).range).sort((a,b)=>distance(a,view)-distance(b,view))[0];if(!e){toast('다람쥐를 선택해 주세요.');return;}selected=e.id;if(distance(state,e)>stats(state).range){go(e.x,e.y);toast('공격 범위까지 이동합니다.');return;}command({type:'attack',skill,target:e.id});startLocalAttack(skill);headingX=e.x-view.x;headingY=e.y-view.y;const pose=headingPose(headingX,headingY,face,flip);face=pose.row;flip=pose.mirror;path=[];combatContact(state.job,skill,e);if(skill>=0)effect(state.job);hud();}
+function attack(skill=-1){
+ if(paused||!connected)return;
+ if(systems.duel?.accepted){
+  const other=systems.duel.players.find(id=>id!==state.id),target=peers.get(other);
+  command({type:'duelAttack',skill});startLocalAttack(skill);
+  if(skill>=0)skillEffect(state.job,skill,target,view);else if(target)combatContact(state.job,-1,target,view);
+  return;
+ }
+ const ability=JOBS[state.job].skills[skill];
+ if(ability&&['heal','partyHeal','guard','partyGuard'].includes(ability[4])){
+  command({type:'attack',skill});startLocalAttack(skill);skillEffect(state.job,skill,null,view);return;
+ }
+ let e=enemies.get(selected);if(!e?.alive)e=[...enemies.values()].filter(e=>e.alive&&distance(view,e)<stats(state).range).sort((a,b)=>distance(a,view)-distance(b,view))[0];
+ if(!e){toast('공격할 몹을 선택해 주세요.');return;}selected=e.id;
+ if(distance(state,e)>stats(state).range){go(e.x,e.y);toast('공격 범위까지 이동합니다.');return;}
+ command({type:'attack',skill,target:e.id});startLocalAttack(skill);headingX=e.x-view.x;headingY=e.y-view.y;
+ const pose=headingPose(headingX,headingY,face,flip);face=pose.row;flip=pose.mirror;path=[];
+ if(skill>=0)skillEffect(state.job,skill,e,view);else combatContact(state.job,-1,e,view);hud();
+}
 function impact(target,job='warrior'){
  if(!target)return;const el=document.createElement('div');el.className='combat-impact '+job;el.style.left=target.x+'px';el.style.top=(target.y-34)+'px';$('effects').append(el);
  target.el?.classList.add('contact-hit');setTimeout(()=>target.el?.classList.remove('contact-hit'),130);setTimeout(()=>el.remove(),420);
@@ -164,9 +182,45 @@ function combatContact(job,skill,target,origin=view){
  }
  setTimeout(()=>impact(target,job),job==='rogue'?105:165);
 }
-function effect(kind){const el=document.createElement('div');el.className='skill-effect '+kind;el.style.left=view.x+'px';el.style.top=view.y+'px';$('effects').append(el);setTimeout(()=>el.remove(),650);}
+function fxNode(cls,pos,duration=900,html=''){
+ const el=document.createElement('div');el.className='skillfx '+cls;el.style.left=(pos?.x??view.x)+'px';el.style.top=(pos?.y??view.y)+'px';el.innerHTML=html;$('effects').append(el);setTimeout(()=>el.remove(),duration);return el;
+}
+function fxTarget(id){return enemies.get(id)||peers.get(id)||(id===state.id?{x:view.x,y:view.y,el:$('hero')}:null);}
+function fxProjectile(cls,origin,target,duration=320){
+ if(!target)return fxNode(cls,origin,650);
+ const el=fxNode(cls+' projectile',origin,duration+260),dx=target.x-origin.x,dy=(target.y-38)-(origin.y-48);
+ const anim=el.animate([{transform:'translate(-50%,-50%) scale(.45)',opacity:.75},{transform:`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(1.15)`,opacity:1}],{duration,easing:'cubic-bezier(.17,.7,.25,1)',fill:'forwards'});
+ anim.onfinish=()=>{el.classList.add('arrived');impact(target,cls.includes('rogue')?'rogue':cls.includes('healer')?'healer':cls.includes('mage')?'mage':'warrior');setTimeout(()=>el.remove(),220);};return el;
+}
+function fxLine(cls,origin,target,duration=650){
+ if(!target)return fxNode(cls,origin,duration);
+ const dx=target.x-origin.x,dy=target.y-origin.y,len=Math.hypot(dx,dy),ang=Math.atan2(dy,dx)*180/Math.PI,el=fxNode(cls+' line',origin,duration);
+ el.style.width=len+'px';el.style.transform=`translate(0,-50%) rotate(${ang}deg)`;return el;
+}
+function skillEffect(job,skill,target,origin=view){
+ const key=job+':'+skill,o={x:origin.x,y:origin.y-20},t=target?{x:target.x,y:target.y-28}:o;
+ switch(key){
+  case 'warrior:0': fxNode('warrior spin',o,650,'<i></i><i></i>');if(target)setTimeout(()=>impact(target,'warrior'),190);break;
+  case 'warrior:1': fxNode('warrior fortress',o,1000,'<i></i>');break;
+  case 'warrior:2': fxNode('warrior smash',t,700,'<i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'warrior'),120);break;
+  case 'warrior:3': fxNode('warrior storm',o,1000,'<i></i><i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'warrior'),260);break;
+  case 'rogue:0': fxNode('rogue flurry',t,720,'<i></i><i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'rogue'),110);break;
+  case 'rogue:1': fxLine('rogue drain',t,o,850);fxNode('rogue blood',t,760,'<i></i>');if(target)setTimeout(()=>impact(target,'rogue'),120);break;
+  case 'rogue:2': fxLine('rogue shadowdash',o,t,520);fxNode('rogue shadowhit',t,580,'<i></i><i></i>');if(target)setTimeout(()=>impact(target,'rogue'),90);break;
+  case 'rogue:3': fxNode('rogue moon',t,900,'<i></i>');if(target)setTimeout(()=>impact(target,'rogue'),210);break;
+  case 'mage:0': fxProjectile('mage fireball',o,target,330);break;
+  case 'mage:1': fxNode('mage frost',t,950,'<i></i><i></i><i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'mage'),230);break;
+  case 'mage:2': fxNode('mage thunderstorm',t,1100,'<i></i><i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'mage'),300);break;
+  case 'mage:3': fxNode('mage judgment',t,1250,'<i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'mage'),360);break;
+  case 'healer:0': fxProjectile('healer holybolt',o,target,370);break;
+  case 'healer:1': fxNode('healer breath',o,1050,'<i></i><i></i><i></i><i></i><i></i>');break;
+  case 'healer:2': fxNode('healer barrier',o,1250,'<i></i><i></i>');break;
+  case 'healer:3': fxNode('healer lotus',o,1350,'<i></i><i></i><i></i><i></i><i></i><i></i>');break;
+  default: fxNode(job+' generic',target||o,650);
+ }
+}
 function makeSkills(){$('skillbar').replaceChildren();JOBS[state.job].skills.forEach((s,i)=>{const b=document.createElement('button');b.id='skill'+i;b.innerHTML=`<b>${s[0]}</b><small>Lv.${s[1]}</small>`;b.onclick=()=>attack(i);$('skillbar').append(b);});}
-function hud(){const st=stats(state),t=now();$('playerName').textContent=state.name||'준자';$('level').textContent='Lv.'+state.level+' '+jobName(state);$('hpText').textContent=Math.ceil(state.hp)+' / '+st.hp;$('hpBar').style.width=state.hp/st.hp*100+'%';$('expBar').style.width=Math.min(100,state.exp/needXp(state.level)*100)+'%';$('expText').textContent='EXP '+state.exp+' / '+needXp(state.level);$('gold').textContent=state.gold.toLocaleString()+' G';$('zone').textContent=(state.zone==='surface'?(view.y>590?'다람쥐 숲':'준자마을'):ZONES[state.zone].name)+' · '+(state.channel||'');$('potionLabel').textContent=state.potions+'개';$('potionBtn').disabled=!connected||state.potions<=0;
+function hud(){const st=stats(state),t=now();$('playerName').textContent=state.name||'준자';$('level').textContent='Lv.'+state.level+' '+jobName(state);$('hpText').textContent=Math.ceil(state.hp)+' / '+st.hp;$('hpBar').style.width=state.hp/st.hp*100+'%';$('expBar').style.width=Math.min(100,state.exp/needXp(state.level)*100)+'%';$('expText').textContent='EXP '+state.exp+' / '+needXp(state.level);$('gold').textContent=state.gold.toLocaleString()+' G';$('zone').textContent=(state.zone==='surface'?(view.y>590?'준자마을 · 초원숲':'준자마을'):ZONES[state.zone].name)+' · '+(state.channel||'');$('potionLabel').textContent=state.potions+'개';$('potionBtn').disabled=!connected||state.potions<=0;
  const quests={available:['작은 다람쥐의 위협','촌장에게 첫 임무를 받아 주세요.','촌장 찾아가기'],active:['작은 다람쥐의 위협',`공동 처치 ${Math.min(10,state.questKills)} / 10 · 200 G, 물약 3개`,'숲으로 이동'],ready:['임무 완료','촌장에게 보상을 받아 주세요.','촌장에게 보고'],complete:['왕꼬리의 흔적','보스 임무를 수락해 주세요.','촌장 찾아가기'],bossActive:['숲의 수호자 왕꼬리','함께 왕꼬리 처치 · 희귀 장비 10%','보스 찾아가기'],bossReady:['보스 임무 완료','빛나는 무기 보상을 받아 주세요.','촌장에게 보고'],done:['준자마을의 수호자','Lv.99 → 1차 전직 · 정예·던전·일일 임무 도전','숲으로 이동']};const q=quests[state.quest];$('questTitle').textContent=q[0];$('questText').textContent=q[1];$('questAction').textContent=q[2];const e=enemies.get(selected);$('targetPanel').hidden=!e?.alive;if(e?.alive){$('targetName').textContent=e.name||'숲 다람쥐';$('targetRange').textContent=Math.round(distance(view,e)/24)+'m';$('targetHp').style.width=e.hp/e.max*100+'%';}
  $('attackBtn').disabled=paused||!connected||t<(systems.duel?.accepted?Math.max(systems.duel.start,systems.duel.next[state.id]||0):(state.nextAttack||0));$('attackLabel').textContent=systems.duel?.accepted?'대련 공격':e?.alive?distance(state,e)>st.range?'접근 후 공격':'공격 가능':'대상 선택';$('autoBtn').setAttribute('aria-pressed',String(auto));$('autoBtn').querySelector('small').textContent=auto?'ON':'OFF';$('contextBtn').hidden=!nearNpc;JOBS[state.job].skills.forEach((s,i)=>{const b=$('skill'+i);if(!b)return;const locked=state.level<s[1]||(i===3&&!state.rank),cd=Math.max(0,(systems.duel?.accepted?(systems.duel.cooldowns[state.id]?.[i]||0):(state.cooldowns?.[i]||0))-t);b.disabled=paused||!connected||locked||cd>0;b.querySelector('small').textContent=locked?(i===3?'승급 필요':'Lv.'+s[1]):cd>0?Math.ceil(cd)+'초':'준비';});
 }
@@ -195,13 +249,39 @@ function frame(time){const dt=Math.min(.05,(time-last)/1000||.016);last=time;clo
  if(attacking){const started=Number(hero.dataset.attackStarted)||attackUntil-.44;attackPose(hero,heroArt,face,flip,started,.44,state.job,Number(hero.dataset.attackSkill??-1),Number(hero.dataset.attackVariant||0),headingX,headingY);}
  else motion(hero,heroArt,len||auto||state.navMoving?'walk':'idle',face,flip,clock,0,headingX,headingY);
  hero.style.left=view.x+'px';hero.style.top=view.y+'px';hero.style.zIndex=Math.round(view.y);hero.classList.toggle('attacking',attacking);hero.classList.toggle('guarded',(state.guard||0)>now());
- for(const e of enemies.values()){const f=1-Math.exp(-15*dt);e.vx+=(e.x-e.vx)*f;e.vy+=(e.y-e.vy)*f;e.el.style.left=e.vx+'px';e.el.style.top=e.vy+'px';e.el.style.zIndex=Math.round(e.vy);sprite(e.art,e.tellAt?3:1+Math.floor(clock*7)%2,e.mmo?({stoneking:0,shadowking:1,dragon:2}[e.named]??3):(e.boss?1:0),e.mmo?4:2);}
- for(const p of peers.values()){const f=1-Math.exp(-13*dt);p.vx+=(p.x-p.vx)*f;p.vy+=(p.y-p.vy)*f;p.el.style.left=p.vx+'px';p.el.style.top=p.vy+'px';p.el.style.zIndex=Math.round(p.vy);p.el.classList.toggle('attacking',!!p.attacking);if(p.attacking){if(!p.localAttackStarted||clock-p.localAttackStarted>.55)p.localAttackStarted=clock;attackPose(p.el,p.art,p.face,p.flip,p.localAttackStarted,.44,p.job,p.attackSkill??-1,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)%3,p.dirX??0,p.dirY??0);}else{p.localAttackStarted=0;motion(p.el,p.art,p.moving?'walk':'idle',p.face,p.flip,clock,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)*.13,p.dirX??0,p.dirY??0);}}nearNpc=state.zone==='surface'?npcs.find(n=>distance(view,n)<115)||null:null;if(gatherIntent){const n=systems.nodes.find(n=>n.id===gatherIntent);if(n&&distance(state,n)<95){gatherIntent=null;command({type:'gather',node:n.id});}}if(npcIntent&&nearNpc?.id===npcIntent&&!path.length){const id=npcIntent;npcIntent=null;talk(id);}camera(false,dt);if(clock-hudAt>.1){hud();hudAt=clock;}}
+ for(const e of enemies.values()){const f=1-Math.exp(-15*dt);e.vx+=(e.x-e.vx)*f;e.vy+=(e.y-e.vy)*f;e.el.style.left=e.vx+'px';e.el.style.top=e.vy+'px';e.el.style.zIndex=Math.round(e.vy);sprite(e.art,e.tellAt?3:1+Math.floor(clock*7)%2,e.mmo?({stoneking:0,shadowking:1,dragon:2}[e.named]??e.skin??3):(e.boss?1:0),e.mmo?4:2);}
+ for(const p of peers.values()){
+  const f=1-Math.exp(-13*dt);p.vx+=(p.x-p.vx)*f;p.vy+=(p.y-p.vy)*f;p.el.style.left=p.vx+'px';p.el.style.top=p.vy+'px';p.el.style.zIndex=Math.round(p.vy);p.el.classList.toggle('attacking',!!p.attacking);
+  if(p.attacking){
+   if(!p.localAttackStarted||clock-p.localAttackStarted>.55){
+    p.localAttackStarted=clock;
+    const target=fxTarget(p.attackTarget),origin={x:p.vx,y:p.vy};
+    if((p.attackSkill??-1)>=0)skillEffect(p.job,p.attackSkill,target,origin);else if(target)combatContact(p.job,-1,target,origin);
+   }
+   attackPose(p.el,p.art,p.face,p.flip,p.localAttackStarted,.44,p.job,p.attackSkill??-1,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)%3,p.dirX??0,p.dirY??0);
+  }else{p.localAttackStarted=0;motion(p.el,p.art,p.moving?'walk':'idle',p.face,p.flip,clock,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)*.13,p.dirX??0,p.dirY??0);}
+ }nearNpc=state.zone==='surface'?npcs.find(n=>distance(view,n)<115)||null:null;if(gatherIntent){const n=systems.nodes.find(n=>n.id===gatherIntent);if(n&&distance(state,n)<95){gatherIntent=null;command({type:'gather',node:n.id});}}if(npcIntent&&nearNpc?.id===npcIntent&&!path.length){const id=npcIntent;npcIntent=null;talk(id);}
+ if(travelIntent){const portal=(TRAVEL_PORTALS[state.zone]||[]).find(p=>p.to===travelIntent);if(!portal)travelIntent=null;else if(distance(state,portal)<125){const to=travelIntent;travelIntent=null;path=[];command({type:'travel',zone:to});}}
+ camera(false,dt);if(clock-hudAt>.1){hud();hudAt=clock;}}
  requestAnimationFrame(frame);}
 const invite=new URL(location.href).searchParams.get('channel');if(invite&&/^[A-Za-z0-9가-힣_-]{2,16}$/.test(invite))$('channelInput').value=invite;if(innerWidth<600){$('quest').classList.add('collapsed');$('questToggle').textContent='+';}resize();makeSkills();requestAnimationFrame(frame);if(token)showSelection();
 window.__adventure={build:BUILD,snapshot:()=>({...state,systems:structuredClone(systems),connected,paused,auto,selected,peers:[...peers.values()].map(({id,name,x,y,job,equipment})=>({id,name,x,y,job,equipment})),enemies:[...enemies.values()].map(({id,x,y,hp,alive,boss})=>({id,x,y,hp,alive,boss}))})};
-function syncMMO(){const dungeon=state.zone!=='surface';$('world').dataset.zone=state.zone;$('elder').hidden=$('merchant').hidden=dungeon;$('portal').textContent=dungeon?ZONES[state.zone].name+' · 모험 메뉴로 귀환':'다람쥐 숲 ↓';const ids=new Set();for(const n of systems.nodes){ids.add(n.id);let el=resourceEls.get(n.id);if(!el){el=document.createElement('button');el.className='resource';el.dataset.node=n.id;el.onclick=e=>{e.stopPropagation();const n=el.node;if(n.readyAt>now()){toast('재생까지 '+Math.ceil(n.readyAt-now())+'초');return;}if(distance(state,n)>100){gatherIntent=n.id;go(n.x,n.y);toast(MATERIALS[n.material]+' 채집 지점으로 이동');}else command({type:'gather',node:n.id});};$('resourceLayer').append(el);resourceEls.set(n.id,el);}el.node=n;el.style.left=n.x+'px';el.style.top=n.y+'px';el.style.zIndex=Math.round(n.y);el.classList.toggle('depleted',n.readyAt>now());el.textContent=({wood:'🌳',stone:'🪨',ore:'⛏',crystal:'💎'})[n.material]+' '+MATERIALS[n.material]+(n.readyAt>now()?' · '+Math.ceil(n.readyAt-now())+'초':' · 채집');}for(const [id,el] of resourceEls)if(!ids.has(id)){el.remove();resourceEls.delete(id);}const active=systems.trade||systems.duel;$('socialAlert').hidden=!active;$('socialAlert').textContent=active?(systems.trade?'거래 요청·진행 확인':'PVP 대련 확인'):'';const d=systems.duel;$('duelHud').hidden=!d?.accepted;if(d?.accepted){const other=d.players.find(id=>id!==state.id);$('duelHud').textContent=(now()<d.start?'대련 시작 '+Math.ceil(d.start-now())+'초':'대련 중')+' · 나 '+d.health[state.id]+' / 상대 '+d.health[other];}if(mmoPanel==='trade')renderTradeSummary();if(mmoPanel==='duel')renderDuelSummary();}
-function adventureWindow(){const mats=Object.entries(MATERIALS).map(([k,n])=>n+' '+state.materials[k]).join(' · ');modal('모험 · 채집 · 던전',`<p>Lv.${state.level} / ${LEVEL_CAP} · ${jobName(state)}</p><p>${mats}</p><p>숲의 나무·돌·광석을 눌러 채집하세요. 개인별 재생 시간은 60·90·120초입니다. 던전 수정은 10분마다 채집하고 마수도 20% 확률로 수정을 줍니다.</p><p>일반 몹 30초 · 정예 3분 · 수련 보스 5분 재등장. 정예는 강한 대신 경험치·골드·장비 보상이 높습니다.</p>`,[['일일 임무',dailyWindow],['제작',craftWindow],['네임드 등장 시간',bossWindowUI],...Object.entries(ZONES).map(([id,z])=>[z.name+' · Lv.'+z.level,()=>{gatherIntent=null;command({type:'travel',zone:id});}])]);}
+function syncMMO(){
+ const dungeon=state.zone!=='surface';$('world').dataset.zone=state.zone;$('elder').hidden=$('merchant').hidden=dungeon;
+ $('portal').textContent=ZONES[state.zone]?.name||state.zone;
+ const activePortals=new Set();
+ for(const p of TRAVEL_PORTALS[state.zone]||[]){
+  activePortals.add(p.to);let el=portalEls.get(p.to);
+  if(!el){el=document.createElement('button');el.className='world-portal';el.onclick=e=>{e.stopPropagation();const p=el.portal,z=ZONES[p.to];if(state.level<z.level){toast('입장 레벨 Lv.'+z.level+' 필요');return;}if(distance(state,p)>125){travelIntent=p.to;go(p.x,p.y);toast(p.label+' 포탈로 이동합니다.');}else command({type:'travel',zone:p.to});};$('world').append(el);portalEls.set(p.to,el);}
+  el.portal=p;el.style.left=p.x+'px';el.style.top=p.y+'px';el.dataset.to=p.to;el.innerHTML='<i></i><b>'+esc(p.label)+'</b><small>Lv.'+ZONES[p.to].level+' · 이동</small>';el.disabled=false;
+ }
+ for(const [id,el] of portalEls)if(!activePortals.has(id)){el.remove();portalEls.delete(id);}
+ const ids=new Set();for(const n of systems.nodes){ids.add(n.id);let el=resourceEls.get(n.id);if(!el){el=document.createElement('button');el.className='resource';el.dataset.node=n.id;el.onclick=e=>{e.stopPropagation();const n=el.node;if(n.readyAt>now()){toast('재생까지 '+Math.ceil(n.readyAt-now())+'초');return;}if(distance(state,n)>100){gatherIntent=n.id;go(n.x,n.y);toast(MATERIALS[n.material]+' 채집 지점으로 이동');}else command({type:'gather',node:n.id});};$('resourceLayer').append(el);resourceEls.set(n.id,el);}el.node=n;el.style.left=n.x+'px';el.style.top=n.y+'px';el.style.zIndex=Math.round(n.y);el.classList.toggle('depleted',n.readyAt>now());el.textContent=({wood:'🌳',stone:'🪨',ore:'⛏',crystal:'💎'})[n.material]+' '+MATERIALS[n.material]+(n.readyAt>now()?' · '+Math.ceil(n.readyAt-now())+'초':' · 채집');}for(const [id,el] of resourceEls)if(!ids.has(id)){el.remove();resourceEls.delete(id);}const active=systems.trade||systems.duel;$('socialAlert').hidden=!active;$('socialAlert').textContent=active?(systems.trade?'거래 요청·진행 확인':'PVP 대련 확인'):'';const d=systems.duel;$('duelHud').hidden=!d?.accepted;if(d?.accepted){const other=d.players.find(id=>id!==state.id);$('duelHud').textContent=(now()<d.start?'대련 시작 '+Math.ceil(d.start-now())+'초':'대련 중')+' · 나 '+d.health[state.id]+' / 상대 '+d.health[other];}if(mmoPanel==='trade')renderTradeSummary();if(mmoPanel==='duel')renderDuelSummary();}
+function adventureWindow(){
+ const mats=Object.entries(MATERIALS).map(([k,n])=>n+' '+state.materials[k]).join(' · ');
+ const route=Object.entries(ZONES).map(([id,z])=>'<p><b>'+esc(z.name)+'</b> · Lv.'+z.level+(id===state.zone?' · 현재 지역':'')+'</p>').join('');
+ modal('모험 · 월드맵',`<p>Lv.${state.level} / ${LEVEL_CAP} · ${jobName(state)}</p><p>${mats}</p><p>지역 이동은 필드의 빛나는 포탈을 직접 찾아 이동합니다. 각 지역은 일반몹 16마리, 정예 3마리, 지역 보스가 분산 배치됩니다.</p>${route}`,[['일일 임무',dailyWindow],['제작',craftWindow],['네임드 등장 시간',bossWindowUI],['현재 지역 포탈 찾기',()=>{const p=(TRAVEL_PORTALS[state.zone]||[]).filter(p=>state.level>=ZONES[p.to].level).sort((a,b)=>distance(state,a)-distance(state,b))[0];if(p){travelIntent=p.to;go(p.x,p.y);toast(p.label+' 포탈로 이동합니다.');}}]]);
+}
 function dailyWindow(){const d=systems.daily||{hunt:0,gather:0,dungeon:0,claimed:[]};modal('일일 임무 · '+(d.day||''),'<p>한국 시간 자정에 갱신됩니다. 임무는 자동 집계하고 촌장 가까이에서 보상받습니다.</p>'+Object.entries(DAILY_TASKS).map(([id,r])=>`<p><b>${r.name}</b> ${d[id]} / ${r.goal} · ${d.claimed.includes(id)?'수령 완료':r.gold+' G, EXP '+(r.xp+state.level*10)}</p>`).join(''),[['촌장 찾아가기',()=>seekNpc('elder')],...Object.entries(DAILY_TASKS).filter(([id,r])=>d[id]>=r.goal&&!d.claimed.includes(id)).map(([id,r])=>[r.name+' 보상 받기',()=>command({type:'dailyClaim',task:id})])]);}
 function craftWindow(){modal('제작 공방',`<p>상인 가까이에서 제작합니다. 보유 ${state.gold.toLocaleString()} G</p><p>${Object.entries(MATERIALS).map(([k,n])=>n+' '+state.materials[k]).join(' · ')}</p>`+Object.entries(RECIPES).map(([id,r])=>`<div class="recipe"><b>${esc(r.name)} · Lv.${r.level}</b><p>${Object.entries(r.materials).map(([k,n])=>MATERIALS[k]+' '+state.materials[k]+'/'+n).join(' · ')} · ${r.gold.toLocaleString()} G</p><button data-craft="${id}" ${state.level<r.level||state.gold<r.gold||Object.entries(r.materials).some(([k,n])=>state.materials[k]<n)?'disabled':''}>${esc(r.name)} 제작</button></div>`).join(''),[['상인 찾아가기',()=>seekNpc('merchant')]]);document.querySelectorAll('[data-craft]').forEach(b=>b.onclick=async()=>{await command({type:'craft',recipe:b.dataset.craft});closeModal();});}
 function bossWindowUI(){modal('네임드 · 한국 시간',`<p>각 등장 회차는 1시간 동안 열립니다. 처치되면 다음 회차까지 기다립니다. 서버가 쉬고 있어도 해당 시간에 접속하면 등장합니다.</p>${systems.bosses.map(b=>`<div class="recipe"><b>${esc(b.name)} · Lv.${b.level}</b><p>${ZONES[b.zone].name} · ${b.hours.map(h=>String(h).padStart(2,'0')+':00').join(' / ')} · 하루 ${b.hours.length}회</p><p>${b.active?'등장 시간 진행 중':'다음 등장 '+new Date(b.next*1000).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})} · 전설 장비 1%</p></div>`).join('')}<p>유효한 공격·회복 참여자에게 개인별 보상. 같은 회차 보상은 채널 변경·재접속으로 중복 수령할 수 없습니다. 전설 장비는 Lv.99부터 착용합니다.</p>`,[['모험 메뉴',adventureWindow]]);}
