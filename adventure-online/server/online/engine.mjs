@@ -2,7 +2,7 @@ import {randomUUID,randomInt} from 'node:crypto';
 import {clamp,distance,walkable,pathfind} from '../../image-prototype/core.js';
 import {profile,JOBS,ITEMS,stats,gainXp,rollLoot,equip,claim,RARE_POOL,CRYSTAL_POOL,RUIN_POOL,LEGENDARY_POOL,MYTHIC_POOL,RAID_POOL,itemSellPrice,promotionSkillLearned,promotionSkillKey,MAX_ENHANCE,enhanceChance,enhancementLevel,basicAttackDelay,skillCastDelay,skillMpCost} from '../../image-prototype/catalog.js';
 import {CHANNEL_CAP,WORLD_CAP,LEVEL_CAP,NAMED,bossWindow,PROMOTIONS,PROMOTION_MATERIALS,ZONES,QUICK_CHATS} from '../../image-prototype/mmo-data.js';
-import {initSystems,mmoAction,tickSystems,snapshotSystems,progress,removeSocial,socialId} from './systems.mjs';
+import {initSystems,mmoAction,tickSystems,snapshotSystems,progress,removeSocial,socialId,partyOf,partyMembers} from './systems.mjs';
 const canAggro=(p,e)=>{if(e.tags?.has(p.id))return true;const gap=(e.level||1)-(p.state.level||1);if(e.named)return gap<=10;if(e.boss)return gap<=5;if(e.elite)return gap<=4;return gap<=6;};
 const enemyDamage=e=>Math.max(2,Math.round(Number.isFinite(e.damage)?e.damage:e.boss?18+e.level*4.2:e.elite?8+e.level*3.2:4+e.level*2.2));
 export class World{
@@ -69,7 +69,7 @@ export class World{
   const now=this.now(),s=p.state,job=JOBS[s.job],st=stats(s);if(now<p.nextAttack)return;
   const skill=index>=0?job.skills[index]:null,spec=skill?.[5]||{},rankReq=Number(spec.rank)||0,mpCost=skillMpCost(s,skill);if(index>=0&&(!skill||s.level<skill[1]||s.rank<rankReq||!promotionSkillLearned(s,rankReq)||now<p.cooldowns[index])){if(index>=0&&rankReq>=3&&s.rank>=rankReq&&!promotionSkillLearned(s,rankReq)&&!p.auto)this.event(p,'전직 재료 100개를 모아 촌장에게 스킬을 전수받으세요.');return;}if(skill&&s.mp<mpCost){if(!p.auto)this.event(p,'마나가 부족합니다.');return;}
   if(skill&&['heal','partyHeal','guard','partyGuard'].includes(skill[4])){
-   const radius=spec.radius||300,friends=[...this.players.values()].filter(q=>q.channel===p.channel&&q.state.zone===s.zone&&distance(q.state,s)<radius);
+   const radius=spec.radius||300,party=partyOf(this,p),friends=(party?partyMembers(this,p,{sameZone:true}):[p]).filter(q=>distance(q.state,s)<radius);
    if(skill[4]==='guard'){p.guard=now+(spec.guard||7);p.guardFactor=spec.guardFactor??.4;}
    else if(skill[4]==='partyGuard'){for(const q of friends){q.guard=now+(spec.guard||7);q.guardFactor=spec.guardFactor??.5;this.dirty(q);}}
    else for(const q of friends){
@@ -81,7 +81,7 @@ export class World{
    s.mp=Math.max(0,s.mp-mpCost);this.dirty(p);p.cooldowns[index]=now+skill[2];p.nextAttack=now+skillCastDelay(s,skill);p.attackSkill=index;p.attackTarget=null;p.attackUntil=now+Math.min(.72,skillCastDelay(s,skill)*.72);this.event(p,skill[0]+' 사용','skill');return;
   }
   const mobs=this.channel(p.channel,p.state.zone);let e=mobs.find(e=>e.id===targetId&&e.alive);if(!e)e=mobs.filter(e=>e.alive&&distance(s,e)<=st.range).sort((a,b)=>distance(s,a)-distance(s,b))[0];if(!e||distance(s,e)>st.range)return;
-  const raidCfg=e.named?NAMED.find(b=>b.id===e.named):null;if(raidCfg?.raid){const nearby=[...this.players.values()].filter(q=>q.channel===p.channel&&q.state.zone===s.zone&&q.state.y>590&&distance(q.state,e)<720);if(nearby.length<(raidCfg.minParty||2)){if(now-(p.lastRaidWarning||0)>3){p.lastRaidWarning=now;this.event(p,raidCfg.name+' 레이드 · 최소 '+(raidCfg.minParty||2)+'명이 근처에 있어야 피해를 줄 수 있습니다.','rare');}return;}}
+  const raidCfg=e.named?NAMED.find(b=>b.id===e.named):null;if(raidCfg?.raid){const party=partyOf(this,p),nearby=(party?partyMembers(this,p,{sameZone:true}):[p]).filter(q=>q.state.y>590&&distance(q.state,e)<720);if(!party||nearby.length<(raidCfg.minParty||2)){if(now-(p.lastRaidWarning||0)>3){p.lastRaidWarning=now;this.event(p,raidCfg.name+' 레이드 · 실제 파티 '+(raidCfg.minParty||2)+'명이 보스 근처에 모여야 합니다.','rare');}return;}}
   let targets=[e];
   if(spec.chain){targets=mobs.filter(t=>t.alive&&distance(t,e)<(spec.chainRadius||240)).sort((a,b)=>distance(a,e)-distance(b,e)).slice(0,spec.chain);}
   else if(spec.radius){const center=spec.center==='self'?s:e;targets=mobs.filter(t=>t.alive&&distance(t,center)<spec.radius);}
