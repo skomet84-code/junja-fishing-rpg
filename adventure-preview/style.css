@@ -768,3 +768,14 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .entity.hero[data-job='rogue'][data-rank='2']>.gear-layers:after{background:linear-gradient(150deg,#100d19ee,#77269acc,#20102dee);box-shadow:0 0 14px #b149ef}
 .entity.hero[data-job='rogue'][data-rank='3']>.gear-layers:after{background:linear-gradient(150deg,#09070fee,#8f1c9add,#32104bee);box-shadow:0 0 18px #e045ff}
 .character-preview.rogue.promoted-preview:before{content:'';position:absolute;left:29%;top:10%;width:42%;height:30%;z-index:2;clip-path:polygon(18% 0,82% 0,100% 48%,76% 100%,24% 100%,0 48%);background:linear-gradient(150deg,#171222dd,#6f2a88bb,#1b1226dd);box-shadow:0 0 8px #a654e8;pointer-events:none}
+
+/* Smooth movement + touch targeting */
+#world{will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.entity{will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.entity>.sprite{backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.enemy{touch-action:none}
+.enemy:before{content:'';position:absolute;inset:-18px;border-radius:50%;pointer-events:auto}
+.world-route{max-height:210px;overflow:auto;padding:6px 0;margin:8px 0;border-top:1px solid #ffffff18;border-bottom:1px solid #ffffff18}
+.world-route .route-row{margin:5px 0;padding:5px 8px;border-radius:8px;background:#0b1b1488}
+.world-route .route-row.current{background:#5d562d55;color:#ffe5a3;border:1px solid #ccb77055}
+@media(max-width:600px){.enemy:before{inset:-24px}.shadow{filter:blur(1.5px)}#hint{max-width:72vw;white-space:normal;text-align:center;line-height:1.25}}
