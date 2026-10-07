@@ -1,7 +1,7 @@
 import {normalize} from './core.js';
 import {EXTRA_ITEMS,LEVEL_CAP,MMO_XP,MMO_HP} from './mmo-data.js';
 export {MMO_XP as needXp} from './mmo-data.js';
-export const BUILD='20261007-production1';
+export const BUILD='20261007-spritehotfix1';
 export const JOBS={
  warrior:{name:'전사',title:'검호',role:'근접 · 방어',art:'hero',color:'#efbd68',attack:3,def:4,range:115,mana:70,speed:1,attackDelay:.56,skills:[['회전베기',2,4,1.9,'area',{mp:8,mpPct:.10,cast:.55,center:'self',radius:175,knockback:38}],['철벽',4,8,0,'guard',{mp:12,mpPct:.12,cast:.35,guard:8,guardFactor:.28}],['강타',8,7,3.4,'hit',{mp:14,mpPct:.15,cast:.8,stun:1.1,knockback:55}],['검기폭풍',10,14,2.8,'area',{mp:20,mpPct:.22,cast:1.15,center:'target',radius:245,hits:3,knockback:24}]]},
  rogue:{name:'도적',title:'그림자',role:'기습 · 연속공격',art:'rogue',color:'#e791a4',attack:5,def:1,range:120,mana:80,speed:1.12,attackDelay:.50,skills:[['쌍검난무',2,3,2.45,'hit',{mp:7,mpPct:.09,cast:.45,hits:4}],['흡혈검',4,7,1.8,'drain',{mp:11,mpPct:.13,cast:.55,leech:.6}],['그림자 일격',8,9,3.7,'hit',{mp:14,mpPct:.17,cast:.7,execute:.35,executeBonus:1.45,stun:.55}],['월영참',10,14,3.1,'area',{mp:19,mpPct:.22,cast:.95,center:'target',radius:190,slow:2.5}]]},
