@@ -105,8 +105,8 @@ export const NAMED=[
  {id:'stoneking',name:'바위 군주',hours:[8,18],zone:'grove',level:35,hp:18000,damage:75,x:1085,y:1710},
  {id:'shadowking',name:'그림자 군왕',hours:[12,20],zone:'abyss',level:120,hp:130000,damage:280,x:1080,y:1760},
  {id:'dragon',name:'천룡 · 일일 레이드',hours:[22],zone:'celestial',level:240,hp:2500000,damage:1150,x:1060,y:1720,raid:true,minParty:3,dropTier:'high'},
- {id:'voidlord',name:'공허제 · 아르카논',hours:[21],zone:'void',level:360,hp:8000000,damage:2200,x:1060,y:1720,raid:true,minParty:3,dropTier:'raid'},
- {id:'originGod',name:'태초신 · 카이로스',hours:[23],zone:'origin',level:460,hp:18000000,damage:3600,x:1060,y:1720,raid:true,minParty:4,dropTier:'raid'},
+ {id:'voidlord',name:'공허제 · 아르카논',hours:[21],zone:'void',level:380,hp:8000000,damage:2200,x:1060,y:1720,raid:true,minParty:3,dropTier:'raid'},
+ {id:'originGod',name:'태초신 · 카이로스',hours:[23],zone:'origin',level:500,hp:18000000,damage:3600,x:1060,y:1720,raid:true,minParty:4,dropTier:'raid'},
 ];
 export const DAILY_TASKS={hunt:{name:'숲의 토벌',goal:20,gold:600,xp:600},gather:{name:'재료 수집',goal:12,gold:400,xp:400},dungeon:{name:'던전 토벌',goal:5,gold:1200,xp:1600}};
 export function koreaDay(seconds){return new Date((seconds+9*3600)*1000).toISOString().slice(0,10);}
