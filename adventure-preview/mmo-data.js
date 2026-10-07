@@ -27,17 +27,17 @@ export const ZONES={
  celestial:{name:'천룡의 유적',level:200,theme:'celestial'}
 };
 export const TRAVEL_PORTALS={
- surface:[{to:'grove',x:768,y:910,label:'깊은 다람쥐숲'}],
- grove:[{to:'surface',x:768,y:500,label:'준자마을'},{to:'cave',x:768,y:910,label:'수정 동굴'}],
- cave:[{to:'grove',x:768,y:500,label:'깊은 다람쥐숲'},{to:'ruins',x:768,y:910,label:'붉은 폐허'}],
- ruins:[{to:'cave',x:768,y:500,label:'수정 동굴'},{to:'abyss',x:768,y:910,label:'그림자 심연'}],
- abyss:[{to:'ruins',x:768,y:500,label:'붉은 폐허'},{to:'celestial',x:768,y:910,label:'천룡의 유적'}],
- celestial:[{to:'abyss',x:768,y:500,label:'그림자 심연'}]
+ surface:[{to:'grove',x:768,y:1870,label:'깊은 다람쥐숲'}],
+ grove:[{to:'surface',x:768,y:705,label:'준자마을'},{to:'cave',x:768,y:1870,label:'수정 동굴'}],
+ cave:[{to:'grove',x:768,y:705,label:'깊은 다람쥐숲'},{to:'ruins',x:768,y:1870,label:'붉은 폐허'}],
+ ruins:[{to:'cave',x:768,y:705,label:'수정 동굴'},{to:'abyss',x:768,y:1870,label:'그림자 심연'}],
+ abyss:[{to:'ruins',x:768,y:705,label:'붉은 폐허'},{to:'celestial',x:768,y:1870,label:'천룡의 유적'}],
+ celestial:[{to:'abyss',x:768,y:705,label:'그림자 심연'}]
 };
 export const NAMED=[
- {id:'stoneking',name:'바위 군주',hours:[8,18],zone:'grove',level:35,hp:18000,damage:75,x:1090,y:820},
- {id:'shadowking',name:'그림자 군왕',hours:[12,20],zone:'abyss',level:120,hp:130000,damage:280,x:1080,y:870},
- {id:'dragon',name:'천룡 · 일일 최상급',hours:[22],zone:'celestial',level:220,hp:350000,damage:550,x:1060,y:800},
+ {id:'stoneking',name:'바위 군주',hours:[8,18],zone:'grove',level:35,hp:18000,damage:75,x:1085,y:1710},
+ {id:'shadowking',name:'그림자 군왕',hours:[12,20],zone:'abyss',level:120,hp:130000,damage:280,x:1080,y:1760},
+ {id:'dragon',name:'천룡 · 일일 최상급',hours:[22],zone:'celestial',level:220,hp:350000,damage:550,x:1060,y:1720},
 ];
 export const DAILY_TASKS={hunt:{name:'숲의 토벌',goal:20,gold:600,xp:600},gather:{name:'재료 수집',goal:12,gold:400,xp:400},dungeon:{name:'던전 토벌',goal:5,gold:1200,xp:1600}};
 export function koreaDay(seconds){return new Date((seconds+9*3600)*1000).toISOString().slice(0,10);}
