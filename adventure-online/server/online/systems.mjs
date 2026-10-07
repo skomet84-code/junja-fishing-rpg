@@ -13,7 +13,7 @@ export const NODES=[
 ];
 export function daily(p,now){if(p.state.daily?.day!==koreaDay(now))p.state.daily={day:koreaDay(now),hunt:0,gather:0,dungeon:0,claimed:[]};return p.state.daily;}
 export function progress(w,p,key,n=1){const d=daily(p,w.now());d[key]=Math.min(DAILY_TASKS[key].goal,d[key]+n);}
-function clearMotion(p){p.navPath=[];p.input={x:0,y:0};p.auto=false;p.autoTarget=null;p.combatTarget=null;p.combatSkill=-1;}
+function clearMotion(p){p.navPath=[];p.input={x:0,y:0};p.auto=false;p.autoTarget=null;p.combatTarget=null;p.combatSkill=-1;p.attackTarget=null;p.attackSkill=-1;p.attackUntil=0;}
 function same(a,b){return a&&b&&a.channel===b.channel&&a.state.zone===b.state.zone;}
 function close(a,b){return same(a,b)&&distance(a.state,b.state)<=220;}
 export function initSystems(w){w.trades=new Map();w.duels=new Map();w.nextSocial=new Map();}
