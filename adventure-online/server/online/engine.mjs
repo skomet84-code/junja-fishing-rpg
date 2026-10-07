@@ -15,10 +15,14 @@ export class World{
     abyss:{tier:100,names:['심연 사냥꾼','그림자 악귀','공허의 눈'],elite:'정예 · 암흑 추적자',boss:'심연 파수왕'},
     celestial:{tier:200,names:['천룡 수호병','별빛 정령','청룡의 혼'],elite:'정예 · 천계 무장',boss:'천룡 수문장'}
    }[zone]||{tier:1,names:['마수'],elite:'정예 마수',boss:'수호자'};
-   const spots=[[410,680],[545,710],[690,685],[835,720],[980,680],[1120,735],[380,790],[520,830],[675,800],[830,850],[980,805],[1135,855],[455,910],[665,900],[875,915],[1085,905]];
-   const mobs=spots.map(([x,y],id)=>{const level=cfg.tier+Math.floor(id/6)*2,name=cfg.names[id%cfg.names.length];return {id,x,y,homeX:x,homeY:y,zone,level,name,skin:id%4,hp:Math.round((70+level*9)*(1+id*.025)),max:Math.round((70+level*9)*(1+id*.025)),boss:false,alive:true,next:0,tellAt:0,respawn:0,slow:0,tags:new Map()};});
-   for(const [j,[x,y]] of [[0,[365,885]],[1,[1180,690]],[2,[1040,920]]]){const id=40+j,level=cfg.tier+10+j*5;const hp=level*155;mobs.push({id,x,y,homeX:x,homeY:y,zone,level,name:cfg.elite,skin:(j+2)%4,hp,max:hp,elite:true,boss:false,alive:true,next:0,tellAt:0,respawn:0,slow:0,tags:new Map()});}
-   const bossLevel=cfg.tier+18,bossHp=Math.max(900,bossLevel*180);mobs.push({id:60,x:760,y:835,homeX:760,homeY:835,zone,level:bossLevel,name:cfg.boss,skin:3,hp:bossHp,max:bossHp,boss:true,alive:true,next:0,tellAt:0,respawn:0,slow:0,tags:new Map()});
+   const spots=[
+    [360,690],[515,735],[675,690],[845,740],[1010,695],[1170,760],[430,900],[690,920],
+    [360,1195],[520,1270],[690,1205],[855,1300],[1030,1215],[1180,1370],[470,1440],[785,1435],
+    [340,1685],[510,1760],[675,1695],[835,1785],[1010,1705],[1180,1820],[505,1885],[940,1880]
+   ];
+   const mobs=spots.map(([x,y],id)=>{const sector=Math.floor(id/8),level=cfg.tier+sector*3+Math.floor((id%8)/4),name=cfg.names[id%cfg.names.length],hp=Math.round((72+level*10)*(1+sector*.18+(id%8)*.018));return {id,x,y,homeX:x,homeY:y,zone,level,name,skin:(id+sector)%4,hp,max:hp,boss:false,alive:true,next:0,tellAt:0,respawn:0,slow:0,tags:new Map()};});
+   for(const [j,[x,y]] of [[0,[1160,930]],[1,[350,1400]],[2,[1160,1480]],[3,[360,1870]]]){const id=40+j,level=cfg.tier+10+j*5,hp=level*165;mobs.push({id,x,y,homeX:x,homeY:y,zone,level,name:cfg.elite,skin:(j+2)%4,hp,max:hp,elite:true,boss:false,alive:true,next:0,tellAt:0,respawn:0,slow:0,tags:new Map()});}
+   const bossLevel=cfg.tier+20,bossHp=Math.max(1100,bossLevel*195);mobs.push({id:60,x:760,y:1815,homeX:760,homeY:1815,zone,level:bossLevel,name:cfg.boss,skin:3,hp:bossHp,max:bossHp,boss:true,alive:true,next:0,tellAt:0,respawn:0,slow:0,tags:new Map()});
    for(const [i,b] of NAMED.entries())if(b.zone===zone)mobs.push({id:80+i,x:b.x,y:b.y,homeX:b.x,homeY:b.y,zone,level:b.level,name:b.name,hp:b.hp,max:b.hp,damage:b.damage,boss:true,named:b.id,alive:false,next:0,tellAt:0,respawn:0,slow:0,tags:new Map(),window:''});
    this.channels.set(key,mobs);
   }return this.channels.get(key);
@@ -71,7 +75,7 @@ export class World{
   else if(p&&d<=75&&now>=e.next)e.tellAt=now+(e.boss?1.1:.75);
   else if(p&&d>70){const speed=(e.boss?55:70)*dt*(e.slow>now?.4:1);e.x+=(p.state.x-e.x)/d*speed;e.y+=(p.state.y-e.y)/d*speed;}
   else{const dx=e.homeX+Math.sin(now*.45+e.id)*35-e.x,dy=e.homeY+Math.cos(now*.35+e.id)*20-e.y,d=Math.hypot(dx,dy);if(d>3){const speed=Math.min(24*dt,d);e.x+=dx/d*speed;e.y+=dy/d*speed;}}
-  e.x=clamp(e.x,345,1190);e.y=clamp(e.y,640,925);
+  e.x=clamp(e.x,265,1270);e.y=clamp(e.y,625,1930);
  }}
  }
  snapshot(p){const now=this.now();return {now,...snapshotSystems(this,p),self:{...structuredClone(p.state),id:p.id,name:p.name,slot:p.slot,channel:p.channel,auto:p.auto,navMoving:p.navPath.length>0,cooldowns:p.cooldowns,nextAttack:p.nextAttack,guard:p.guard,dirX:p.dirX,dirY:p.dirY,attackSkill:p.attackSkill,attacking:p.attackUntil>now},players:[...this.players.values()].filter(q=>q.channel===p.channel&&q.state.zone===p.state.zone).map(q=>({id:q.id,name:q.name,x:Math.round(q.state.x*10)/10,y:Math.round(q.state.y*10)/10,job:q.state.job,rank:q.state.rank,level:q.state.level,equipment:{...q.state.equipment},hp:q.state.hp,maxHp:stats(q.state).hp,face:q.face,flip:q.flip,dirX:q.dirX,dirY:q.dirY,attackSkill:q.attackSkill,attackTarget:q.attackTarget,attacking:q.attackUntil>now,moving:Math.hypot(q.input.x,q.input.y)>.01||q.auto||q.navPath.length>0})),enemies:this.channel(p.channel,p.state.zone).map(({tags,homeX,homeY,next,slow,...e})=>({...e,x:Math.round(e.x*10)/10,y:Math.round(e.y*10)/10})),events:this.events.filter(e=>e.channel===p.channel&&(!e.to||e.to===p.id)).slice(-12)};}
