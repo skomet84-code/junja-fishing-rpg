@@ -1,7 +1,7 @@
-import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-polish3';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-polish3';
+import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-originstory1';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-originstory1';
 import {mergeSnapshot} from './network.js';
-import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-polish3';
+import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-originstory1';
 import {API_URL} from './config.js';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
@@ -9,7 +9,7 @@ const endgameStyle=document.createElement('style');endgameStyle.textContent=".sk
 let wireSnapshot=null;
 let token='',connectionKey='',legacy=null,roster=[],selectedSlot=0,state=profile(),view={x:768,y:355},connected=false,paused=false,serverNow=0,receivedAt=0,last=0,clock=0,lastSend=0,moveSending=false,pendingMove=null,streamController=null,streamGeneration=0,lastSelfSampleAt=0,lastSelfX=768,lastSelfY=355,serverVelocity={x:0,y:0};
 let path=[],selected=null,targetIntent=null,auto=false,cam={x:0,y:0},scale=1,face=0,flip=false,headingX=0,headingY=1,attackUntil=0,localActionLockUntil=0,attackSerial=0,lastServerAttackKey='',nearNpc=null,npcIntent=null,gesture=null,stick={x:0,y:0};
-let systems={nodes:[],bosses:[],trade:null,duel:null,party:null,partyInvite:null,daily:null},gatherIntent=null,travelIntent=null,mmoPanel='',bossSector=false,minimapAt=0,audioCtx=null,audioBus=null,audioNodes=[],soundOn=false;const resourceEls=new Map(),portalEls=new Map(),bossIntroSeen=new Set();
+let systems={nodes:[],bosses:[],trade:null,duel:null,party:null,partyInvite:null,raidContribution:null,daily:null},gatherIntent=null,travelIntent=null,mmoPanel='',bossSector=false,minimapAt=0,audioCtx=null,audioBus=null,audioNodes=[],soundOn=false;const resourceEls=new Map(),portalEls=new Map(),bossIntroSeen=new Set();
 const keys=new Set(),enemies=new Map(),peers=new Map(),seenEvents=new Set(),npcs=[{id:'elder',x:580,y:330},{id:'merchant',x:1000,y:330}];
 const DECOR_SPOTS=[
  [305,720,.85],[1225,750,1.05],[355,930,.75],[1165,955,.9],
@@ -40,13 +40,19 @@ const ZONE_DECOR_TYPES={
  void:['rift','obelisk','voidstone','abyss-mist'],
  origin:['sky-pillar','altar','cloudstone','rune']
 };
+function originStoryProgress(){const q=state.originStory||{stage:0,kills:0,elites:0,boss:0,claimed:false};const rows=[
+ ['1장 · 성광 회랑 정화',q.stage>1?'완료':q.stage===1?Math.min(15,q.kills)+'/15':'잠김'],
+ ['2장 · 창세 제단 정예',q.stage>2?'완료':q.stage===2?Math.min(3,q.elites)+'/3':'잠김'],
+ ['3장 · 수문신 격파',q.stage>3?'완료':q.stage===3?'도전 가능':'잠김'],
+ ['4장 · 카이로스 레이드',q.stage>4?'완료':q.stage===4?'23:00 레이드 참여':'잠김']
+];return {q,html:'<div class="origin-story">'+rows.map((r,i)=>'<div class="'+(q.stage>i+1?'done':q.stage===i+1?'current':'')+'"><b>'+r[0]+'</b><span>'+r[1]+'</span></div>').join('')+'</div>'};}
 function regionalNpcWindow(id){const npc=[...VOID_NPCS,...ORIGIN_NPCS].find(n=>n.id===id);if(!npc)return;
  if(id==='void-scout')modal(npc.name,'<p>공허 성채는 <b>외성 → 균열 회랑 → 왕좌 구역</b>으로 이어집니다.</p><p>3차 전직 스킬 재료 <b>공허의 인장 100개</b>는 정예·지역보스·공허제 레이드에서 얻습니다.</p>',[['정예 구역으로',()=>{closeModal();go(768,1320);}],['전직 현황',jobWindow]]);
  else if(id==='void-smith')modal(npc.name,'<p>공허 장비는 강화 수치 차이가 큽니다. +12 이상부터 후반 전투력이 크게 달라집니다.</p>',[['장비 강화',enhanceWindow],['가방 확인',bagWindow]]);
  else if(id==='void-captain')modal(npc.name,'<p><b>공허성의 파괴자</b>는 체력에 따라 3페이즈로 바뀝니다. 장판 경고가 보이면 즉시 이동하세요.</p><p>21:00 공허제 레이드는 실제 파티 최소 3명이 보스 근처에 있어야 공격할 수 있습니다.</p>',[['보스 구역으로',()=>{closeModal();go(760,1760);}],['네임드 시간표',bossWindowUI],['파티 관리',partyWindow]]);
- else if(id==='origin-scribe')modal(npc.name,'<p>태초의 신전은 <b>성광 회랑 → 창세 제단 → 신좌</b>로 이어지는 최종 지역입니다.</p><p>4차 궁극기 재료 <b>태초의 성흔 100개</b>는 정예·수문신·카이로스 레이드에서 얻습니다.</p>',[['창세 제단으로',()=>{closeModal();go(768,1310);}],['전직 현황',jobWindow]]);
- else if(id==='origin-artificer'){const sets=setBonuses(state),setText=sets.length?sets.map(x=>x.name+' '+x.count+'/7').join(' · '):'활성 신화 세트 없음';modal(npc.name,'<p>신화 장비는 이제 <b>3 / 5 / 7세트 효과</b>가 있습니다. 같은 계열 장비를 맞출수록 공격·방어·HP·속도가 추가 상승합니다.</p><p>현재: <b>'+esc(setText)+'</b></p>',[['가방·세트 확인',bagWindow],['장비 강화',enhanceWindow]]);}
- else modal(npc.name,'<p><b>태초신전 수문신</b>은 성광 장판과 심판 표식을 사용합니다. 3페이즈에서는 연속 심판을 피하면서 공격해야 합니다.</p><p>23:00 <b>태초신 · 카이로스</b>는 실제 파티 최소 4명이 필요합니다. 신격 세트의 핵심 파밍처입니다.</p>',[['신좌 구역으로',()=>{closeModal();go(760,1760);}],['네임드 시간표',bossWindowUI],['파티 관리',partyWindow]]);
+ else if(id==='origin-scribe'){const story=originStoryProgress(),q=story.q,actions=[];if(q.stage===0)actions.push(['태초의 기록 시작',async()=>{await command({type:'originStory'});setTimeout(()=>regionalNpcWindow(id),220);}]);if(q.stage===5&&!q.claimed)actions.push(['★ 최종 보상 받기',async()=>{await command({type:'originStory'});setTimeout(()=>regionalNpcWindow(id),220);}]);actions.push(['창세 제단으로',()=>{closeModal();go(768,1310);}],['전직 현황',jobWindow]);modal(npc.name,'<p>최종 지역의 이야기는 <b>4장짜리 연속 임무</b>로 진행됩니다. 전투·정예·지역보스·카이로스 레이드를 순서대로 돌파하세요.</p>'+story.html+'<p>완결 보상 · <b>1,000만 G / 강화석 100 / 빛나는 강화석 20 / 태초의 성흔 20</b></p>',actions);}
+ else if(id==='origin-artificer'){const sets=setBonuses(state),setText=sets.length?sets.map(x=>x.name+' '+x.count+'/7').join(' · '):'활성 신화 세트 없음';modal(npc.name,'<p>신화 장비는 <b>3 / 5 / 7세트 효과</b>가 있습니다. 같은 계열 장비를 맞출수록 공격·방어·HP·속도가 추가 상승합니다.</p><p>현재: <b>'+esc(setText)+'</b></p>',[['가방·세트 확인',bagWindow],['장비 강화',enhanceWindow]]);}
+ else modal(npc.name,'<p><b>태초신전 수문신</b>은 3페이즈에서 성광 심판·신성 낙하와 <b>성역 붕괴</b> 고리 장판을 섞어 사용합니다.</p><p>23:00 <b>태초신 · 카이로스</b>는 실제 파티 최소 4명이 필요합니다. 신격 세트의 핵심 파밍처입니다.</p>',[['신좌 구역으로',()=>{closeModal();go(760,1760);}],['네임드 시간표',bossWindowUI],['파티 관리',partyWindow]]);
 }
 function syncZoneDecor(zone){
  const layer=$('zoneDecor');if(!layer||layer.dataset.zone===zone)return;layer.dataset.zone=zone;layer.replaceChildren();zoneNpcEls.forEach(el=>el.remove());zoneNpcEls=[];
@@ -74,7 +80,7 @@ function showBossIntro(e){
  clearTimeout(showBossIntro.timer);showBossIntro.timer=setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.hidden=true,400);},2400);
 }
 const bossPatternEls=new Map();
-function syncBossPattern(e){let el=bossPatternEls.get(e.id);if(!e.alive||!e.pattern){if(el){el.remove();bossPatternEls.delete(e.id);}return;}if(!el){el=document.createElement('div');bossPatternEls.set(e.id,el);$('effects').append(el);}const x=e.pattern==='meteor'?(e.patternX??e.x):e.x,y=e.pattern==='meteor'?(e.patternY??e.y):e.y,r=e.patternRadius||150,origin=e.zone==='origin';el.className='boss-ground-pattern '+e.pattern+' phase-'+(e.phase||1)+(origin?' origin-pattern':' void-pattern');el.style.left=x+'px';el.style.top=y+'px';el.style.width=(r*2)+'px';el.style.height=(r*2)+'px';el.innerHTML='<i></i><b>'+(origin?(e.pattern==='meteor'?'신성 낙하 · 이동!':'성광 심판 · 거리 확보!'):(e.pattern==='meteor'?'차원 낙하 · 이동!':'공허 폭발 · 거리 확보!'))+'</b>';}
+function syncBossPattern(e){let el=bossPatternEls.get(e.id);if(!e.alive||!e.pattern){if(el){el.remove();bossPatternEls.delete(e.id);}return;}if(!el){el=document.createElement('div');bossPatternEls.set(e.id,el);$('effects').append(el);}const x=e.pattern==='meteor'?(e.patternX??e.x):e.x,y=e.pattern==='meteor'?(e.patternY??e.y):e.y,r=e.patternRadius||150,origin=e.zone==='origin';el.className='boss-ground-pattern '+e.pattern+' phase-'+(e.phase||1)+(origin?' origin-pattern':' void-pattern');el.style.left=x+'px';el.style.top=y+'px';el.style.width=(r*2)+'px';el.style.height=(r*2)+'px';if(e.pattern==='ring')el.style.setProperty('--inner',((e.patternInner||105)*2)+'px');el.innerHTML='<i></i><b>'+(origin?(e.pattern==='meteor'?'신성 낙하 · 이동!':e.pattern==='ring'?'성역 붕괴 · 고리에서 벗어나!':'성광 심판 · 거리 확보!'):(e.pattern==='meteor'?'차원 낙하 · 이동!':'공허 폭발 · 거리 확보!'))+'</b>';}
 function spawnLootFx(e){
  if(!e)return;const tier=e.named?'legendary':e.boss?'boss':e.elite?'elite':'common',el=document.createElement('div');el.className='loot-burst '+tier+(e.zone==='void'?' void-drop':e.zone==='origin'?' origin-drop':'');el.style.left=e.x+'px';el.style.top=(e.y-22)+'px';
  const label=e.zone==='void'&&e.elite?'공허의 인장 +':e.zone==='void'&&e.boss?'공허 핵심 보상':e.zone==='origin'&&e.elite?'태초의 성흔 +':e.zone==='origin'&&e.boss?'태초 핵심 보상':e.named?'전설 보상':e.boss?'BOSS DROP':e.elite?'ELITE DROP':'';
@@ -248,7 +254,7 @@ function updateSnapshot(data){
   serverVelocity.x=serverVelocity.x*.45+vx*ratio*.55;serverVelocity.y=serverVelocity.y*.45+vy*ratio*.55;
  }else serverVelocity={x:0,y:0};
  lastSelfSampleAt=sampleAt;lastSelfX=next.x;lastSelfY=next.y;
- serverNow=data.now;receivedAt=performance.now();state=next;systems={nodes:data.nodes||[],bosses:data.bosses||[],trade:data.trade,duel:data.duel,party:data.party||null,partyInvite:data.partyInvite||null,daily:data.daily};
+ serverNow=data.now;receivedAt=performance.now();state=next;systems={nodes:data.nodes||[],bosses:data.bosses||[],trade:data.trade,duel:data.duel,party:data.party||null,partyInvite:data.partyInvite||null,raidContribution:data.raidContribution||null,daily:data.daily};
  syncMMO();if(old.zone!==state.zone){showZoneArrival(state.zone);serverVelocity={x:0,y:0};view={x:state.x,y:state.y};path=[];targetIntent=null;camera(true);if(soundOn)setRegionAudio(state.zone);}
  auto=state.auto;connected=true;
  if(old.zone===state.zone&&distance(view,state)>320){view={x:state.x,y:state.y};path=[];targetIntent=null;camera(true);}
@@ -507,7 +513,7 @@ try{soundOn=localStorage.getItem('junja-adventure-sound')==='1';}catch{}$('sound
 if(innerWidth<600){$('quest').classList.add('collapsed');$('questToggle').textContent='+';}resize();makeSkills();requestAnimationFrame(frame);if(token)showSelection();
 window.__adventure={build:BUILD,snapshot:()=>({...state,systems:structuredClone(systems),connected,paused,auto,selected,peers:[...peers.values()].map(({id,name,x,y,job,equipment})=>({id,name,x,y,job,equipment})),enemies:[...enemies.values()].map(({id,x,y,hp,alive,boss})=>({id,x,y,hp,alive,boss}))})};
 let partyHudEl=null;
-function syncPartyHud(){if(!partyHudEl){partyHudEl=document.createElement('div');partyHudEl.id='partyHud';$('game').append(partyHudEl);}const party=systems.party;if(!party){partyHudEl.hidden=true;return;}partyHudEl.hidden=false;partyHudEl.innerHTML='<b>PARTY '+party.members.length+'/4</b>'+party.members.map(m=>{const me=m.id===state.id,leader=m.id===party.leader,pct=Math.max(0,Math.min(100,m.maxHp?m.hp/m.maxHp*100:0));return '<div class="party-member '+(me?'me':'')+'"><span><strong>'+(leader?'★ ':'')+esc(m.name)+'</strong><small>'+esc(jobName({job:m.job,rank:m.rank}))+' · Lv.'+m.level+(m.zone!==state.zone?' · '+esc(ZONES[m.zone]?.name||m.zone):'')+'</small></span><i><em style="width:'+pct+'%"></em></i></div>';}).join('');partyHudEl.onclick=partyWindow;}
+function syncPartyHud(){if(!partyHudEl){partyHudEl=document.createElement('div');partyHudEl.id='partyHud';$('game').append(partyHudEl);}const party=systems.party;if(!party){partyHudEl.hidden=true;return;}const raid=systems.raidContribution,role={warrior:'🛡',rogue:'🗡',mage:'🔮',healer:'✚'};partyHudEl.hidden=false;partyHudEl.innerHTML='<b>PARTY '+party.members.length+'/4'+(raid?' · '+esc(raid.name):'')+'</b>'+party.members.map(m=>{const me=m.id===state.id,leader=m.id===party.leader,pct=Math.max(0,Math.min(100,m.maxHp?m.hp/m.maxHp*100:0)),r=raid?.rows?.find(x=>x.id===m.id),contrib=r?(r.support?' · ✚지원':' · ⚔'+r.percent+'%'):'';return '<div class="party-member '+(me?'me':'')+'"><span><strong>'+(leader?'★ ':'')+(role[m.job]||'•')+' '+esc(m.name)+'</strong><small>'+esc(jobName({job:m.job,rank:m.rank}))+' · Lv.'+m.level+contrib+(m.zone!==state.zone?' · '+esc(ZONES[m.zone]?.name||m.zone):'')+'</small></span><i><em style="width:'+pct+'%"></em></i></div>';}).join('');partyHudEl.onclick=partyWindow;}
 function syncMMO(){
  const dungeon=state.zone!=='surface';$('world').dataset.zone=state.zone;syncZoneDecor(state.zone);$('elder').hidden=$('merchant').hidden=dungeon;
  $('portal').textContent=ZONES[state.zone]?.name||state.zone;
