@@ -1,7 +1,7 @@
-import {W,H,clamp,distance,walkable,pathfind} from './core.js';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp} from './catalog.js?v=20261007-world-skills-1';
+import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261007-world3';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp} from './catalog.js?v=20261007-world3';
 import {mergeSnapshot} from './network.js';
-import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,CHANNEL_CAP,LEVEL_CAP} from './mmo-data.js';
+import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,CHANNEL_CAP,LEVEL_CAP} from './mmo-data.js?v=20261007-world3';
 import {API_URL} from './config.js';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
@@ -10,6 +10,31 @@ let token='',connectionKey='',legacy=null,roster=[],selectedSlot=0,state=profile
 let path=[],selected=null,auto=false,cam={x:0,y:0},scale=1,face=0,flip=false,headingX=0,headingY=1,attackUntil=0,attackSerial=0,nearNpc=null,npcIntent=null,gesture=null,stick={x:0,y:0};
 let systems={nodes:[],bosses:[],trade:null,duel:null,daily:null},gatherIntent=null,travelIntent=null,mmoPanel='';const resourceEls=new Map(),portalEls=new Map();
 const keys=new Set(),enemies=new Map(),peers=new Map(),seenEvents=new Set(),npcs=[{id:'elder',x:580,y:330},{id:'merchant',x:1000,y:330}];
+const DECOR_SPOTS=[
+ [305,720,.85],[1225,750,1.05],[355,930,.75],[1165,955,.9],
+ [330,1205,.85],[1195,1245,1.0],[405,1435,.8],[1110,1460,.9],
+ [300,1685,.9],[1220,1715,1.0],[390,1880,.78],[1125,1895,.92],
+ [540,790,.55],[1010,885,.6],[510,1320,.58],[1025,1395,.62],[535,1770,.6],[1010,1815,.58]
+];
+const ZONE_DECOR_TYPES={
+ surface:['tree','grass','rock','flower'],
+ grove:['ancient-tree','root','mushroom','mist'],
+ cave:['crystal','stalagmite','crystal-small','cave-pool'],
+ ruins:['ruin-pillar','rubble','ruin-arch','ember'],
+ abyss:['rift','obelisk','voidstone','abyss-mist'],
+ celestial:['sky-pillar','altar','cloudstone','rune']
+};
+function syncZoneDecor(zone){
+ const layer=$('zoneDecor');if(!layer||layer.dataset.zone===zone)return;layer.dataset.zone=zone;layer.replaceChildren();
+ const types=ZONE_DECOR_TYPES[zone]||ZONE_DECOR_TYPES.surface;
+ DECOR_SPOTS.forEach(([x,y,scale],i)=>{const el=document.createElement('i');el.className='zone-decor '+types[i%types.length];el.style.left=x+'px';el.style.top=y+'px';el.style.setProperty('--decor-scale',scale);el.style.zIndex=String(Math.round(y-80));layer.append(el);});
+ const labels=[[768,655,'초입 사냥터','일반 몬스터'],[768,1165,'깊은 사냥터','정예 몬스터'],[768,1665,'보스 구역','지역 보스 · 포탈']];
+ labels.forEach(([x,y,title,sub],i)=>{const el=document.createElement('div');el.className='hunt-sector sector-'+(i+1);el.style.left=x+'px';el.style.top=y+'px';el.innerHTML='<b>'+title+'</b><small>'+sub+'</small>';layer.append(el);});
+}
+function showZoneArrival(zone){
+ const z=ZONES[zone];if(!z)return;const old=document.querySelector('.zone-arrival');if(old)old.remove();
+ const el=document.createElement('div');el.className='zone-arrival';el.innerHTML='<small>AREA ENTERED</small><b>'+esc(z.name)+'</b><span>권장 Lv.'+z.level+'</span>';$('game').append(el);setTimeout(()=>el.classList.add('show'),20);setTimeout(()=>el.remove(),1900);
+}
 try{token=localStorage.getItem('junja-online-token')||'';const old=localStorage.getItem('junja-adventure-play-v2');if(old)legacy=JSON.parse(old);}catch{}
 if(legacy)$('legacyRow').hidden=false;
 const motionArt=new Set(),characterArt=['hero','rogue','mage','healer'];
@@ -117,7 +142,7 @@ function layers(el){
 }
 layers($('hero'));
 function entity(type){const el=document.createElement('div');el.className='entity '+type;el.innerHTML='<div class="shadow"></div><div class="sprite"></div><b class="entity-name"></b><div class="life"><i></i></div><div class="tell" hidden></div>';return el;}
-function updateSnapshot(data){data=mergeSnapshot(wireSnapshot,data);if(!data)return;wireSnapshot=data;if(data.disconnected){connected=false;streamController?.abort();toast(data.disconnected);showSelection();return;}if(!data.self)return;serverNow=data.now;receivedAt=performance.now();const old=state;state=data.self;systems={nodes:data.nodes||[],bosses:data.bosses||[],trade:data.trade,duel:data.duel,daily:data.daily};syncMMO();auto=state.auto;connected=true;
+function updateSnapshot(data){data=mergeSnapshot(wireSnapshot,data);if(!data)return;wireSnapshot=data;if(data.disconnected){connected=false;streamController?.abort();toast(data.disconnected);showSelection();return;}if(!data.self)return;serverNow=data.now;receivedAt=performance.now();const old=state;state=data.self;systems={nodes:data.nodes||[],bosses:data.bosses||[],trade:data.trade,duel:data.duel,daily:data.daily};syncMMO();if(old.zone!==state.zone)showZoneArrival(state.zone);auto=state.auto;connected=true;
  if(distance(view,state)>165){view={x:state.x,y:state.y};path=[];camera(true);}
  if(auto||state.navMoving){
  const me=data.players.find(p=>p.id===state.id);
@@ -261,26 +286,27 @@ function frame(time){const dt=Math.min(.05,(time-last)/1000||.016);last=time;clo
    attackPose(p.el,p.art,p.face,p.flip,p.localAttackStarted,.44,p.job,p.attackSkill??-1,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)%3,p.dirX??0,p.dirY??0);
   }else{p.localAttackStarted=0;motion(p.el,p.art,p.moving?'walk':'idle',p.face,p.flip,clock,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)*.13,p.dirX??0,p.dirY??0);}
  }nearNpc=state.zone==='surface'?npcs.find(n=>distance(view,n)<115)||null:null;if(gatherIntent){const n=systems.nodes.find(n=>n.id===gatherIntent);if(n&&distance(state,n)<95){gatherIntent=null;command({type:'gather',node:n.id});}}if(npcIntent&&nearNpc?.id===npcIntent&&!path.length){const id=npcIntent;npcIntent=null;talk(id);}
+ for(const el of portalEls.values()){const p=el.portal,d=p?distance(view,p):9999;el.classList.toggle('near',d<190);el.classList.toggle('very-near',d<105);}
  if(travelIntent){const portal=(TRAVEL_PORTALS[state.zone]||[]).find(p=>p.to===travelIntent);if(!portal)travelIntent=null;else if(distance(state,portal)<125){const to=travelIntent;travelIntent=null;path=[];command({type:'travel',zone:to});}}
  camera(false,dt);if(clock-hudAt>.1){hud();hudAt=clock;}}
  requestAnimationFrame(frame);}
 const invite=new URL(location.href).searchParams.get('channel');if(invite&&/^[A-Za-z0-9가-힣_-]{2,16}$/.test(invite))$('channelInput').value=invite;if(innerWidth<600){$('quest').classList.add('collapsed');$('questToggle').textContent='+';}resize();makeSkills();requestAnimationFrame(frame);if(token)showSelection();
 window.__adventure={build:BUILD,snapshot:()=>({...state,systems:structuredClone(systems),connected,paused,auto,selected,peers:[...peers.values()].map(({id,name,x,y,job,equipment})=>({id,name,x,y,job,equipment})),enemies:[...enemies.values()].map(({id,x,y,hp,alive,boss})=>({id,x,y,hp,alive,boss}))})};
 function syncMMO(){
- const dungeon=state.zone!=='surface';$('world').dataset.zone=state.zone;$('elder').hidden=$('merchant').hidden=dungeon;
+ const dungeon=state.zone!=='surface';$('world').dataset.zone=state.zone;syncZoneDecor(state.zone);$('elder').hidden=$('merchant').hidden=dungeon;
  $('portal').textContent=ZONES[state.zone]?.name||state.zone;
  const activePortals=new Set();
  for(const p of TRAVEL_PORTALS[state.zone]||[]){
   activePortals.add(p.to);let el=portalEls.get(p.to);
   if(!el){el=document.createElement('button');el.className='world-portal';el.onclick=e=>{e.stopPropagation();const p=el.portal,z=ZONES[p.to];if(state.level<z.level){toast('입장 레벨 Lv.'+z.level+' 필요');return;}if(distance(state,p)>125){travelIntent=p.to;go(p.x,p.y);toast(p.label+' 포탈로 이동합니다.');}else command({type:'travel',zone:p.to});};$('world').append(el);portalEls.set(p.to,el);}
-  el.portal=p;el.style.left=p.x+'px';el.style.top=p.y+'px';el.dataset.to=p.to;el.innerHTML='<i></i><b>'+esc(p.label)+'</b><small>Lv.'+ZONES[p.to].level+' · 이동</small>';el.disabled=false;
+  el.portal=p;el.style.left=p.x+'px';el.style.top=p.y+'px';el.dataset.to=p.to;el.dataset.direction=p.y>1200?'forward':'back';el.classList.toggle('locked',state.level<ZONES[p.to].level);el.innerHTML='<i></i><b>'+esc(p.label)+'</b><small>Lv.'+ZONES[p.to].level+' · 이동</small>';el.disabled=false;
  }
  for(const [id,el] of portalEls)if(!activePortals.has(id)){el.remove();portalEls.delete(id);}
  const ids=new Set();for(const n of systems.nodes){ids.add(n.id);let el=resourceEls.get(n.id);if(!el){el=document.createElement('button');el.className='resource';el.dataset.node=n.id;el.onclick=e=>{e.stopPropagation();const n=el.node;if(n.readyAt>now()){toast('재생까지 '+Math.ceil(n.readyAt-now())+'초');return;}if(distance(state,n)>100){gatherIntent=n.id;go(n.x,n.y);toast(MATERIALS[n.material]+' 채집 지점으로 이동');}else command({type:'gather',node:n.id});};$('resourceLayer').append(el);resourceEls.set(n.id,el);}el.node=n;el.style.left=n.x+'px';el.style.top=n.y+'px';el.style.zIndex=Math.round(n.y);el.classList.toggle('depleted',n.readyAt>now());el.textContent=({wood:'🌳',stone:'🪨',ore:'⛏',crystal:'💎'})[n.material]+' '+MATERIALS[n.material]+(n.readyAt>now()?' · '+Math.ceil(n.readyAt-now())+'초':' · 채집');}for(const [id,el] of resourceEls)if(!ids.has(id)){el.remove();resourceEls.delete(id);}const active=systems.trade||systems.duel;$('socialAlert').hidden=!active;$('socialAlert').textContent=active?(systems.trade?'거래 요청·진행 확인':'PVP 대련 확인'):'';const d=systems.duel;$('duelHud').hidden=!d?.accepted;if(d?.accepted){const other=d.players.find(id=>id!==state.id);$('duelHud').textContent=(now()<d.start?'대련 시작 '+Math.ceil(d.start-now())+'초':'대련 중')+' · 나 '+d.health[state.id]+' / 상대 '+d.health[other];}if(mmoPanel==='trade')renderTradeSummary();if(mmoPanel==='duel')renderDuelSummary();}
 function adventureWindow(){
  const mats=Object.entries(MATERIALS).map(([k,n])=>n+' '+state.materials[k]).join(' · ');
  const route=Object.entries(ZONES).map(([id,z])=>'<p><b>'+esc(z.name)+'</b> · Lv.'+z.level+(id===state.zone?' · 현재 지역':'')+'</p>').join('');
- modal('모험 · 월드맵',`<p>Lv.${state.level} / ${LEVEL_CAP} · ${jobName(state)}</p><p>${mats}</p><p>지역 이동은 필드의 빛나는 포탈을 직접 찾아 이동합니다. 각 지역은 일반몹 16마리, 정예 3마리, 지역 보스가 분산 배치됩니다.</p>${route}`,[['일일 임무',dailyWindow],['제작',craftWindow],['네임드 등장 시간',bossWindowUI],['현재 지역 포탈 찾기',()=>{const p=(TRAVEL_PORTALS[state.zone]||[]).filter(p=>state.level>=ZONES[p.to].level).sort((a,b)=>distance(state,a)-distance(state,b))[0];if(p){travelIntent=p.to;go(p.x,p.y);toast(p.label+' 포탈로 이동합니다.');}}]]);
+ modal('모험 · 월드맵',`<p>Lv.${state.level} / ${LEVEL_CAP} · ${jobName(state)}</p><p>${mats}</p><p>지역 이동은 필드의 빛나는 포탈을 직접 찾아 이동합니다. 각 지역은 3개 사냥 구역으로 이어지며 일반몹 24마리, 정예 4마리, 지역 보스가 분산 배치됩니다.</p>${route}`,[['일일 임무',dailyWindow],['제작',craftWindow],['네임드 등장 시간',bossWindowUI],['현재 지역 포탈 찾기',()=>{const p=(TRAVEL_PORTALS[state.zone]||[]).filter(p=>state.level>=ZONES[p.to].level).sort((a,b)=>distance(state,a)-distance(state,b))[0];if(p){travelIntent=p.to;go(p.x,p.y);toast(p.label+' 포탈로 이동합니다.');}}]]);
 }
 function dailyWindow(){const d=systems.daily||{hunt:0,gather:0,dungeon:0,claimed:[]};modal('일일 임무 · '+(d.day||''),'<p>한국 시간 자정에 갱신됩니다. 임무는 자동 집계하고 촌장 가까이에서 보상받습니다.</p>'+Object.entries(DAILY_TASKS).map(([id,r])=>`<p><b>${r.name}</b> ${d[id]} / ${r.goal} · ${d.claimed.includes(id)?'수령 완료':r.gold+' G, EXP '+(r.xp+state.level*10)}</p>`).join(''),[['촌장 찾아가기',()=>seekNpc('elder')],...Object.entries(DAILY_TASKS).filter(([id,r])=>d[id]>=r.goal&&!d.claimed.includes(id)).map(([id,r])=>[r.name+' 보상 받기',()=>command({type:'dailyClaim',task:id})])]);}
 function craftWindow(){modal('제작 공방',`<p>상인 가까이에서 제작합니다. 보유 ${state.gold.toLocaleString()} G</p><p>${Object.entries(MATERIALS).map(([k,n])=>n+' '+state.materials[k]).join(' · ')}</p>`+Object.entries(RECIPES).map(([id,r])=>`<div class="recipe"><b>${esc(r.name)} · Lv.${r.level}</b><p>${Object.entries(r.materials).map(([k,n])=>MATERIALS[k]+' '+state.materials[k]+'/'+n).join(' · ')} · ${r.gold.toLocaleString()} G</p><button data-craft="${id}" ${state.level<r.level||state.gold<r.gold||Object.entries(r.materials).some(([k,n])=>state.materials[k]<n)?'disabled':''}>${esc(r.name)} 제작</button></div>`).join(''),[['상인 찾아가기',()=>seekNpc('merchant')]]);document.querySelectorAll('[data-craft]').forEach(b=>b.onclick=async()=>{await command({type:'craft',recipe:b.dataset.craft});closeModal();});}
