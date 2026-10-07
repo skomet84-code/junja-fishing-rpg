@@ -18,9 +18,24 @@ export const RECIPES={
  crystalarmor:{name:'수정 수호갑',materials:{stone:30,ore:20,crystal:10},gold:1800,level:50,item:'crystalarmor'},
  astralcape:{name:'전설 · 별하늘 망토',materials:{crystal:40,stardust:12},gold:20000,level:199,item:'astralcape'},
 };
-export const ZONES={surface:{name:'준자마을 · 다람쥐 숲',level:1},cave:{name:'수정 동굴',level:30},abyss:{name:'그림자 심연',level:100},celestial:{name:'천룡의 유적',level:200}};
+export const ZONES={
+ surface:{name:'준자마을 · 초원숲',level:1,theme:'forest'},
+ grove:{name:'깊은 다람쥐숲',level:5,theme:'deepforest'},
+ cave:{name:'수정 동굴',level:30,theme:'cave'},
+ ruins:{name:'붉은 폐허',level:60,theme:'ruins'},
+ abyss:{name:'그림자 심연',level:100,theme:'abyss'},
+ celestial:{name:'천룡의 유적',level:200,theme:'celestial'}
+};
+export const TRAVEL_PORTALS={
+ surface:[{to:'grove',x:768,y:910,label:'깊은 다람쥐숲'}],
+ grove:[{to:'surface',x:768,y:500,label:'준자마을'},{to:'cave',x:768,y:910,label:'수정 동굴'}],
+ cave:[{to:'grove',x:768,y:500,label:'깊은 다람쥐숲'},{to:'ruins',x:768,y:910,label:'붉은 폐허'}],
+ ruins:[{to:'cave',x:768,y:500,label:'수정 동굴'},{to:'abyss',x:768,y:910,label:'그림자 심연'}],
+ abyss:[{to:'ruins',x:768,y:500,label:'붉은 폐허'},{to:'celestial',x:768,y:910,label:'천룡의 유적'}],
+ celestial:[{to:'abyss',x:768,y:500,label:'그림자 심연'}]
+};
 export const NAMED=[
- {id:'stoneking',name:'바위 군주',hours:[8,18],zone:'surface',level:35,hp:18000,damage:75,x:1100,y:760},
+ {id:'stoneking',name:'바위 군주',hours:[8,18],zone:'grove',level:35,hp:18000,damage:75,x:1090,y:820},
  {id:'shadowking',name:'그림자 군왕',hours:[12,20],zone:'abyss',level:120,hp:130000,damage:280,x:1080,y:870},
  {id:'dragon',name:'천룡 · 일일 최상급',hours:[22],zone:'celestial',level:220,hp:350000,damage:550,x:1060,y:800},
 ];
