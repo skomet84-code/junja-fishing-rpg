@@ -801,3 +801,10 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
  #world:not([data-zone=surface]) .zone-decor.rune:before{animation:none!important}
  .enemy.elite .sprite,.enemy.named .sprite{filter:none}
 }
+
+/* Combat QoL: compact auto-potion threshold controls */
+.auto-potion-grid{display:grid;grid-template-columns:1.35fr repeat(4,minmax(48px,1fr));gap:6px;align-items:center;margin:12px 0}
+.auto-potion-grid>b{font-size:11px;color:#e8dfb1}
+.auto-potion-grid button{min-width:0;padding:8px 5px;font-size:11px}
+.auto-potion-grid button[aria-pressed="true"]{outline:2px solid #e5ca72;background:#574d2d;color:#fff4bd}
+@media(max-width:600px){.auto-potion-grid{grid-template-columns:1fr repeat(4,minmax(38px,1fr));gap:4px}.auto-potion-grid button{padding:7px 3px;font-size:10px}}
