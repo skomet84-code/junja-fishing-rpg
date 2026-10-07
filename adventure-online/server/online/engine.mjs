@@ -1,6 +1,6 @@
 import {randomUUID,randomInt} from 'node:crypto';
 import {clamp,distance,walkable,pathfind} from '../../image-prototype/core.js';
-import {profile,JOBS,ITEMS,stats,gainXp,rollLoot,equip,claim,LEGENDARY_POOL,MYTHIC_POOL,MAX_ENHANCE,enhanceChance,enhancementLevel,basicAttackDelay,skillCastDelay} from '../../image-prototype/catalog.js';
+import {profile,JOBS,ITEMS,stats,gainXp,rollLoot,equip,claim,LEGENDARY_POOL,MYTHIC_POOL,MAX_ENHANCE,enhanceChance,enhancementLevel,basicAttackDelay,skillCastDelay,skillMpCost} from '../../image-prototype/catalog.js';
 import {CHANNEL_CAP,WORLD_CAP,NAMED,bossWindow,PROMOTIONS,ZONES,QUICK_CHATS} from '../../image-prototype/mmo-data.js';
 import {initSystems,mmoAction,tickSystems,snapshotSystems,progress,removeSocial,socialId} from './systems.mjs';
 const canAggro=(p,e)=>{if(e.tags?.has(p.id))return true;const gap=(e.level||1)-(p.state.level||1);if(e.named)return gap<=10;if(e.boss)return gap<=5;if(e.elite)return gap<=4;return gap<=6;};
@@ -31,16 +31,19 @@ export class World{
   }return this.channels.get(key);
  }
 
- add(id,name,raw,channel='준자마을',slot=0){if(this.players.size>=WORLD_CAP&&!this.players.has(id))throw Error('현재 접속 인원이 가득 찼습니다.');if([...this.players.values()].filter(p=>p.channel===channel&&p.id!==id).length>=CHANNEL_CAP)throw Error('채널 정원은 48명입니다. 다른 채널을 선택하세요.');const p={id,name,state:profile(raw),channel,slot,input:{x:0,y:0},navPath:[],auto:false,autoTarget:null,face:0,flip:false,dirX:0,dirY:1,attackSkill:-1,attackTarget:null,attackUntil:0,nextAttack:0,cooldowns:[0,0,0,0],guard:0,guardFactor:.4,lastInput:0,lastChat:0};if(distance(p.state,{x:768,y:355})<30){const others=[...this.players.values()].filter(q=>q.channel===channel);const points=[[0,0],[90,0],[-90,0],[0,65],[90,65],[-90,65],[180,0],[-180,0],[180,65],[-180,65]];const free=points.map(([dx,dy])=>({x:768+dx,y:355+dy})).find(pos=>others.every(q=>distance(q.state,pos)>65));if(free)Object.assign(p.state,free);}this.channel(channel,p.state.zone);this.players.set(id,p);return p;}
+ add(id,name,raw,channel='준자마을',slot=0){if(this.players.size>=WORLD_CAP&&!this.players.has(id))throw Error('현재 접속 인원이 가득 찼습니다.');if([...this.players.values()].filter(p=>p.channel===channel&&p.id!==id).length>=CHANNEL_CAP)throw Error('채널 정원은 48명입니다. 다른 채널을 선택하세요.');const p={id,name,state:profile(raw),channel,slot,input:{x:0,y:0},navPath:[],auto:false,autoTarget:null,combatTarget:null,combatSkill:-1,face:0,flip:false,dirX:0,dirY:1,attackSkill:-1,attackTarget:null,attackUntil:0,nextAttack:0,cooldowns:[0,0,0,0],guard:0,guardFactor:.4,lastInput:0,lastChat:0,nextHpPotion:0,nextMpPotion:0};if(distance(p.state,{x:768,y:355})<30){const others=[...this.players.values()].filter(q=>q.channel===channel);const points=[[0,0],[90,0],[-90,0],[0,65],[90,65],[-90,65],[180,0],[-180,0],[180,65],[-180,65]];const free=points.map(([dx,dy])=>({x:768+dx,y:355+dy})).find(pos=>others.every(q=>distance(q.state,pos)>65));if(free)Object.assign(p.state,free);}this.channel(channel,p.state.zone);this.players.set(id,p);return p;}
  dirty(p){this.onDirty(p);}
  event(p,text,kind='info'){this.events.push({id:randomUUID(),channel:p.channel,to:p.id,text,kind});if(this.events.length>100)this.events.shift();}
  action(p,data){const now=this.now(),s=p.state,kind=data.type;const mmo=mmoAction(this,p,data);if(mmo)return mmo;if(socialId(this,p)&&['potion','attack','home','auto'].includes(kind)){if(kind==='attack'&&[...this.duels.values()].some(t=>t.accepted&&t.players.includes(p.id)))return mmoAction(this,p,{type:'duelAttack',skill:data.skill??-1});if(kind==='home')removeSocial(this,p);else return;}
-  if(kind==='navigate'){const x=Number(data.x),y=Number(data.y);if(!Number.isFinite(x)||!Number.isFinite(y))return;p.navPath=pathfind(s,{x,y});p.input={x:0,y:0};p.auto=false;p.autoTarget=null;return;}
-  if(kind==='move'){if(p.navPath.length&&!data.manual)return;if(data.manual){p.navPath=[];p.auto=false;p.autoTarget=null;}const x=Number(data.x),y=Number(data.y);if(!Number.isFinite(x)||!Number.isFinite(y))return;p.input={x:clamp(x,-1,1),y:clamp(y,-1,1)};const d=Math.hypot(x,y);if(d>.01){p.dirX=x/d;p.dirY=y/d;}p.lastInput=now;return;}
-  if(kind==='auto'){p.auto=!!data.on;p.autoTarget=null;p.navPath=[];p.input={x:0,y:0};return;}
+  if(kind==='navigate'){const x=Number(data.x),y=Number(data.y);if(!Number.isFinite(x)||!Number.isFinite(y))return;p.navPath=pathfind(s,{x,y});p.input={x:0,y:0};p.auto=false;p.autoTarget=null;p.combatTarget=null;p.combatSkill=-1;return;}
+  if(kind==='move'){if(p.navPath.length&&!data.manual)return;if(data.manual){p.navPath=[];p.auto=false;p.autoTarget=null;p.combatTarget=null;p.combatSkill=-1;}const x=Number(data.x),y=Number(data.y);if(!Number.isFinite(x)||!Number.isFinite(y))return;p.input={x:clamp(x,-1,1),y:clamp(y,-1,1)};const d=Math.hypot(x,y);if(d>.01){p.dirX=x/d;p.dirY=y/d;}p.lastInput=now;return;}
+  if(kind==='auto'){p.auto=!!data.on;p.autoTarget=null;p.combatTarget=null;p.combatSkill=-1;p.navPath=[];p.input={x:0,y:0};return;}
+  if(kind==='engage'){const target=Number(data.target),skill=Number.isInteger(data.skill)?data.skill:-1,e=this.channel(p.channel,s.zone).find(e=>e.id===target&&e.alive);if(!e)return;p.auto=false;p.autoTarget=null;p.navPath=[];p.input={x:0,y:0};p.combatTarget=e.id;p.combatSkill=skill;return;}
   if(kind==='attack'){return this.attack(p,Number.isInteger(data.skill)?data.skill:-1,data.target);}
-  if(kind==='home'){s.zone='surface';s.x=768;s.y=350;const st=stats(s);s.hp=st.hp;s.mp=st.mp;p.input={x:0,y:0};p.navPath=[];p.auto=false;p.autoTarget=null;this.dirty(p);return;}
-  if(kind==='potion'){if(s.potions>0&&s.hp<stats(s).hp){s.potions--;s.hp=Math.min(stats(s).hp,s.hp+stats(s).hp*.5);this.dirty(p);}return;}
+  if(kind==='home'){s.zone='surface';s.x=768;s.y=350;const st=stats(s);s.hp=st.hp;s.mp=st.mp;p.input={x:0,y:0};p.navPath=[];p.auto=false;p.autoTarget=null;p.combatTarget=null;p.combatSkill=-1;this.dirty(p);return;}
+  if(kind==='potion'){const st=stats(s);if(s.potions>0&&s.hp<st.hp){s.potions--;s.hp=Math.min(st.hp,s.hp+st.hp*.5);p.nextHpPotion=now+1;this.dirty(p);}return;}
+  if(kind==='manaPotion'){const st=stats(s);if(s.manaPotions>0&&s.mp<st.mp){s.manaPotions--;s.mp=Math.min(st.mp,s.mp+st.mp*.45);p.nextMpPotion=now+1;this.dirty(p);}return;}
+  if(kind==='autoPotion'){const hp=[0,30,50,70].includes(Number(data.hp))?Number(data.hp):s.autoHpPct,mp=[0,30,50,70].includes(Number(data.mp))?Number(data.mp):s.autoMpPct;s.autoHpPct=hp;s.autoMpPct=mp;this.dirty(p);this.event(p,'자동 물약 · HP '+(hp?hp+'%':'OFF')+' / MP '+(mp?mp+'%':'OFF'));return;}
   if(kind==='equip'){if(equip(s,data.item))this.dirty(p);else this.event(p,'보유 아이템과 장착 레벨을 확인하세요.');return;}
   if(kind==='unequip'){if(data.slot!=='weapon'&&s.equipment[data.slot]){delete s.equipment[data.slot];s.hp=Math.min(s.hp,stats(s).hp);this.dirty(p);}return;}
   if(kind==='quest'){if(s.zone!=='surface')return;if(distance(s,{x:580,y:330})>145){this.event(p,'촌장 가까이에서 대화하세요.');return;}if(s.quest==='available'){s.quest='active';s.questKills=0;}else if(s.quest==='complete'){s.quest='bossActive';}else claim(s);this.dirty(p);return;}
@@ -59,7 +62,7 @@ export class World{
  }
  attack(p,index=-1,targetId){
   const now=this.now(),s=p.state,job=JOBS[s.job],st=stats(s);if(now<p.nextAttack)return;
-  const skill=index>=0?job.skills[index]:null,spec=skill?.[5]||{},mpCost=Number(spec.mp)||0;if(index>=0&&(!skill||s.level<skill[1]||(index===3&&!s.rank)||now<p.cooldowns[index]))return;if(skill&&s.mp<mpCost){if(!p.auto)this.event(p,'마나가 부족합니다.');return;}
+  const skill=index>=0?job.skills[index]:null,spec=skill?.[5]||{},mpCost=skillMpCost(s,skill);if(index>=0&&(!skill||s.level<skill[1]||(index===3&&!s.rank)||now<p.cooldowns[index]))return;if(skill&&s.mp<mpCost){if(!p.auto)this.event(p,'마나가 부족합니다.');return;}
   if(skill&&['heal','partyHeal','guard','partyGuard'].includes(skill[4])){
    const radius=spec.radius||300,friends=[...this.players.values()].filter(q=>q.channel===p.channel&&q.state.zone===s.zone&&distance(q.state,s)<radius);
    if(skill[4]==='guard'){p.guard=now+(spec.guard||7);p.guardFactor=spec.guardFactor??.4;}
