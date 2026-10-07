@@ -1,7 +1,7 @@
 import {normalize} from './core.js';
 import {EXTRA_ITEMS,LEVEL_CAP,MMO_XP,MMO_HP} from './mmo-data.js';
 export {MMO_XP as needXp} from './mmo-data.js';
-export const BUILD='20261007-spritehotfix1';
+export const BUILD='20261007-gearcore1';
 export const JOBS={
  warrior:{name:'전사',title:'검호',role:'근접 · 방어',art:'hero',color:'#efbd68',attack:3,def:4,range:115,mana:70,speed:1,attackDelay:.56,skills:[['회전베기',2,4,1.9,'area',{mp:8,mpPct:.10,cast:.55,center:'self',radius:175,knockback:38}],['철벽',4,8,0,'guard',{mp:12,mpPct:.12,cast:.35,guard:8,guardFactor:.28}],['강타',8,7,3.4,'hit',{mp:14,mpPct:.15,cast:.8,stun:1.1,knockback:55}],['검기폭풍',10,14,2.8,'area',{mp:20,mpPct:.22,cast:1.15,center:'target',radius:245,hits:3,knockback:24}]]},
  rogue:{name:'도적',title:'그림자',role:'기습 · 연속공격',art:'rogue',color:'#e791a4',attack:5,def:1,range:120,mana:80,speed:1.12,attackDelay:.50,skills:[['쌍검난무',2,3,2.45,'hit',{mp:7,mpPct:.09,cast:.45,hits:4}],['흡혈검',4,7,1.8,'drain',{mp:11,mpPct:.13,cast:.55,leech:.6}],['그림자 일격',8,9,3.7,'hit',{mp:14,mpPct:.17,cast:.7,execute:.35,executeBonus:1.45,stun:.55}],['월영참',10,14,3.1,'area',{mp:19,mpPct:.22,cast:.95,center:'target',radius:190,slow:2.5}]]},
@@ -12,25 +12,29 @@ export const SLOTS={head:'투구',weapon:'무기',armor:'갑옷',cape:'망토',b
 export const ITEMS={
  ...EXTRA_ITEMS,
  training:{name:'수련 무기',slot:'weapon',rarity:'normal',atk:0,tier:0},
- glowing:{name:'빛나는 무기',slot:'weapon',rarity:'uncommon',atk:8,speed:.02,tier:1},
- leather:{name:'숲지기 갑옷',slot:'armor',rarity:'normal',def:3,hp:15,tier:1},
- hood:{name:'숲지기 투구',slot:'head',rarity:'normal',def:2,tier:1},
- boots:{name:'숲지기 장화',slot:'boots',rarity:'normal',def:1,hp:8,speed:.025,tier:1},
- cape:{name:'초록 망토',slot:'cape',rarity:'uncommon',def:2,hp:18,tier:1},
- kingblade:{name:'왕꼬리의 서광',slot:'weapon',rarity:'rare',atk:18,speed:.04,tier:2},
- kingarmor:{name:'왕꼬리 비늘갑옷',slot:'armor',rarity:'rare',def:8,hp:40,tier:2},
- kingcrown:{name:'왕꼬리 왕관',slot:'head',rarity:'rare',def:4,hp:20,tier:2},
- kingcape:{name:'달빛 망토',slot:'cape',rarity:'rare',atk:4,hp:30,tier:2},
- kingring:{name:'숲의 반지',slot:'ring',rarity:'rare',atk:3,hp:15,speed:.045,tier:2},
- kingear:{name:'이슬 귀걸이',slot:'ear',rarity:'rare',def:2,hp:20,tier:2},
+ glowing:{name:'빛나는 무기',slot:'weapon',rarity:'uncommon',atk:8,speed:.02,tier:1,shop:true,price:12000},
+ leather:{name:'숲지기 갑옷',slot:'armor',rarity:'normal',def:3,hp:15,tier:1,shop:true,price:3500},
+ hood:{name:'숲지기 투구',slot:'head',rarity:'normal',def:2,tier:1,shop:true,price:2000},
+ boots:{name:'숲지기 장화',slot:'boots',rarity:'normal',def:1,hp:8,speed:.025,tier:1,shop:true,price:1800},
+ cape:{name:'초록 망토',slot:'cape',rarity:'uncommon',def:2,hp:18,tier:1,shop:true,price:6000},
+ kingblade:{name:'왕꼬리의 서광',slot:'weapon',rarity:'rare',atk:18,speed:.04,tier:2,shop:true,price:55000},
+ kingarmor:{name:'왕꼬리 비늘갑옷',slot:'armor',rarity:'rare',def:8,hp:40,tier:2,shop:true,price:48000},
+ kingcrown:{name:'왕꼬리 왕관',slot:'head',rarity:'rare',def:4,hp:20,tier:2,shop:true,price:35000},
+ kingcape:{name:'달빛 망토',slot:'cape',rarity:'rare',atk:4,hp:30,tier:2,shop:true,price:42000},
+ kingring:{name:'숲의 반지',slot:'ring',rarity:'rare',atk:3,hp:15,speed:.045,tier:2,shop:true,price:32000},
+ kingear:{name:'이슬 귀걸이',slot:'ear',rarity:'rare',def:2,hp:20,tier:2,shop:true,price:30000},
 };
 export const RARE_POOL=['kingblade','kingarmor','kingcrown','kingcape','kingring','kingear'];
-export const UNCOMMON_POOL=['leather','hood','boots','cape'];
-export const LEGENDARY_POOL=['astralblade','astralarmor','astralcape','astralcrown','astralboots','astralring','astralear'];
-export const MYTHIC_POOL=['mythicblade','mythicarmor','mythiccape','mythiccrown','mythicboots','mythicring','mythicear'];
-export const MAX_ENHANCE=12;
-export function enhanceChance(level){return [1,1,1,.95,.85,.72,.58,.42,.28,.16,.08,.04][Math.max(0,Math.min(MAX_ENHANCE-1,Math.floor(level)||0))]??0;}
+export const CRYSTAL_POOL=['crystalblade','crystalarmor','crystalcrown','crystalcape','crystalboots','crystalring','crystalear'];
+export const RUIN_POOL=['ruinblade','ruinarmor','ruincrown','ruincape','ruinboots','ruinring','ruinear'];
+export const UNCOMMON_POOL=['leather','hood','boots','cape','ironblade','ironarmor'];
+export const LEGENDARY_POOL=['astralblade','astralarmor','astralcape','astralcrown','astralboots','astralring','astralear','shadowblade','shadowarmor','shadowcape','shadowcrown','shadowboots','shadowring','shadowear','dragonblade','dragonarmor','dragoncape','dragoncrown','dragonboots','dragonring','dragonear'];
+export const MYTHIC_POOL=['mythicblade','mythicarmor','mythiccape','mythiccrown','mythicboots','mythicring','mythicear','voidblade','voidarmor','voidcape','voidcrown','voidboots','voidring','voidear','primeblade','primearmor','primecape','primecrown','primeboots','primering','primeear'];
+export const MAX_ENHANCE=15;
+export function enhanceChance(level){return [1,1,1,.95,.90,.82,.70,.58,.45,.32,.22,.14,.08,.04,.02][Math.max(0,Math.min(MAX_ENHANCE-1,Math.floor(level)||0))]??0;}
 export function enhancementLevel(s,id){return Math.max(0,Math.min(MAX_ENHANCE,Math.floor(Number(s.enhancements?.[id])||0)));}
+export function enhanceMultiplier(level){const n=Math.max(0,Math.min(MAX_ENHANCE,Math.floor(Number(level)||0)));return 1+Math.min(n,5)*.07+Math.min(Math.max(n-5,0),5)*.09+Math.min(Math.max(n-10,0),3)*.12+Math.min(Math.max(n-13,0),2)*.18;}
+export function enhanceGrade(level){const n=Math.max(0,Math.min(MAX_ENHANCE,Math.floor(Number(level)||0)));return n>=15?'신화강화':n>=12?'초월':n>=9?'명장':n>=6?'정예':n>=3?'단련':'기본';}
 export function profile(raw={},job='warrior'){
  const s=normalize(raw);s.version=4;s.level=Math.min(LEVEL_CAP,Math.max(1,Math.floor(Number(raw.level)||1)));s.exp=Math.min(1000000000,Math.max(0,Math.floor(Number(raw.exp)||0)));while(s.exp>=MMO_XP(s.level)&&s.level<LEVEL_CAP){s.exp-=MMO_XP(s.level);s.level++;}s.job=Object.hasOwn(JOBS,raw.job)?raw.job:job;s.rank=Math.min(3,Math.max(0,Math.floor(Number(raw.rank)||0)));
  s.zone=['surface','grove','cave','ruins','abyss','celestial'].includes(raw.zone)?raw.zone:'surface';s.materials={};for(const key of ['wood','stone','ore','crystal','stardust'])s.materials[key]=Math.min(100000,Math.max(0,Math.floor(Number(raw.materials?.[key])||0)));
@@ -41,7 +45,7 @@ export function profile(raw={},job='warrior'){
  s.equipment={weapon:s.weapon?'glowing':'training'};for(const [slot,id] of Object.entries(raw.equipment||{}))if(SLOTS[slot]&&ITEMS[id]?.slot===slot&&s.bag.includes(id))s.equipment[slot]=id;
  const st=stats(s),rawMp=Number(raw.mp);s.hp=Math.min(Math.max(1,Number(raw.hp)||MMO_HP(s.level)),st.hp);s.mp=Math.min(st.mp,Math.max(0,Number.isFinite(rawMp)?rawMp:st.mp));return s;
 }
-export function stats(s){const job=JOBS[s.job]||JOBS.warrior;let atk=10+s.level*3+job.attack+s.rank*30,def=job.def+Math.floor(s.level*.35)+s.rank*15,hp=MMO_HP(s.level),mp=job.mana+s.level*5+s.rank*25,speed=job.speed+Math.min(.2,Math.max(0,s.level-1)*.001)+s.rank*.04;for(const id of Object.values(s.equipment||{})){const item=ITEMS[id];if(item){const enhance=enhancementLevel(s,id),factor=1+enhance*.07;atk+=Math.round((item.atk||0)*factor);def+=Math.round((item.def||0)*factor);hp+=Math.round((item.hp||0)*factor);speed+=(item.speed||0)*(1+enhance*.04);}}speed=Math.round(speed*1000)/1000;return {atk,def,hp,mp,speed,range:job.range};}
+export function stats(s){const job=JOBS[s.job]||JOBS.warrior;let atk=10+s.level*3+job.attack+s.rank*30,def=job.def+Math.floor(s.level*.35)+s.rank*15,hp=MMO_HP(s.level),mp=job.mana+s.level*5+s.rank*25,speed=job.speed+Math.min(.2,Math.max(0,s.level-1)*.001)+s.rank*.04;for(const id of Object.values(s.equipment||{})){const item=ITEMS[id];if(item){const enhance=enhancementLevel(s,id),factor=enhanceMultiplier(enhance);atk+=Math.round((item.atk||0)*factor);def+=Math.round((item.def||0)*factor);hp+=Math.round((item.hp||0)*factor);speed+=(item.speed||0)*(1+enhance*.04);}}speed=Math.round(speed*1000)/1000;return {atk,def,hp,mp,speed,range:job.range};}
 export function basicAttackDelay(s){const job=JOBS[s.job]||JOBS.warrior;return Math.max(.30,job.attackDelay/stats(s).speed);}
 export function skillCastDelay(s,skill){const base=Math.max(.25,Number(skill?.[5]?.cast)||.8);return Math.max(.28,base/stats(s).speed);}
 export function skillMpCost(s,skill){if(!skill)return 0;const spec=skill[5]||{},st=stats(s),fixed=Math.max(0,Number(spec.mp)||0),pct=Math.max(0,Number(spec.mpPct)||0);return Math.max(fixed,Math.round(st.mp*pct));}
