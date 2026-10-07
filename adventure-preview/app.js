@@ -1,14 +1,14 @@
-import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261007-world3';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp} from './catalog.js?v=20261007-world3';
+import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261007-immersion6';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp} from './catalog.js?v=20261007-immersion6';
 import {mergeSnapshot} from './network.js';
-import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,CHANNEL_CAP,LEVEL_CAP} from './mmo-data.js?v=20261007-world3';
+import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,CHANNEL_CAP,LEVEL_CAP} from './mmo-data.js?v=20261007-immersion6';
 import {API_URL} from './config.js';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 let wireSnapshot=null;
 let token='',connectionKey='',legacy=null,roster=[],selectedSlot=0,state=profile(),view={x:768,y:355},connected=false,paused=false,serverNow=0,receivedAt=0,last=0,clock=0,lastSend=0,movePending=false,streamController=null,streamGeneration=0;
 let path=[],selected=null,auto=false,cam={x:0,y:0},scale=1,face=0,flip=false,headingX=0,headingY=1,attackUntil=0,attackSerial=0,nearNpc=null,npcIntent=null,gesture=null,stick={x:0,y:0};
-let systems={nodes:[],bosses:[],trade:null,duel:null,daily:null},gatherIntent=null,travelIntent=null,mmoPanel='';const resourceEls=new Map(),portalEls=new Map();
+let systems={nodes:[],bosses:[],trade:null,duel:null,daily:null},gatherIntent=null,travelIntent=null,mmoPanel='',bossSector=false,minimapAt=0;const resourceEls=new Map(),portalEls=new Map(),bossIntroSeen=new Set();
 const keys=new Set(),enemies=new Map(),peers=new Map(),seenEvents=new Set(),npcs=[{id:'elder',x:580,y:330},{id:'merchant',x:1000,y:330}];
 const DECOR_SPOTS=[
  [305,720,.85],[1225,750,1.05],[355,930,.75],[1165,955,.9],
@@ -34,6 +34,34 @@ function syncZoneDecor(zone){
 function showZoneArrival(zone){
  const z=ZONES[zone];if(!z)return;const old=document.querySelector('.zone-arrival');if(old)old.remove();
  const el=document.createElement('div');el.className='zone-arrival';el.innerHTML='<small>AREA ENTERED</small><b>'+esc(z.name)+'</b><span>권장 Lv.'+z.level+'</span>';$('game').append(el);setTimeout(()=>el.classList.add('show'),20);setTimeout(()=>el.remove(),1900);
+}
+function startWarp(label='다음 지역'){
+ const el=$('warpFx');if(!el)return;el.hidden=false;el.querySelector('b').textContent=label;el.classList.remove('show','exit');void el.offsetWidth;el.classList.add('show');
+ clearTimeout(startWarp.timer);startWarp.timer=setTimeout(()=>el.classList.add('exit'),650);setTimeout(()=>{el.hidden=true;el.classList.remove('show','exit');},1100);
+}
+function showBossIntro(e){
+ if(!e?.alive)return;const key=state.zone+':'+e.id;if(bossIntroSeen.has(key))return;bossIntroSeen.add(key);
+ const el=$('bossWarning');el.hidden=false;el.className=e.named?'named':'boss';el.innerHTML='<small>'+(e.named?'WORLD BOSS':'AREA BOSS')+'</small><b>'+esc(e.name)+'</b><span>Lv.'+(e.level||'?')+' · 파티 사냥 권장</span>';void el.offsetWidth;el.classList.add('show');
+ clearTimeout(showBossIntro.timer);showBossIntro.timer=setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.hidden=true,400);},2400);
+}
+function spawnLootFx(e){
+ if(!e)return;const tier=e.named?'legendary':e.boss?'boss':e.elite?'elite':'common',el=document.createElement('div');el.className='loot-burst '+tier;el.style.left=e.x+'px';el.style.top=(e.y-22)+'px';
+ el.innerHTML='<i></i><i></i><i></i><i></i><i></i><b>'+(e.named?'전설 보상':e.boss?'BOSS DROP':e.elite?'ELITE DROP':'')+'</b>';$('effects').append(el);setTimeout(()=>el.remove(),1200);
+}
+function renderMinimap(){
+ const c=$('minimap');if(!c)return;const ctx=c.getContext('2d'),w=c.width,h=c.height,sx=w/W,sy=h/H,z=ZONES[state.zone]||{};
+ const palettes={surface:['#173a26','#6aa45d'],grove:['#0b2117','#315f37'],cave:['#10182a','#527fa9'],ruins:['#2c1816','#9a5638'],abyss:['#12091c','#6b3a8d'],celestial:['#202943','#d1bd78']},p=palettes[state.zone]||palettes.surface;
+ ctx.clearRect(0,0,w,h);ctx.fillStyle=p[0];ctx.fillRect(0,0,w,h);
+ ctx.fillStyle=p[1]+'55';ctx.fillRect(0,Math.round(610*sy),w,Math.round(400*sy));ctx.fillRect(0,Math.round(1150*sy),w,Math.round(365*sy));ctx.fillRect(0,Math.round(1630*sy),w,h-Math.round(1630*sy));
+ ctx.strokeStyle='#ffffff22';ctx.lineWidth=1;for(const y of [610,1010,1150,1515,1630]){ctx.beginPath();ctx.moveTo(0,y*sy);ctx.lineTo(w,y*sy);ctx.stroke();}
+ for(const ptl of TRAVEL_PORTALS[state.zone]||[]){ctx.fillStyle=state.level>=ZONES[ptl.to].level?'#ffe68b':'#6e7773';ctx.beginPath();ctx.arc(ptl.x*sx,ptl.y*sy,4,0,Math.PI*2);ctx.fill();}
+ for(const e of enemies.values()){if(!e.alive)continue;ctx.fillStyle=e.named?'#ff80ff':e.boss?'#ffb24f':e.elite?'#ff765f':'#dbe4c8';ctx.fillRect(e.x*sx-1.5,e.y*sy-1.5,e.boss?4:3,e.boss?4:3);}
+ for(const p2 of peers.values()){ctx.fillStyle='#73cfff';ctx.fillRect(p2.x*sx-1.5,p2.y*sy-1.5,3,3);}
+ ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(view.x*sx,view.y*sy,4,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#1b1b1b';ctx.stroke();
+ $('minimapLabel').textContent=(z.name||state.zone)+' · '+(view.y<1050?'초입':view.y<1600?'깊은 사냥터':'보스 구역');
+}
+function syncBossSector(){
+ const next=view.y>=1580;if(next!==bossSector){bossSector=next;$('game').classList.toggle('boss-sector',next);if(next){const boss=[...enemies.values()].filter(e=>e.alive&&e.boss).sort((a,b)=>distance(view,a)-distance(view,b))[0];if(boss)showBossIntro(boss);}}
 }
 try{token=localStorage.getItem('junja-online-token')||'';const old=localStorage.getItem('junja-adventure-play-v2');if(old)legacy=JSON.parse(old);}catch{}
 if(legacy)$('legacyRow').hidden=false;
@@ -148,7 +176,7 @@ function updateSnapshot(data){data=mergeSnapshot(wireSnapshot,data);if(!data)ret
  const me=data.players.find(p=>p.id===state.id);
  if(me){face=me.face;flip=me.flip;if(Number.isFinite(me.dirX)&&Number.isFinite(me.dirY)){headingX=me.dirX;headingY=me.dirY;}if(me.attacking&&clock>=attackUntil-.04){attackUntil=clock+.44;const hero=$('hero');hero.dataset.attackStarted=String(clock);hero.dataset.attackSkill=String(me.attackSkill??-1);hero.dataset.attackVariant=String(attackSerial++%3);}}
 }if(old.job!==state.job||old.rank!==state.rank||$('skillbar').childElementCount!==4)makeSkills();actorArt($('heroArt'),state);decorate($('hero'),state);$('hero').querySelector('.entity-name').textContent=state.name+' · '+jobName(state);document.querySelector('.portrait').style.backgroundImage=`url('./assets/${JOBS[state.job].art}.png')`;
- const mobIds=new Set();for(const e of data.enemies){mobIds.add(e.id);let entry=enemies.get(e.id);if(!entry){const el=entity('enemy'+(e.boss?' boss':''));el.querySelector('b').textContent=e.name||'숲 다람쥐';el.addEventListener('pointerdown',ev=>{ev.stopPropagation();select(e.id);});$('enemyLayer').append(el);entry={el,art:el.querySelector('.sprite'),vx:e.x,vy:e.y};enemies.set(e.id,entry);}Object.assign(entry,e);entry.mmo=!!e.named||e.elite||state.zone!=='surface'||(e.skin??0)>0;entry.el.classList.toggle('mmo-monster',entry.mmo);entry.art.style.backgroundImage=entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=entry.mmo?'400% 400%':'';entry.el.querySelector('b').textContent=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('dead',!e.alive);entry.el.querySelector('.life i').style.width=e.hp/e.max*100+'%';entry.el.querySelector('.tell').hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);}
+ const mobIds=new Set();for(const e of data.enemies){mobIds.add(e.id);let entry=enemies.get(e.id),wasKnown=!!entry,wasAlive=entry?.alive;if(!entry){const el=entity('enemy'+(e.boss?' boss':''));el.querySelector('b').textContent=e.name||'숲 다람쥐';el.addEventListener('pointerdown',ev=>{ev.stopPropagation();select(e.id);});$('enemyLayer').append(el);entry={el,art:el.querySelector('.sprite'),vx:e.x,vy:e.y};enemies.set(e.id,entry);}Object.assign(entry,e);if(wasKnown&&wasAlive&&!e.alive){spawnLootFx(e);if(e.boss)bossIntroSeen.delete(state.zone+':'+e.id);}if(wasKnown&&wasAlive===false&&e.alive&&e.boss&&bossSector)showBossIntro(e);entry.mmo=!!e.named||e.elite||state.zone!=='surface'||(e.skin??0)>0;entry.el.classList.toggle('mmo-monster',entry.mmo);entry.art.style.backgroundImage=entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=entry.mmo?'400% 400%':'';entry.el.querySelector('b').textContent=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('dead',!e.alive);entry.el.querySelector('.life i').style.width=e.hp/e.max*100+'%';entry.el.querySelector('.tell').hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);}
  for(const [id,e] of enemies)if(!mobIds.has(id)){e.el.remove();enemies.delete(id);}
  const peerIds=new Set();for(const p of data.players){if(p.id===state.id)continue;peerIds.add(p.id);let peer=peers.get(p.id);if(!peer){const el=entity('peer hero');layers(el);$('world').append(el);peer={el,art:el.querySelector('.sprite'),vx:p.x,vy:p.y};peers.set(p.id,peer);}Object.assign(peer,p);actorArt(peer.art,p);decorate(peer.el,p);peer.el.querySelector('b').textContent=p.name+' · '+jobName(p);peer.el.querySelector('.life i').style.width=p.hp/p.maxHp*100+'%';}
  for(const [id,p] of peers)if(!peerIds.has(id)){p.el.remove();peers.delete(id);}
@@ -287,8 +315,8 @@ function frame(time){const dt=Math.min(.05,(time-last)/1000||.016);last=time;clo
   }else{p.localAttackStarted=0;motion(p.el,p.art,p.moving?'walk':'idle',p.face,p.flip,clock,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)*.13,p.dirX??0,p.dirY??0);}
  }nearNpc=state.zone==='surface'?npcs.find(n=>distance(view,n)<115)||null:null;if(gatherIntent){const n=systems.nodes.find(n=>n.id===gatherIntent);if(n&&distance(state,n)<95){gatherIntent=null;command({type:'gather',node:n.id});}}if(npcIntent&&nearNpc?.id===npcIntent&&!path.length){const id=npcIntent;npcIntent=null;talk(id);}
  for(const el of portalEls.values()){const p=el.portal,d=p?distance(view,p):9999;el.classList.toggle('near',d<190);el.classList.toggle('very-near',d<105);}
- if(travelIntent){const portal=(TRAVEL_PORTALS[state.zone]||[]).find(p=>p.to===travelIntent);if(!portal)travelIntent=null;else if(distance(state,portal)<125){const to=travelIntent;travelIntent=null;path=[];command({type:'travel',zone:to});}}
- camera(false,dt);if(clock-hudAt>.1){hud();hudAt=clock;}}
+ if(travelIntent){const portal=(TRAVEL_PORTALS[state.zone]||[]).find(p=>p.to===travelIntent);if(!portal)travelIntent=null;else if(distance(state,portal)<125){const to=travelIntent,label=portal.label;travelIntent=null;path=[];startWarp(label);command({type:'travel',zone:to});}}
+ syncBossSector();camera(false,dt);if(clock-hudAt>.1){hud();if(clock-minimapAt>.18){renderMinimap();minimapAt=clock;}hudAt=clock;}}
  requestAnimationFrame(frame);}
 const invite=new URL(location.href).searchParams.get('channel');if(invite&&/^[A-Za-z0-9가-힣_-]{2,16}$/.test(invite))$('channelInput').value=invite;if(innerWidth<600){$('quest').classList.add('collapsed');$('questToggle').textContent='+';}resize();makeSkills();requestAnimationFrame(frame);if(token)showSelection();
 window.__adventure={build:BUILD,snapshot:()=>({...state,systems:structuredClone(systems),connected,paused,auto,selected,peers:[...peers.values()].map(({id,name,x,y,job,equipment})=>({id,name,x,y,job,equipment})),enemies:[...enemies.values()].map(({id,x,y,hp,alive,boss})=>({id,x,y,hp,alive,boss}))})};
@@ -298,7 +326,7 @@ function syncMMO(){
  const activePortals=new Set();
  for(const p of TRAVEL_PORTALS[state.zone]||[]){
   activePortals.add(p.to);let el=portalEls.get(p.to);
-  if(!el){el=document.createElement('button');el.className='world-portal';el.onclick=e=>{e.stopPropagation();const p=el.portal,z=ZONES[p.to];if(state.level<z.level){toast('입장 레벨 Lv.'+z.level+' 필요');return;}if(distance(state,p)>125){travelIntent=p.to;go(p.x,p.y);toast(p.label+' 포탈로 이동합니다.');}else command({type:'travel',zone:p.to});};$('world').append(el);portalEls.set(p.to,el);}
+  if(!el){el=document.createElement('button');el.className='world-portal';el.onclick=e=>{e.stopPropagation();const p=el.portal,z=ZONES[p.to];if(state.level<z.level){toast('입장 레벨 Lv.'+z.level+' 필요');return;}if(distance(state,p)>125){travelIntent=p.to;go(p.x,p.y);toast(p.label+' 포탈로 이동합니다.');}else{startWarp(p.label);command({type:'travel',zone:p.to});}};$('world').append(el);portalEls.set(p.to,el);}
   el.portal=p;el.style.left=p.x+'px';el.style.top=p.y+'px';el.dataset.to=p.to;el.dataset.direction=p.y>1200?'forward':'back';el.classList.toggle('locked',state.level<ZONES[p.to].level);el.innerHTML='<i></i><b>'+esc(p.label)+'</b><small>Lv.'+ZONES[p.to].level+' · 이동</small>';el.disabled=false;
  }
  for(const [id,el] of portalEls)if(!activePortals.has(id)){el.remove();portalEls.delete(id);}
