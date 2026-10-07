@@ -1242,3 +1242,38 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 
 .raid-contrib{margin:8px 0 12px;padding:9px 10px;border:1px solid #e2b85c77;border-radius:10px;background:linear-gradient(135deg,#30240edd,#15151ddd);box-shadow:0 0 15px #e5ba4b1e}
 .raid-contrib b{display:block;color:#ffe395;font-size:11px}.raid-contrib span{display:block;margin-top:3px;color:#c8c0a9;font-size:10px;line-height:1.4}
+
+/* BOSS COMBAT POLISH */
+.boss-ground-pattern.cone{border:none!important;box-shadow:none!important;background:conic-gradient(from var(--cone-start,-38deg),#ffec9a00 0deg,#ffec9a44 8deg,#ffd95e88 38deg,#ffec9a44 68deg,#ffec9a00 76deg,transparent 77deg 360deg)!important;filter:drop-shadow(0 0 18px #ffc94f88);animation:conePulse .34s ease-in-out infinite alternate}
+.boss-ground-pattern.cone.void-pattern{background:conic-gradient(from var(--cone-start,-38deg),#dc91ff00 0deg,#cb67ff44 8deg,#b64bff88 38deg,#cb67ff44 68deg,#dc91ff00 76deg,transparent 77deg 360deg)!important;filter:drop-shadow(0 0 18px #a943e899)}
+.boss-ground-pattern.cone i{inset:11%;border:0;border-radius:50%;background:conic-gradient(from var(--cone-start,-38deg),transparent 0 31deg,#fff7bdcc 32deg 35deg,transparent 36deg 75deg,#fff7bdcc 76deg 79deg,transparent 80deg 360deg);animation:none}
+.boss-ground-pattern.cone b{top:42%;color:#fff4bd;text-shadow:0 0 8px #7b4a00,0 2px 3px #000}
+@keyframes conePulse{from{opacity:.52;scale:.97}to{opacity:1;scale:1.015}}
+
+.enemy.summoned .sprite{filter:saturate(1.55) brightness(1.12) drop-shadow(0 0 9px #d66cff)}
+#world[data-zone=origin] .enemy.summoned .sprite{filter:saturate(1.3) brightness(1.25) drop-shadow(0 0 10px #ffe07a)}
+.enemy.summoned .entity-name{color:#e9b6ff;text-shadow:0 0 7px #7e2fa8,0 2px 3px #000}
+#world[data-zone=origin] .enemy.summoned .entity-name{color:#fff1a6;text-shadow:0 0 7px #aa761a,0 2px 3px #000}
+.enemy.summoned:before{content:'소환';position:absolute;left:50%;top:-42px;transform:translateX(-50%);padding:2px 5px;border-radius:8px;background:#381347dd;border:1px solid #d875ff;color:#f5c8ff;font-size:8px;letter-spacing:.5px;z-index:8}
+#world[data-zone=origin] .enemy.summoned:before{background:#4a3512dd;border-color:#f2d275;color:#fff0ab}
+
+.item-acquisition{position:fixed;inset:0;z-index:12000;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,#ffe9a11c 0 15%,#0000 48%,#020204cc 100%);transition:opacity .22s ease}
+.item-acquisition.show{opacity:1}
+.item-acquisition-rays{position:absolute;width:min(82vw,760px);aspect-ratio:1;border-radius:50%;background:repeating-conic-gradient(from 0deg,#fff0 0 12deg,#ffe99a35 13deg 17deg,#fff0 18deg 31deg);animation:itemRays 8s linear infinite;filter:blur(.2px)}
+.item-acquisition.mythic .item-acquisition-rays{background:repeating-conic-gradient(from 0deg,#fff0 0 10deg,#db7cff44 11deg 15deg,#fff4a845 16deg 19deg,#fff0 20deg 30deg)}
+.item-acquisition.raid .item-acquisition-rays{background:repeating-conic-gradient(from 0deg,#fff0 0 8deg,#fff2a965 9deg 13deg,#cb7bff44 14deg 17deg,#fff0 18deg 27deg);filter:drop-shadow(0 0 16px #ffe87c)}
+.item-acquisition-card{position:relative;min-width:min(78vw,430px);max-width:86vw;padding:30px 26px 27px;border-radius:18px;border:2px solid #d4a44e;background:linear-gradient(180deg,#24180bf2,#0d0b0df2);text-align:center;box-shadow:0 0 28px #d8a44866,0 18px 60px #000c;transform:scale(.62) translateY(28px);opacity:0;animation:itemCardIn .55s cubic-bezier(.18,.9,.22,1.12) forwards}
+.item-acquisition.mythic .item-acquisition-card{border-color:#c66cff;background:linear-gradient(180deg,#251331f4,#0d0911f5);box-shadow:0 0 36px #b75cff77,0 0 70px #ffd76a33,0 18px 60px #000d}
+.item-acquisition.raid .item-acquisition-card{border-color:#ffe189;background:linear-gradient(180deg,#34240ef7,#180e1df6);box-shadow:0 0 45px #ffd96888,0 0 85px #b751ff55,0 20px 70px #000d}
+.item-acquisition-card small,.item-acquisition-card strong,.item-acquisition-card span,.item-acquisition-card b{display:block}
+.item-acquisition-card small{font-size:10px;letter-spacing:2.3px;color:#e8c77e}
+.item-acquisition-card strong{margin-top:8px;font-size:clamp(22px,5vw,36px);line-height:1.18;color:#fff1b4;text-shadow:0 0 13px #d5a433}
+.item-acquisition.mythic .item-acquisition-card strong{color:#f2c5ff;text-shadow:0 0 15px #bd5aff}
+.item-acquisition.raid .item-acquisition-card strong{color:#fff3b6;text-shadow:0 0 18px #ffd762,0 0 28px #ac5aff}
+.item-acquisition-card span{margin-top:9px;font-size:12px;color:#c6b99e}.item-acquisition-card b{margin-top:17px;font-size:14px;color:#ffe7a0;letter-spacing:.5px}
+@keyframes itemRays{to{rotate:360deg}}@keyframes itemCardIn{to{transform:scale(1) translateY(0);opacity:1}}
+
+.entity.hero[data-rank='4']>.promotion-regalia{animation:rankFourFloat 1.4s ease-in-out infinite alternate}
+.entity.hero[data-rank='4']>.promotion-regalia:after{animation:rankFourCrest 1.8s ease-in-out infinite alternate}
+@keyframes rankFourFloat{from{transform:translateY(0)}to{transform:translateY(-3px)}}@keyframes rankFourCrest{from{filter:brightness(.9) drop-shadow(0 0 4px #fff1a5)}to{filter:brightness(1.3) drop-shadow(0 0 11px #fff1a5)}}
+@media(max-width:600px){.item-acquisition-card{min-width:82vw;padding:24px 18px 22px}.item-acquisition-card strong{font-size:25px}.enemy.summoned:before{top:-36px}}
