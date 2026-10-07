@@ -61,7 +61,6 @@ if(typeof document!=='undefined'){
   const targets=[...document.querySelectorAll(selector)];if(!targets.length){document.getElementById('adventureBtn')?.click();return;}
   const target=targets.sort((a,b)=>{const x=a.getBoundingClientRect(),y=b.getBoundingClientRect();return Math.hypot(x.left-hero.left,x.top-hero.top)-Math.hypot(y.left-hero.left,y.top-hero.top);})[0];
   try{target.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:91}));}catch{target.dispatchEvent(new Event('pointerdown',{bubbles:true}));}
-  setTimeout(()=>document.getElementById('attackBtn')?.click(),30);
  },true);
 
  const style=document.createElement('style');style.textContent='.quest-net-flash{position:absolute;left:50%;top:29%;z-index:3300;transform:translate(-50%,-50%) scale(.82);opacity:0;min-width:min(520px,86vw);padding:14px 28px;text-align:center;background:linear-gradient(90deg,transparent,#14261de8 16%,#203b2df2 50%,#14261de8 84%,transparent);border-top:1px solid #e3cd7c88;border-bottom:1px solid #e3cd7c88;text-shadow:0 2px 7px #000;transition:.3s;pointer-events:none}.quest-net-flash.show{opacity:1;transform:translate(-50%,-50%) scale(1)}.quest-net-flash small{display:block;font-size:9px;letter-spacing:4px;color:#d9c885}.quest-net-flash b{display:block;font-size:22px;color:#fff0ae;margin:4px}.quest-net-flash span{font-size:11px;color:#d9e1d3}';document.head.append(style);
