@@ -294,9 +294,36 @@ function skillEffect(job,skill,target,origin=view){
   default: fxNode(job+' generic',target||o,650);
  }
 }
+const QUEST_VIEWS={
+ available:s=>['작은 다람쥐의 위협','촌장에게 첫 임무를 받아 주세요.','촌장 찾아가기'],
+ active:s=>['작은 다람쥐의 위협',`공동 처치 ${Math.min(10,s.questKills||0)} / 10 · 200 G, 물약 3개`,'숲으로 이동'],
+ ready:s=>['임무 완료','촌장에게 보상을 받아 주세요.','촌장에게 보고'],
+ complete:s=>['왕꼬리의 흔적','보스 임무를 수락해 주세요.','촌장 찾아가기'],
+ bossActive:s=>['숲의 수호자 왕꼬리','함께 왕꼬리 처치 · 희귀 장비 10%','보스 찾아가기'],
+ bossReady:s=>['보스 임무 완료','빛나는 무기 보상을 받아 주세요.','촌장에게 보고'],
+ done:s=>['준자마을의 수호자','Lv.99 → 1차 전직 · 정예·던전·일일 임무 도전','숲으로 이동'],
+ groveIntro:s=>['2장 · 깊은숲의 이상징후','촌장에게 깊은숲 조사 임무를 받으세요.','다음 임무 수락'],
+ groveHunt:s=>['깊은 다람쥐숲 정찰',`깊은숲 몬스터 처치 ${Math.min(12,s.questKills||0)} / 12`,'사냥 계속하기'],
+ groveBoss:s=>['고목의 수호수','깊은숲 보스 고목의 수호수를 처치하세요.','보스 찾아가기'],
+ caveIntro:s=>['3장 · 수정 동굴의 균열','촌장에게 수정 동굴 조사 임무를 받으세요.','다음 임무 수락'],
+ caveHunt:s=>['수정 동굴 조사',`동굴 몬스터 처치 ${Math.min(15,s.questKills||0)} / 15`,'사냥 계속하기'],
+ caveBoss:s=>['수정 동굴주','동굴 최심부의 수정 동굴주를 처치하세요.','보스 찾아가기'],
+ ruinsIntro:s=>['4장 · 붉은 폐허','촌장에게 폐허 정화 임무를 받으세요.','다음 임무 수락'],
+ ruinsHunt:s=>['붉은 폐허 정화',`폐허 몬스터 처치 ${Math.min(15,s.questKills||0)} / 15`,'사냥 계속하기'],
+ ruinsBoss:s=>['폐허의 집행자','보스 구역의 폐허의 집행자를 처치하세요.','보스 찾아가기'],
+ abyssIntro:s=>['5장 · 그림자 심연','촌장에게 심연 조사 임무를 받으세요.','다음 임무 수락'],
+ abyssHunt:s=>['심연의 기운',`심연 몬스터 처치 ${Math.min(15,s.questKills||0)} / 15`,'사냥 계속하기'],
+ abyssElite:s=>['암흑 추적자',`정예 암흑 추적자 처치 ${Math.min(2,s.questKills||0)} / 2`,'정예 찾아가기'],
+ abyssBoss:s=>['심연 파수왕','심연의 보스 심연 파수왕을 처치하세요.','보스 찾아가기'],
+ celestialIntro:s=>['6장 · 천룡의 유적','촌장에게 마지막 원정 임무를 받으세요.','다음 임무 수락'],
+ celestialHunt:s=>['천룡 유적 돌파',`천계 몬스터 처치 ${Math.min(20,s.questKills||0)} / 20`,'사냥 계속하기'],
+ celestialBoss:s=>['천룡 수문장','최종 보스 천룡 수문장을 처치하세요.','최종 보스 찾아가기'],
+ storyDone:s=>['메인 스토리 1장 완료','천룡의 유적을 정복했습니다. 정예·네임드·일일 임무에 도전하세요.','완료']
+};
+function questView(s){const key=s.storyQuest||s.quest,view=QUEST_VIEWS[key]||QUEST_VIEWS[s.quest]||QUEST_VIEWS.available;return view(s);}
 function makeSkills(){$('skillbar').replaceChildren();JOBS[state.job].skills.forEach((s,i)=>{const b=document.createElement('button'),mp=s[5]?.mp||0;b.id='skill'+i;b.innerHTML=`<b>${s[0]}</b><small>MP ${mp}</small>`;b.onclick=()=>attack(i);$('skillbar').append(b);});}
 function hud(){const st=stats(state),t=now();$('playerName').textContent=state.name||'준자';$('level').textContent='Lv.'+state.level+' '+jobName(state);$('hpText').textContent=Math.ceil(state.hp)+' / '+st.hp;$('hpBar').style.width=state.hp/st.hp*100+'%';$('mpText').textContent='MP '+Math.ceil(state.mp)+' / '+st.mp;$('mpBar').style.width=Math.min(100,state.mp/st.mp*100)+'%';$('expBar').style.width=Math.min(100,state.exp/needXp(state.level)*100)+'%';$('expText').textContent='EXP '+state.exp+' / '+needXp(state.level);$('gold').textContent=state.gold.toLocaleString()+' G';$('zone').textContent=(state.zone==='surface'?(view.y>590?'준자마을 · 초원숲':'준자마을'):ZONES[state.zone].name)+' · '+(state.channel||'');$('potionLabel').textContent=state.potions+'개';$('potionBtn').disabled=!connected||state.potions<=0;
- const quests={available:['작은 다람쥐의 위협','촌장에게 첫 임무를 받아 주세요.','촌장 찾아가기'],active:['작은 다람쥐의 위협',`공동 처치 ${Math.min(10,state.questKills)} / 10 · 200 G, 물약 3개`,'숲으로 이동'],ready:['임무 완료','촌장에게 보상을 받아 주세요.','촌장에게 보고'],complete:['왕꼬리의 흔적','보스 임무를 수락해 주세요.','촌장 찾아가기'],bossActive:['숲의 수호자 왕꼬리','함께 왕꼬리 처치 · 희귀 장비 10%','보스 찾아가기'],bossReady:['보스 임무 완료','빛나는 무기 보상을 받아 주세요.','촌장에게 보고'],done:['준자마을의 수호자','Lv.99 → 1차 전직 · 정예·던전·일일 임무 도전','숲으로 이동']};const q=quests[state.quest];$('questTitle').textContent=q[0];$('questText').textContent=q[1];$('questAction').textContent=q[2];const e=enemies.get(selected);$('targetPanel').hidden=!e?.alive;if(e?.alive){$('targetName').textContent=e.name||'숲 다람쥐';$('targetRange').textContent=Math.round(distance(view,e)/24)+'m';$('targetHp').style.width=e.hp/e.max*100+'%';}
+ const q=questView(state),questKey=state.storyQuest||state.quest;$('quest').dataset.quest=questKey;$('questTitle').textContent=q[0];$('questText').textContent=q[1];$('questAction').textContent=q[2];const e=enemies.get(selected);$('targetPanel').hidden=!e?.alive;if(e?.alive){$('targetName').textContent=e.name||'숲 다람쥐';$('targetRange').textContent=Math.round(distance(view,e)/24)+'m';$('targetHp').style.width=e.hp/e.max*100+'%';}
  const actionReady=systems.duel?.accepted?Math.max(systems.duel.start,systems.duel.next?.[state.id]||0):(state.nextAttack||0),actionLock=Math.max(0,actionReady-t);$('attackBtn').disabled=paused||!connected||actionLock>0;$('attackLabel').textContent=actionLock>0?'공격 대기 '+actionLock.toFixed(1)+'초':systems.duel?.accepted?'대련 공격':e?.alive?distance(state,e)>st.range?'접근 후 공격':'공격 가능':'대상 선택';$('autoBtn').setAttribute('aria-pressed',String(auto));$('autoBtn').querySelector('small').textContent=auto?'ON':'OFF';$('contextBtn').hidden=!nearNpc;JOBS[state.job].skills.forEach((s,i)=>{const b=$('skill'+i);if(!b)return;const locked=state.level<s[1]||(i===3&&!state.rank),cd=Math.max(0,(systems.duel?.accepted?(systems.duel.cooldowns[state.id]?.[i]||0):(state.cooldowns?.[i]||0))-t),mp=s[5]?.mp||0,lowMana=state.mp<mp;b.disabled=paused||!connected||locked||cd>0||lowMana||actionLock>0;b.querySelector('small').textContent=locked?(i===3?'승급 필요':'Lv.'+s[1]):cd>0?cd.toFixed(cd<10?1:0)+'초':actionLock>0?'시전 '+actionLock.toFixed(1)+'초':lowMana?'마나 부족':'준비 · MP '+mp;});
 }
 function modal(title,body,actions=[]){mmoPanel='';paused=true;stopMovement();$('modalTitle').textContent=title;$('modalBody').innerHTML=body;$('modalActions').replaceChildren();for(const [label,fn] of actions){const b=document.createElement('button');b.textContent=label;b.onclick=()=>{closeModal();fn();};$('modalActions').append(b);}$('modal').hidden=false;$('modalClose').focus();}
