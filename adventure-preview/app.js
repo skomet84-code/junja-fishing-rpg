@@ -271,7 +271,7 @@ async function login(register=false){if(!$('authForm').reportValidity())return;c
 $('authForm').onsubmit=e=>{e.preventDefault();login();};$('registerBtn').onclick=()=>login(true);$('switchAccount').onclick=()=>{token='';try{localStorage.removeItem('junja-online-token');}catch{}$('authPanel').hidden=false;$('selectPanel').hidden=true;$('authMessage').textContent='';};
 async function join(){$('joinBtn').disabled=true;$('loadMessage').textContent='준자마을에 접속 중…';try{await artReady;const r=await api('join',{slot:selectedSlot,channel:$('channelInput').value.trim()});connectionKey=r.connectionKey;wireSnapshot=null;lastSelfSampleAt=0;state=r.snapshot.self;view={x:state.x,y:state.y};selected=null;targetIntent=null;path=[];updateSnapshot(r.snapshot);resize();makeSkills();face=0;flip=false;headingX=0;headingY=1;placeEntity($('hero'),view.x,view.y);$('hero').style.zIndex=Math.round(view.y);sprite($('heroArt'),0,0);$('loading').hidden=true;last=performance.now();consumeStream(++streamGeneration);toast(state.channel+'에 접속했습니다. 친구에게 같은 채널을 알려 주세요.');}catch(e){$('loadMessage').textContent=e.message;}finally{$('joinBtn').disabled=false;}}
 $('joinBtn').onclick=join;$('retryBtn').onclick=()=>token?showSelection():location.reload();
-function nearestTarget(maxDistance=560){return [...enemies.values()].filter(e=>e.alive&&distance(view,e)<=maxDistance).sort((a,b)=>{const ad=distance(view,a),bd=distance(view,b);return (a.boss?25:0)+(ad)-(b.boss?25:0)-(bd);})[0]||null;}
+function nearestTarget(maxDistance=560){const safe=e=>e.level<=state.level+(e.boss?5:e.elite?3:6);return [...enemies.values()].filter(e=>e.alive&&distance(view,e)<=maxDistance&&safe(e)).sort((a,b)=>{const ad=distance(view,a)+(a.named?140:a.boss?90:a.elite?35:0),bd=distance(view,b)+(b.named?140:b.boss?90:b.elite?35:0);return ad-bd;})[0]||null;}
 function select(id,engage=false){const e=enemies.get(id);if(!e?.alive)return;selected=id;npcIntent=null;path=[];targetIntent=null;if(auto){auto=false;command({type:'auto',on:false});}if(engage){command({type:'engage',target:e.id,skill:-1});toast(e.name+' 타겟 고정 · 자동 추적/공격');}hud();}
 function combatAnimDuration(skill=-1,s=state){if(skill>=0){const ability=JOBS[s.job]?.skills?.[skill];return Math.max(.30,Math.min(.78,skillCastDelay(s,ability)*.72));}const speed=stats(s).speed||1;return Math.max(.30,.44/Math.min(1.45,speed));}
 function startLocalAttack(skill=-1){
@@ -284,8 +284,8 @@ function attack(skill=-1){
  if(systems.duel?.accepted){const other=systems.duel.players.find(id=>id!==state.id),target=peers.get(other);command({type:'duelAttack',skill});startLocalAttack(skill);if(skill>=0)skillEffect(state.job,skill,target,view);else if(target)combatContact(state.job,-1,target,view);return;}
  if(ability&&['heal','partyHeal','guard','partyGuard'].includes(ability[4])){command({type:'attack',skill});startLocalAttack(skill);skillEffect(state.job,skill,null,view);return;}
  let e=enemies.get(selected);if(!e?.alive)e=nearestTarget(560);
- if(!e){toast('근처에 공격할 몬스터가 없습니다.');return;}selected=e.id;
- if(distance(view,e)>stats(state).range*.96){targetIntent=null;path=[];command({type:'engage',target:e.id,skill});toast(e.name+' 자동 타겟 · 현재 위치를 추적합니다.');hud();return;}
+ if(!e){toast('근처에 안전하게 타겟팅할 몬스터가 없습니다.');return;}selected=e.id;
+ if(state.combatTarget!==e.id||distance(view,e)>stats(state).range*.96){targetIntent=null;path=[];command({type:'engage',target:e.id,skill});toast(e.name+' 타겟 고정 · 추적/공격');hud();return;}
  targetIntent=null;command({type:'attack',skill,target:e.id});startLocalAttack(skill);headingX=e.x-view.x;headingY=e.y-view.y;
  const pose=headingPose(headingX,headingY,face,flip);face=pose.row;flip=pose.mirror;path=[];
  if(skill>=0)skillEffect(state.job,skill,e,view);else combatContact(state.job,-1,e,view);hud();
