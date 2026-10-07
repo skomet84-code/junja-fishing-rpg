@@ -1239,3 +1239,6 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 
 .party-member small{min-height:12px}
 #partyHud>b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.raid-contrib{margin:8px 0 12px;padding:9px 10px;border:1px solid #e2b85c77;border-radius:10px;background:linear-gradient(135deg,#30240edd,#15151ddd);box-shadow:0 0 15px #e5ba4b1e}
+.raid-contrib b{display:block;color:#ffe395;font-size:11px}.raid-contrib span{display:block;margin-top:3px;color:#c8c0a9;font-size:10px;line-height:1.4}
