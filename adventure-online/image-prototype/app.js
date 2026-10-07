@@ -1,7 +1,7 @@
-import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-voidshowcase1';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,promotionSkillLearned,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-voidshowcase1';
+import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-polish2';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-polish2';
 import {mergeSnapshot} from './network.js';
-import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-voidshowcase1';
+import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-polish2';
 import {API_URL} from './config.js';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
@@ -9,7 +9,7 @@ const endgameStyle=document.createElement('style');endgameStyle.textContent=".sk
 let wireSnapshot=null;
 let token='',connectionKey='',legacy=null,roster=[],selectedSlot=0,state=profile(),view={x:768,y:355},connected=false,paused=false,serverNow=0,receivedAt=0,last=0,clock=0,lastSend=0,moveSending=false,pendingMove=null,streamController=null,streamGeneration=0,lastSelfSampleAt=0,lastSelfX=768,lastSelfY=355,serverVelocity={x:0,y:0};
 let path=[],selected=null,targetIntent=null,auto=false,cam={x:0,y:0},scale=1,face=0,flip=false,headingX=0,headingY=1,attackUntil=0,localActionLockUntil=0,attackSerial=0,lastServerAttackKey='',nearNpc=null,npcIntent=null,gesture=null,stick={x:0,y:0};
-let systems={nodes:[],bosses:[],trade:null,duel:null,daily:null},gatherIntent=null,travelIntent=null,mmoPanel='',bossSector=false,minimapAt=0,audioCtx=null,audioBus=null,audioNodes=[],soundOn=false;const resourceEls=new Map(),portalEls=new Map(),bossIntroSeen=new Set();
+let systems={nodes:[],bosses:[],trade:null,duel:null,party:null,partyInvite:null,daily:null},gatherIntent=null,travelIntent=null,mmoPanel='',bossSector=false,minimapAt=0,audioCtx=null,audioBus=null,audioNodes=[],soundOn=false;const resourceEls=new Map(),portalEls=new Map(),bossIntroSeen=new Set();
 const keys=new Set(),enemies=new Map(),peers=new Map(),seenEvents=new Set(),npcs=[{id:'elder',x:580,y:330},{id:'merchant',x:1000,y:330}];
 const DECOR_SPOTS=[
  [305,720,.85],[1225,750,1.05],[355,930,.75],[1165,955,.9],
@@ -234,7 +234,7 @@ function updateSnapshot(data){
   serverVelocity.x=serverVelocity.x*.45+vx*ratio*.55;serverVelocity.y=serverVelocity.y*.45+vy*ratio*.55;
  }else serverVelocity={x:0,y:0};
  lastSelfSampleAt=sampleAt;lastSelfX=next.x;lastSelfY=next.y;
- serverNow=data.now;receivedAt=performance.now();state=next;systems={nodes:data.nodes||[],bosses:data.bosses||[],trade:data.trade,duel:data.duel,daily:data.daily};
+ serverNow=data.now;receivedAt=performance.now();state=next;systems={nodes:data.nodes||[],bosses:data.bosses||[],trade:data.trade,duel:data.duel,party:data.party||null,partyInvite:data.partyInvite||null,daily:data.daily};
  syncMMO();if(old.zone!==state.zone){showZoneArrival(state.zone);serverVelocity={x:0,y:0};view={x:state.x,y:state.y};path=[];targetIntent=null;camera(true);if(soundOn)setRegionAudio(state.zone);}
  auto=state.auto;connected=true;
  if(old.zone===state.zone&&distance(view,state)>320){view={x:state.x,y:state.y};path=[];targetIntent=null;camera(true);}
