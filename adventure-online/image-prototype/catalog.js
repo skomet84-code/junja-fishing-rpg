@@ -1,27 +1,27 @@
 import {normalize} from './core.js';
 import {EXTRA_ITEMS,LEVEL_CAP,MMO_XP,MMO_HP} from './mmo-data.js';
 export {MMO_XP as needXp} from './mmo-data.js';
-export const BUILD='20261007-forgechat1';
+export const BUILD='20261007-combatlook2';
 export const JOBS={
- warrior:{name:'전사',title:'검호',role:'근접 · 방어',art:'hero',color:'#efbd68',attack:3,def:4,range:115,mana:70,skills:[['회전베기',2,5,1.9,'area',{mp:8,center:'self',radius:175,knockback:38}],['철벽',4,12,0,'guard',{mp:12,guard:8,guardFactor:.28}],['강타',8,8,3.4,'hit',{mp:14,stun:1.1,knockback:55}],['검기폭풍',10,15,2.8,'area',{mp:20,center:'target',radius:245,hits:3,knockback:24}]]},
- rogue:{name:'도적',title:'그림자',role:'기습 · 연속공격',art:'rogue',color:'#e791a4',attack:5,def:1,range:120,mana:80,skills:[['쌍검난무',2,5,2.45,'hit',{mp:7,hits:4}],['흡혈검',4,9,1.8,'drain',{mp:11,leech:.6}],['그림자 일격',8,8,3.7,'hit',{mp:14,execute:.35,executeBonus:1.45,stun:.55}],['월영참',10,15,3.1,'area',{mp:19,center:'target',radius:190,slow:2.5}]]},
- mage:{name:'주술사',title:'현자',role:'원거리 · 광역',art:'mage',color:'#b6a1fb',attack:4,def:0,range:330,mana:120,skills:[['화염구',2,5,2.2,'hit',{mp:9,splash:90,splashFactor:.45}],['서리장',4,9,1.45,'slow',{mp:13,center:'target',radius:205,slow:5}],['뇌전폭풍',8,10,2.7,'area',{mp:18,chain:4,chainRadius:250,falloff:.82,stun:.35}],['천둥심판',10,15,3.5,'area',{mp:26,center:'target',radius:270,stun:1.15,bossStun:.35}]]},
- healer:{name:'도사',title:'선인',role:'회복 · 지원',art:'healer',color:'#9de1af',attack:1,def:2,range:290,mana:130,skills:[['성광탄',2,5,2.05,'hit',{mp:8,selfHeal:.1}],['생명의 숨결',4,9,0,'heal',{mp:14,heal:.38,radius:310}],['수호결계',8,12,0,'partyGuard',{mp:18,guard:7,guardFactor:.5,radius:330}],['연화회복',10,15,0,'partyHeal',{mp:28,heal:.62,radius:360,guard:2,guardFactor:.65}]]},
+ warrior:{name:'전사',title:'검호',role:'근접 · 방어',art:'hero',color:'#efbd68',attack:3,def:4,range:115,mana:70,speed:1,attackDelay:.56,skills:[['회전베기',2,5,1.9,'area',{mp:8,center:'self',radius:175,knockback:38}],['철벽',4,12,0,'guard',{mp:12,guard:8,guardFactor:.28}],['강타',8,8,3.4,'hit',{mp:14,stun:1.1,knockback:55}],['검기폭풍',10,15,2.8,'area',{mp:20,center:'target',radius:245,hits:3,knockback:24}]]},
+ rogue:{name:'도적',title:'그림자',role:'기습 · 연속공격',art:'rogue',color:'#e791a4',attack:5,def:1,range:120,mana:80,speed:1.12,attackDelay:.50,skills:[['쌍검난무',2,5,2.45,'hit',{mp:7,hits:4}],['흡혈검',4,9,1.8,'drain',{mp:11,leech:.6}],['그림자 일격',8,8,3.7,'hit',{mp:14,execute:.35,executeBonus:1.45,stun:.55}],['월영참',10,15,3.1,'area',{mp:19,center:'target',radius:190,slow:2.5}]]},
+ mage:{name:'주술사',title:'현자',role:'원거리 · 광역',art:'mage',color:'#b6a1fb',attack:4,def:0,range:330,mana:120,speed:.94,attackDelay:.62,skills:[['화염구',2,5,2.2,'hit',{mp:9,splash:90,splashFactor:.45}],['서리장',4,9,1.45,'slow',{mp:13,center:'target',radius:205,slow:5}],['뇌전폭풍',8,10,2.7,'area',{mp:18,chain:4,chainRadius:250,falloff:.82,stun:.35}],['천둥심판',10,15,3.5,'area',{mp:26,center:'target',radius:270,stun:1.15,bossStun:.35}]]},
+ healer:{name:'도사',title:'선인',role:'회복 · 지원',art:'healer',color:'#9de1af',attack:1,def:2,range:290,mana:130,speed:.92,attackDelay:.64,skills:[['성광탄',2,5,2.05,'hit',{mp:8,selfHeal:.1}],['생명의 숨결',4,9,0,'heal',{mp:14,heal:.38,radius:310}],['수호결계',8,12,0,'partyGuard',{mp:18,guard:7,guardFactor:.5,radius:330}],['연화회복',10,15,0,'partyHeal',{mp:28,heal:.62,radius:360,guard:2,guardFactor:.65}]]},
 };
 export const SLOTS={head:'투구',weapon:'무기',armor:'갑옷',cape:'망토',boots:'신발',ring:'반지',ear:'귀걸이'};
 export const ITEMS={
  ...EXTRA_ITEMS,
  training:{name:'수련 무기',slot:'weapon',rarity:'normal',atk:0,tier:0},
- glowing:{name:'빛나는 무기',slot:'weapon',rarity:'uncommon',atk:8,tier:1},
+ glowing:{name:'빛나는 무기',slot:'weapon',rarity:'uncommon',atk:8,speed:.02,tier:1},
  leather:{name:'숲지기 갑옷',slot:'armor',rarity:'normal',def:3,hp:15,tier:1},
  hood:{name:'숲지기 투구',slot:'head',rarity:'normal',def:2,tier:1},
- boots:{name:'숲지기 장화',slot:'boots',rarity:'normal',def:1,hp:8,tier:1},
+ boots:{name:'숲지기 장화',slot:'boots',rarity:'normal',def:1,hp:8,speed:.025,tier:1},
  cape:{name:'초록 망토',slot:'cape',rarity:'uncommon',def:2,hp:18,tier:1},
- kingblade:{name:'왕꼬리의 서광',slot:'weapon',rarity:'rare',atk:18,tier:2},
+ kingblade:{name:'왕꼬리의 서광',slot:'weapon',rarity:'rare',atk:18,speed:.04,tier:2},
  kingarmor:{name:'왕꼬리 비늘갑옷',slot:'armor',rarity:'rare',def:8,hp:40,tier:2},
  kingcrown:{name:'왕꼬리 왕관',slot:'head',rarity:'rare',def:4,hp:20,tier:2},
  kingcape:{name:'달빛 망토',slot:'cape',rarity:'rare',atk:4,hp:30,tier:2},
- kingring:{name:'숲의 반지',slot:'ring',rarity:'rare',atk:3,hp:15,tier:2},
+ kingring:{name:'숲의 반지',slot:'ring',rarity:'rare',atk:3,hp:15,speed:.045,tier:2},
  kingear:{name:'이슬 귀걸이',slot:'ear',rarity:'rare',def:2,hp:20,tier:2},
 };
 export const RARE_POOL=['kingblade','kingarmor','kingcrown','kingcape','kingring','kingear'];
@@ -41,7 +41,9 @@ export function profile(raw={},job='warrior'){
  s.equipment={weapon:s.weapon?'glowing':'training'};for(const [slot,id] of Object.entries(raw.equipment||{}))if(SLOTS[slot]&&ITEMS[id]?.slot===slot&&s.bag.includes(id))s.equipment[slot]=id;
  const st=stats(s),rawMp=Number(raw.mp);s.hp=Math.min(Math.max(1,Number(raw.hp)||MMO_HP(s.level)),st.hp);s.mp=Math.min(st.mp,Math.max(0,Number.isFinite(rawMp)?rawMp:st.mp));return s;
 }
-export function stats(s){const job=JOBS[s.job]||JOBS.warrior;let atk=10+s.level*3+job.attack+s.rank*30,def=job.def+Math.floor(s.level*.35)+s.rank*15,hp=MMO_HP(s.level),mp=job.mana+s.level*5+s.rank*25;for(const id of Object.values(s.equipment||{})){const item=ITEMS[id];if(item){const factor=1+enhancementLevel(s,id)*.07;atk+=Math.round((item.atk||0)*factor);def+=Math.round((item.def||0)*factor);hp+=Math.round((item.hp||0)*factor);}}return {atk,def,hp,mp,range:job.range};}
+export function stats(s){const job=JOBS[s.job]||JOBS.warrior;let atk=10+s.level*3+job.attack+s.rank*30,def=job.def+Math.floor(s.level*.35)+s.rank*15,hp=MMO_HP(s.level),mp=job.mana+s.level*5+s.rank*25,speed=job.speed+Math.min(.2,Math.max(0,s.level-1)*.001)+s.rank*.04;for(const id of Object.values(s.equipment||{})){const item=ITEMS[id];if(item){const enhance=enhancementLevel(s,id),factor=1+enhance*.07;atk+=Math.round((item.atk||0)*factor);def+=Math.round((item.def||0)*factor);hp+=Math.round((item.hp||0)*factor);speed+=(item.speed||0)*(1+enhance*.04);}}speed=Math.round(speed*1000)/1000;return {atk,def,hp,mp,speed,range:job.range};}
+export function basicAttackDelay(s){const job=JOBS[s.job]||JOBS.warrior;return Math.max(.30,job.attackDelay/stats(s).speed);}
+export function skillCastDelay(s){return Math.max(.55,.95/stats(s).speed);}
 export function jobName(s){return s.rank?JOBS[s.job].title+' · '+s.rank+'차':JOBS[s.job].name;}
 export function gainXp(s,xp){s.exp+=xp;const before=s.level;while(s.exp>=MMO_XP(s.level)&&s.level<LEVEL_CAP){s.exp-=MMO_XP(s.level);s.level++;}if(s.level>before){const st=stats(s);s.hp=st.hp;s.mp=st.mp;}return s.level>before;}
 export function rollLoot(boss,random=Math.random){const r=random();if(boss){if(r<.10)return RARE_POOL[Math.min(5,Math.floor(random()*6))];if(r<.40)return UNCOMMON_POOL[Math.min(3,Math.floor(random()*4))];}else if(r<.03)return UNCOMMON_POOL[Math.min(3,Math.floor(random()*4))];return null;}

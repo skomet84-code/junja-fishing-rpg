@@ -745,3 +745,26 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .hero[data-weapon='3'] .gear-weapon{background:linear-gradient(#fff9d0,#e3b646,#fff1a2);box-shadow:0 0 15px #ffd95b;width:8%}.hero[data-armor='3'] .gear-armor{background:linear-gradient(#fff2a0cc,#8d5d17cc);box-shadow:0 0 11px #ffcf55}.hero[data-head='3'] .gear-head{background:linear-gradient(#fff5b6,#c38b24);box-shadow:0 0 9px #ffd86a}.hero[data-cape='3'] .gear-cape{background:linear-gradient(120deg,#6b441dcc,#ffcf64aa);box-shadow:0 0 10px #ffca58}
 .hero[data-weapon='4'] .gear-weapon{background:linear-gradient(#fff,#ff7ce9,#8fa5ff,#fff);box-shadow:0 0 19px #ff55da,0 0 28px #766cff;width:9%}.hero[data-armor='4'] .gear-armor{background:linear-gradient(135deg,#421450dd,#ff4d9acc,#6c65ffcc);box-shadow:0 0 17px #ff4bcf}.hero[data-head='4'] .gear-head{background:linear-gradient(#ffb6f3,#755dff);box-shadow:0 0 14px #ff4ed7}.hero[data-cape='4'] .gear-cape{background:linear-gradient(120deg,#260b4ddd,#e94bb7bb,#536dffbb);box-shadow:0 0 18px #a856ff}
 @media(max-width:600px){.quick-chat-grid{gap:7px}.quick-chat-grid button{min-height:48px;font-size:11px}.enhance-row{align-items:flex-start;flex-direction:column}.enhance-row>div:last-child{width:100%;justify-content:stretch}.enhance-row button{flex:1}.speech-bubble{max-width:145px;top:-54px}}
+
+/* Combat readability v2: promoted rogue identity + speed/cast feedback */
+.entity.hero[data-job='rogue'][data-rank='1']>.sprite{filter:brightness(.78) contrast(1.12) saturate(1.42) hue-rotate(18deg) drop-shadow(0 0 7px #9a5cff)!important}
+.entity.hero[data-job='rogue'][data-rank='2']>.sprite{filter:brightness(.70) contrast(1.18) saturate(1.58) hue-rotate(28deg) drop-shadow(0 0 9px #ba59ff) drop-shadow(0 0 14px #3e1d76)!important}
+.entity.hero[data-job='rogue'][data-rank='3']>.sprite{filter:brightness(.64) contrast(1.23) saturate(1.72) hue-rotate(38deg) drop-shadow(0 0 11px #e65aff) drop-shadow(0 0 19px #512083)!important}
+.entity.hero[data-job='rogue'][data-rank='1']>.shadow{box-shadow:0 0 12px #7f50c9aa}
+.entity.hero[data-job='rogue'][data-rank='2']>.shadow{box-shadow:0 0 16px #a53ae0bb}
+.entity.hero[data-job='rogue'][data-rank='3']>.shadow{box-shadow:0 0 22px #d546ffcc}
+.portrait[data-job='rogue'][data-rank='1']{filter:brightness(.78) saturate(1.4) hue-rotate(18deg) drop-shadow(0 0 5px #9b65f2)}
+.portrait[data-job='rogue'][data-rank='2']{filter:brightness(.70) saturate(1.55) hue-rotate(28deg) drop-shadow(0 0 7px #bc54ff)}
+.portrait[data-job='rogue'][data-rank='3']{filter:brightness(.64) saturate(1.7) hue-rotate(38deg) drop-shadow(0 0 9px #ed5cff)}
+.character-preview.rogue.promoted-preview{border-radius:12px;background:radial-gradient(circle at 50% 72%,#7b3dc455,#170d25 68%);box-shadow:inset 0 0 16px #a45aff55,0 0 10px #7c42b944}
+.character-preview.rogue.promoted-preview img{filter:brightness(.72) contrast(1.15) saturate(1.55) hue-rotate(27deg)}
+.character-preview.rogue.rank-2 img{filter:brightness(.66) contrast(1.2) saturate(1.68) hue-rotate(34deg)}
+.character-preview.rogue.rank-3 img{filter:brightness(.61) contrast(1.25) saturate(1.82) hue-rotate(42deg)}
+.character-preview.rogue.promoted-preview:after{content:'SHADOW';position:absolute;right:3px;bottom:3px;padding:2px 4px;border-radius:8px;background:#24102dcc;color:#eab6ff;font-size:7px;font-weight:800;letter-spacing:.4px;border:1px solid #b269d277}
+
+.entity.hero[data-job='rogue'][data-rank='1']>.gear-layers:after,
+.entity.hero[data-job='rogue'][data-rank='2']>.gear-layers:after,
+.entity.hero[data-job='rogue'][data-rank='3']>.gear-layers:after{content:'';position:absolute;left:28%;top:10%;width:44%;height:28%;pointer-events:none;z-index:6;clip-path:polygon(18% 0,82% 0,100% 48%,76% 100%,24% 100%,0 48%);background:linear-gradient(150deg,#171222dd,#5d2878aa,#1b1226dd);box-shadow:0 0 10px #8c43d6}
+.entity.hero[data-job='rogue'][data-rank='2']>.gear-layers:after{background:linear-gradient(150deg,#100d19ee,#77269acc,#20102dee);box-shadow:0 0 14px #b149ef}
+.entity.hero[data-job='rogue'][data-rank='3']>.gear-layers:after{background:linear-gradient(150deg,#09070fee,#8f1c9add,#32104bee);box-shadow:0 0 18px #e045ff}
+.character-preview.rogue.promoted-preview:before{content:'';position:absolute;left:29%;top:10%;width:42%;height:30%;z-index:2;clip-path:polygon(18% 0,82% 0,100% 48%,76% 100%,24% 100%,0 48%);background:linear-gradient(150deg,#171222dd,#6f2a88bb,#1b1226dd);box-shadow:0 0 8px #a654e8;pointer-events:none}
