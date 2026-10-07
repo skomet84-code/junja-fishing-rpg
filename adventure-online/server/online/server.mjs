@@ -8,7 +8,7 @@ import {diffSnapshot} from './wire.mjs';
 import {World} from './engine.mjs';
 import {CHANNEL_CAP,WORLD_CAP} from '../../image-prototype/mmo-data.js';
 import {removeSocial} from './systems.mjs';
-import {profile,JOBS,BUILD} from '../../image-prototype/catalog.js';
+import {profile,JOBS,BUILD,stats} from '../../image-prototype/catalog.js';
 const scrypt=promisify(sc),hash=s=>createHash('sha256').update(s).digest('hex'),memory=process.env.TEST_MEMORY==='1';
 const staticRoot=fileURLToPath(new URL('../../image-prototype/',import.meta.url));
 const accounts=new Map(),sessions=new Map(),streams=new Map(),limits=new Map();let pool;
@@ -27,6 +27,16 @@ const origins=new Set(['https://junja-adventure-preview.onrender.com','http://12
 function headers(req){const o=req.headers.origin;return {'content-type':'application/json; charset=utf-8','cache-control':'no-store','vary':'Origin',...(origins.has(o)?{'access-control-allow-origin':o}:{}),'access-control-allow-headers':'authorization,content-type,x-adventure-connection','access-control-allow-methods':'GET,POST,OPTIONS'};}
 function json(req,res,obj,status=200){res.writeHead(status,headers(req));res.end(JSON.stringify(obj));}
 function publicRoster(a){return a.roster.map((s,slot)=>({slot,job:s.job,level:s.level,rank:s.rank,equipment:s.equipment,kills:s.kills}));}
+function rankCharacter(raw,slot){const s=profile(raw,Object.keys(JOBS)[slot]||'warrior'),st=stats(s);return {slot,job:s.job,level:s.level,rank:s.rank,exp:s.exp||0,kills:s.kills||0,bossKills:s.bossKills||0,pvpWins:s.pvpWins||0,gold:s.gold||0,power:Math.round(st.atk*8+st.def*6+st.hp*.08+st.speed*120+s.rank*250)};}
+function bestRankCharacter(roster=[]){return roster.map((s,i)=>rankCharacter(s,i)).sort((a,b)=>b.level-a.level||b.rank-a.rank||b.exp-a.exp||b.bossKills-a.bossKills||b.kills-a.kills||b.pvpWins-a.pvpWins||b.power-a.power)[0]||rankCharacter({},0);}
+async function ranking(accountId){
+ let rows;if(pool){const r=await pool.query('SELECT id,username,roster FROM junja_adventure_online.accounts');rows=r.rows;}else rows=[...accounts.values()];
+ const merged=new Map(rows.map(a=>[a.id,{id:a.id,username:a.username,roster:a.roster}]));for(const a of accounts.values())merged.set(a.id,{id:a.id,username:a.username,roster:a.roster});
+ const onlineAccounts=new Set([...world.players.keys()].map(id=>id.split(':')[0]));
+ const all=[...merged.values()].map(a=>({...bestRankCharacter(a.roster),_id:a.id,name:a.username,online:onlineAccounts.has(a.id)})).sort((a,b)=>b.level-a.level||b.rank-a.rank||b.exp-a.exp||b.bossKills-a.bossKills||b.kills-a.kills||b.pvpWins-a.pvpWins||b.power-a.power||a.name.localeCompare(b.name,'ko'));
+ const selfIndex=all.findIndex(x=>x._id===accountId),top=all.slice(0,30).map((x,i)=>{const {_id,...rest}=x;return {...rest,position:i+1};});
+ return {ranking:top,selfRank:selfIndex>=0?selfIndex+1:null,total:all.length,updatedAt:Date.now()};
+}
 function disconnect(id,text='다른 창에서 접속했습니다.'){const stream=streams.get(id);if(stream){stream.write('data: '+JSON.stringify({disconnected:text})+'\n\n');stream.end();streams.delete(id);}const p=world.players.get(id);if(p){if(!p.exchangeBusy)removeSocial(world,p);touch(p);world.players.delete(id);}}
 const server=http.createServer(async(req,res)=>{const url=new URL(req.url,'http://localhost');try{
  if(req.method==='OPTIONS'){res.writeHead(204,headers(req));res.end();return;}
@@ -50,6 +60,7 @@ const server=http.createServer(async(req,res)=>{const url=new URL(req.url,'http:
   }
   const user=await auth(req);if(!user){json(req,res,{error:'로그인이 필요합니다.'},401);return;}const {a,session}=user;
   if(url.pathname==='/api/me'){json(req,res,{name:a.username,roster:publicRoster(a)});return;}
+  if(url.pathname==='/api/ranking'&&req.method==='GET'){json(req,res,await ranking(a.id));return;}
   if(url.pathname==='/api/join'&&req.method==='POST'){
    if(a.locked){json(req,res,{error:'거래 저장 중입니다. 잠시 후 접속하세요.'},409);return;}const input=await body(req),slot=Number(input.slot),channel=String(input.channel||'준자마을').trim();if(!Number.isInteger(slot)||slot<0||slot>3||!/^[A-Za-z0-9가-힣_-]{2,16}$/.test(channel)){json(req,res,{error:'캐릭터와 채널 이름을 확인하세요.'},400);return;}
    if([...world.players.values()].filter(p=>!p.id.startsWith(a.id+':')).length>=WORLD_CAP){json(req,res,{error:'전체 접속 인원이 가득 찼습니다. 잠시 후 다시 접속하세요.'},409);return;}
