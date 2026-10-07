@@ -640,3 +640,93 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
   url('./assets/world.png');
  background-size:1200px 1200px,100% 2048px,100% 1024px;background-repeat:repeat,no-repeat,repeat-y;background-blend-mode:screen,multiply,normal;
 }
+
+
+/* ===== MMORPG IMMERSION PASS 6 ===== */
+#minimapWrap{
+ position:absolute;right:12px;top:178px;width:190px;padding:7px 7px 6px;z-index:18;
+ border:1px solid #b8a86f88;border-radius:12px;background:#09150fda;box-shadow:0 6px 18px #0006;pointer-events:none
+}
+#minimapWrap>b{display:block;font-size:9px;letter-spacing:2px;color:#d9cb91;margin:0 0 4px 2px}
+#minimap{display:block;width:176px;height:112px;border-radius:8px;border:1px solid #ffffff22;background:#0e1913;image-rendering:auto}
+#minimapLabel{display:block;margin-top:4px;text-align:center;font-size:9px;color:#d7dfce}
+
+.enemy.elite .entity-name{
+ color:#ffd08b;font-weight:800;background:#3d1f16d9;border:1px solid #f1a35d99;border-radius:7px;padding:2px 6px;
+ box-shadow:0 0 9px #ff8b4d55;text-shadow:0 1px 3px #000,0 0 6px #ff9a58
+}
+.enemy.boss .entity-name{
+ color:#ffe7ad;font-weight:900;font-size:12px;background:#451a12e8;border:1px solid #ffb766;border-radius:8px;padding:3px 7px;
+ box-shadow:0 0 12px #ff8e4d77;text-shadow:0 1px 4px #000,0 0 8px #ffb15d
+}
+.enemy.named .entity-name{
+ color:#f2c3ff;background:#2c123be8;border-color:#d583ff;box-shadow:0 0 15px #af5eea88;text-shadow:0 0 9px #c47aff
+}
+.enemy.elite:not(.boss) .life{height:5px;border-color:#c9783f}.enemy.elite:not(.boss) .life i{background:linear-gradient(#ffbf62,#c65b39)}
+.enemy.boss .life{height:7px;top:-6px;left:12%;width:76%;border-color:#f0b05b}.enemy.boss .life i{background:linear-gradient(#ff9b54,#a62e32)}
+
+#game.boss-sector #viewport:after{
+ content:'';position:absolute;inset:0;pointer-events:none;z-index:9;
+ background:radial-gradient(ellipse at 50% 55%,transparent 38%,#280d1285 78%,#12070bd0 100%);
+ box-shadow:inset 0 0 90px #7d1f2b33;
+ animation:bossVignette 2.1s ease-in-out infinite alternate
+}
+#game.boss-sector #world:after{background:radial-gradient(ellipse at 50% 72%,transparent 28%,#17070d66 72%,#08030888)}
+#game.boss-sector .hunt-sector.sector-3{border-color:#e77655aa;background:#401613dd;box-shadow:0 0 24px #bd3e3266}
+@keyframes bossVignette{from{opacity:.7}to{opacity:1}}
+
+#bossWarning{
+ position:absolute;left:50%;top:22%;z-index:3200;transform:translate(-50%,-50%) scale(.78);opacity:0;pointer-events:none;
+ min-width:min(520px,86vw);padding:16px 34px;text-align:center;
+ background:linear-gradient(90deg,transparent,#2c0f10e8 15%,#4a1518f2 50%,#2c0f10e8 85%,transparent);
+ border-top:1px solid #ef8f6188;border-bottom:1px solid #ef8f6188;text-shadow:0 2px 8px #000;transition:opacity .28s,transform .35s
+}
+#bossWarning.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#bossWarning small{display:block;font-size:9px;letter-spacing:5px;color:#e79672}
+#bossWarning b{display:block;font-size:28px;color:#ffe2a1;margin:4px 0}
+#bossWarning span{font-size:11px;color:#efc9b1}
+#bossWarning.named{background:linear-gradient(90deg,transparent,#24102fe8 15%,#4b1a5bf2 50%,#24102fe8 85%,transparent);border-color:#c979ff99}
+#bossWarning.named small{color:#dda4ff}#bossWarning.named b{color:#f3c9ff}
+
+#warpFx{
+ position:absolute;inset:0;z-index:4000;pointer-events:none;overflow:hidden;background:#05090800;opacity:0;transition:opacity .25s
+}
+#warpFx.show{opacity:1;background:#050908a8}
+#warpFx i{
+ position:absolute;left:50%;top:50%;width:80px;height:80px;border-radius:50%;transform:translate(-50%,-50%) scale(.2);
+ border:4px solid #fff0b8;box-shadow:0 0 35px #f8e493,0 0 90px #79d9c7,inset 0 0 25px #fff6c7;
+ animation:warpExpand .72s cubic-bezier(.2,.72,.18,1) forwards
+}
+#warpFx i:before,#warpFx i:after{
+ content:'';position:absolute;inset:-18px;border-radius:50%;border:2px dashed #bdf5e6;animation:portalSpin 1.4s linear infinite
+}
+#warpFx i:after{inset:-42px;border-color:#f4df9f88;animation-duration:2.1s;animation-direction:reverse}
+#warpFx b{
+ position:absolute;left:50%;top:62%;transform:translateX(-50%);white-space:nowrap;color:#fff0b6;font-size:16px;
+ letter-spacing:1px;text-shadow:0 0 12px #000,0 0 12px #f1d57c
+}
+#warpFx.exit{opacity:0}
+@keyframes warpExpand{0%{transform:translate(-50%,-50%) scale(.12);opacity:.4}65%{transform:translate(-50%,-50%) scale(6.5);opacity:1}100%{transform:translate(-50%,-50%) scale(12);opacity:.96}}
+
+.loot-burst{
+ position:absolute;width:94px;height:94px;transform:translate(-50%,-50%);pointer-events:none;z-index:2500;
+ animation:lootFade 1.15s ease-out forwards
+}
+.loot-burst i{
+ position:absolute;left:45px;top:45px;width:7px;height:7px;border-radius:50%;background:#f7e8a0;box-shadow:0 0 8px currentColor;
+ animation:lootParticle .9s ease-out forwards
+}
+.loot-burst i:nth-child(1){--dx:-38px;--dy:-42px}.loot-burst i:nth-child(2){--dx:40px;--dy:-34px}.loot-burst i:nth-child(3){--dx:-46px;--dy:12px}.loot-burst i:nth-child(4){--dx:44px;--dy:18px}.loot-burst i:nth-child(5){--dx:2px;--dy:-58px}
+.loot-burst b{position:absolute;left:50%;top:58px;transform:translateX(-50%);font-size:10px;white-space:nowrap;color:#f8e3a4;text-shadow:0 1px 5px #000}
+.loot-burst.elite i{background:#ffaf6a;color:#ff8955}.loot-burst.elite b{color:#ffc38a}
+.loot-burst.boss{width:124px;height:124px}.loot-burst.boss i{width:10px;height:10px;background:#ffd66b;color:#ff9b47}.loot-burst.boss b{top:75px;font-size:12px;color:#ffe29b}
+.loot-burst.legendary{width:145px;height:145px}.loot-burst.legendary i{width:11px;height:11px;background:#e6a1ff;color:#c064ff}.loot-burst.legendary b{top:82px;font-size:13px;color:#f2c1ff;text-shadow:0 0 9px #af58e5}
+@keyframes lootParticle{0%{translate:0 0;scale:.5;opacity:0}18%{opacity:1;scale:1.2}100%{translate:var(--dx) var(--dy);scale:.4;opacity:0}}
+@keyframes lootFade{0%{opacity:1}72%{opacity:1}100%{opacity:0}}
+
+@media(max-width:600px){
+ #minimapWrap{right:8px;top:156px;width:142px;padding:5px}
+ #minimap{width:130px;height:84px}
+ #minimapWrap>b{font-size:7px}#minimapLabel{font-size:8px}
+ #bossWarning b{font-size:22px}
+}
