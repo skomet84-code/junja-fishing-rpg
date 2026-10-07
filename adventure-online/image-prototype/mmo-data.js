@@ -3,23 +3,23 @@ export const PROMOTIONS=[{level:99,name:'1차 전직',bosses:1},{level:199,name:
 export const MATERIALS={wood:'나무',stone:'돌',ore:'철광석',crystal:'던전 수정',stardust:'별빛 파편'};
 export const QUICK_CHATS=['안녕하세요!','같이 사냥해요!','보스 잡으러 가요!','잠깐만요!','도와주세요!','고마워요!','축하해요!','ㅋㅋㅋㅋ','좋아요!','마을에서 만나요!'];
 export const EXTRA_ITEMS={
- ironblade:{name:'단조 철검',slot:'weapon',rarity:'uncommon',atk:24,tier:1,level:15},
+ ironblade:{name:'단조 철검',slot:'weapon',rarity:'uncommon',atk:24,speed:.025,tier:1,level:15},
  ironarmor:{name:'단조 철갑',slot:'armor',rarity:'uncommon',def:12,hp:100,tier:1,level:15},
- crystalblade:{name:'수정빛 무기',slot:'weapon',rarity:'rare',atk:95,tier:2,level:50},
+ crystalblade:{name:'수정빛 무기',slot:'weapon',rarity:'rare',atk:95,speed:.05,tier:2,level:50},
  crystalarmor:{name:'수정 수호갑',slot:'armor',rarity:'rare',def:45,hp:420,tier:2,level:50},
- astralblade:{name:'전설 · 천명의 서광',slot:'weapon',rarity:'legendary',atk:240,tier:3,level:99},
+ astralblade:{name:'전설 · 천명의 서광',slot:'weapon',rarity:'legendary',atk:240,speed:.08,tier:3,level:99},
  astralarmor:{name:'전설 · 천룡의 갑주',slot:'armor',rarity:'legendary',def:100,hp:1200,tier:3,level:99},
  astralcape:{name:'전설 · 별하늘 망토',slot:'cape',rarity:'legendary',atk:85,def:40,hp:650,tier:3,level:99},
  astralcrown:{name:'전설 · 천룡의 관',slot:'head',rarity:'legendary',atk:35,def:48,hp:520,tier:3,level:99},
- astralboots:{name:'전설 · 성운의 장화',slot:'boots',rarity:'legendary',def:52,hp:720,tier:3,level:99},
- astralring:{name:'전설 · 별왕의 반지',slot:'ring',rarity:'legendary',atk:72,def:18,hp:360,tier:3,level:99},
+ astralboots:{name:'전설 · 성운의 장화',slot:'boots',rarity:'legendary',def:52,hp:720,speed:.06,tier:3,level:99},
+ astralring:{name:'전설 · 별왕의 반지',slot:'ring',rarity:'legendary',atk:72,def:18,hp:360,speed:.065,tier:3,level:99},
  astralear:{name:'전설 · 천성의 귀걸이',slot:'ear',rarity:'legendary',atk:42,def:36,hp:460,tier:3,level:99},
- mythicblade:{name:'신화 · 천제의 심판',slot:'weapon',rarity:'mythic',atk:620,def:35,hp:500,tier:4,level:200},
+ mythicblade:{name:'신화 · 천제의 심판',slot:'weapon',rarity:'mythic',atk:620,def:35,hp:500,speed:.12,tier:4,level:200},
  mythicarmor:{name:'신화 · 창세의 성갑',slot:'armor',rarity:'mythic',atk:70,def:260,hp:3400,tier:4,level:200},
  mythiccape:{name:'신화 · 무한성운 망토',slot:'cape',rarity:'mythic',atk:210,def:110,hp:1800,tier:4,level:200},
  mythiccrown:{name:'신화 · 천제의 왕관',slot:'head',rarity:'mythic',atk:115,def:105,hp:1100,tier:4,level:200},
- mythicboots:{name:'신화 · 시공의 장화',slot:'boots',rarity:'mythic',atk:55,def:95,hp:1300,tier:4,level:200},
- mythicring:{name:'신화 · 영원의 반지',slot:'ring',rarity:'mythic',atk:190,def:55,hp:900,tier:4,level:200},
+ mythicboots:{name:'신화 · 시공의 장화',slot:'boots',rarity:'mythic',atk:55,def:95,hp:1300,speed:.09,tier:4,level:200},
+ mythicring:{name:'신화 · 영원의 반지',slot:'ring',rarity:'mythic',atk:190,def:55,hp:900,speed:.10,tier:4,level:200},
  mythicear:{name:'신화 · 태초의 귀걸이',slot:'ear',rarity:'mythic',atk:120,def:95,hp:1200,tier:4,level:200},
 };
 export const RECIPES={
