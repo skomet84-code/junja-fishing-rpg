@@ -1,7 +1,7 @@
-import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-endgame300a';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,CONQUEST_CAP,conquestNeed,conquestTitle,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-endgame300a';
+import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-warriorart1';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,CONQUEST_CAP,conquestNeed,conquestTitle,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-warriorart1';
 import {mergeSnapshot} from './network.js';
-import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-endgame300a';
+import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-warriorart1';
 import {API_URL} from './config.js';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
@@ -177,16 +177,20 @@ function blendSprite(art,a,b,mix,row,rows=3,mirror=false){
  sprite(art,a,row,rows,mirror);sprite(twin,b,row,rows,mirror);
  art.style.opacity=String(1-t);twin.style.opacity=String(t);
 }
-function productionSpriteEnabled(el){return false;}
+function productionSpriteEnabled(el){return el?.dataset?.job==='rogue'&&Number(el?.dataset?.rank||0)>=3;}
 function productionSpriteRow(dx=0,dy=1){if(Math.abs(dx)>.45||Math.abs(dx)>Math.abs(dy))return dx<0?1:2;return dy<0?3:0;}
-function productionSpriteSheet(job){return job==='warrior'?'./assets/sprites/warrior-sheet.webp':'./assets/sprites/shadow-sheet.webp';}
+function productionSpriteSheet(job,rank=0){if(job==='rogue'&&Number(rank)>=4)return './assets/sprites/rogue-r4-field.webp';if(job==='rogue'&&Number(rank)>=3)return './assets/sprites/rogue-r3-field.webp';return job==='warrior'?'./assets/sprites/warrior-sheet.webp':'./assets/sprites/shadow-sheet.webp';}
 function paintProductionSprite(el,mode,time,dx=0,dy=1,progress=null){
  let layer=el.querySelector('.production-sprite');if(!layer){layer=document.createElement('div');layer.className='production-sprite';el.append(layer);}
- const active=productionSpriteEnabled(el);el.classList.toggle('production-active',active);if(!active){layer.style.display='none';return;}
- layer.style.display='block';const job=el.dataset.job,row=productionSpriteRow(dx,dy),base=mode==='walk'?2:mode==='attack'?4:mode==='skill'?6:0;
- let frame=0;if(mode==='idle')frame=Math.floor(time*2)%2;else if(mode==='walk')frame=Math.floor(time*8)%2;else frame=(progress??0)<.48?0:1;
- const col=base+frame,key=job+'|'+row+'|'+col;if(layer.dataset.frameKey!==key){layer.dataset.frameKey=key;layer.style.backgroundImage=`url('${productionSpriteSheet(job)}?v=${BUILD}')`;layer.style.backgroundPosition=`${col*100/7}% ${row*100/3}%`;}
- layer.dataset.productionMotion=mode;
+ const active=productionSpriteEnabled(el);el.classList.toggle('production-active',active);if(!active){layer.style.display='none';layer.style.transform='';return;}
+ layer.style.display='block';const job=el.dataset.job,rank=Number(el.dataset.rank||0),src=productionSpriteSheet(job,rank),mirror=dx<-.18?-1:1,p=Math.max(0,Math.min(1,Number(progress??0))),phase=Math.sin(time*10),walkBob=mode==='walk'?Math.sin(time*15)*2.2:Math.sin(time*2.2)*.9;
+ if(layer.dataset.spriteSrc!==src){layer.dataset.spriteSrc=src;layer.style.backgroundImage=`url('${src}?v=${BUILD}')`;layer.style.backgroundSize='contain';layer.style.backgroundPosition='center bottom';}
+ let tx=0,ty=walkBob,rot=0,scale=1;
+ if(mode==='walk'){rot=phase*1.1;scale=1+Math.abs(phase)*.012;}
+ else if(mode==='attack'){const swing=Math.sin(p*Math.PI);tx=(dx||0)*swing*7;ty+=(dy||0)*swing*2.5;rot=(mirror<0?-1:1)*(-4+11*swing);scale=1+swing*.045;}
+ else if(mode==='skill'){const burst=Math.sin(p*Math.PI);tx=(dx||0)*burst*4;ty-=burst*4;rot=(mirror<0?-1:1)*burst*3;scale=1+burst*.075;}
+ layer.style.transform=`translateX(-50%) translate(${tx.toFixed(2)}px,${ty.toFixed(2)}px) scaleX(${mirror}) rotate(${rot.toFixed(2)}deg) scale(${scale.toFixed(3)})`;
+ layer.dataset.productionMotion=mode;layer.dataset.productionRank=String(rank);
 }
 const MOTION={
  idle:{keys:[0,0],speed:.7},
@@ -262,7 +266,7 @@ function updateSnapshot(data){
  if(auto&&state.autoTarget!=null&&enemies.get(state.autoTarget)?.alive){selected=state.autoTarget;targetIntent=null;}else if(state.combatTarget!=null&&enemies.get(state.combatTarget)?.alive){selected=state.combatTarget;targetIntent=null;}
  const me=data.players.find(p=>p.id===state.id);
  if(me){face=me.face;flip=me.flip;if(Number.isFinite(me.dirX)&&Number.isFinite(me.dirY)){headingX=me.dirX;headingY=me.dirY;}if(me.attacking){const key=[me.attackSkill??-1,me.attackTarget??'',state.nextAttack||0].join(':');if(key!==lastServerAttackKey){lastServerAttackKey=key;const hero=$('hero'),skill=me.attackSkill??-1,target=fxTarget(me.attackTarget),duration=combatAnimDuration(skill);attackUntil=clock+duration;hero.dataset.attackStarted=String(clock);hero.dataset.attackDuration=String(duration);hero.dataset.attackSkill=String(skill);hero.dataset.attackVariant=String(attackSerial++%3);if(skill>=0)skillEffect(state.job,skill,target,view);else if(target)combatContact(state.job,-1,target,view);}}else lastServerAttackKey='';}
- if(old.job!==state.job||old.rank!==state.rank||$('skillbar').childElementCount!==JOBS[state.job].skills.length)makeSkills();if((old.rank||0)<(state.rank||0))showPromotion(state.rank,state.job);actorArt($('heroArt'),state);decorate($('hero'),state);$('hero').querySelector('.entity-name').textContent=state.name+' · '+jobName(state);const portrait=document.querySelector('.portrait');portrait.style.backgroundImage=`url('./assets/${JOBS[state.job].art}.png')`;portrait.style.backgroundSize='400% 300%';portrait.style.backgroundPosition='0 0';portrait.dataset.job=state.job;portrait.dataset.rank=String(state.rank||0);portrait.classList.remove('production-portrait');
+ if(old.job!==state.job||old.rank!==state.rank||$('skillbar').childElementCount!==JOBS[state.job].skills.length)makeSkills();if((old.rank||0)<(state.rank||0))showPromotion(state.rank,state.job);actorArt($('heroArt'),state);decorate($('hero'),state);$('hero').querySelector('.entity-name').textContent=state.name+' · '+jobName(state);const portrait=document.querySelector('.portrait'),productionPortrait=state.job==='rogue'&&Number(state.rank||0)>=3,portraitSrc=productionPortrait?productionSpriteSheet('rogue',state.rank):`./assets/${JOBS[state.job].art}.png`;portrait.style.backgroundImage=`url('${portraitSrc}?v=${BUILD}')`;portrait.style.backgroundSize=productionPortrait?'cover':'400% 300%';portrait.style.backgroundPosition=productionPortrait?'50% 12%':'0 0';portrait.dataset.job=state.job;portrait.dataset.rank=String(state.rank||0);portrait.classList.toggle('production-portrait',productionPortrait);
  const mobIds=new Set();for(const e of data.enemies){
   mobIds.add(e.id);let entry=enemies.get(e.id),wasKnown=!!entry,wasAlive=entry?.alive,previousX=entry?.x,previousY=entry?.y,previousAt=entry?.sampleAt;
   if(!entry){const el=entity('enemy'+(e.boss?' boss':''));el.querySelector('b').textContent=e.name||'숲 다람쥐';el.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();select(e.id,true);});$('enemyLayer').append(el);entry={el,art:el.querySelector('.sprite'),vx:e.x,vy:e.y,netVx:0,netVy:0,sampleAt};enemies.set(e.id,entry);}
@@ -314,7 +318,7 @@ async function showSelection(){
   else{$('retryBtn').hidden=false;$('loadMessage').textContent='서버 연결이 잠시 지연되고 있어요. 저장된 로그인 정보는 지우지 않았습니다.';}
   return;
  }
- try{await artReady;$('loadMessage').textContent='친구들과 함께하는 준자마을';roster=me.roster;$('welcome').textContent=me.name+' · 캐릭터 선택';$('characterCards').replaceChildren();for(const s of roster){const job=JOBS[s.job],b=document.createElement('button');b.type='button';b.className='character-card';b.dataset.slot=s.slot;b.setAttribute('aria-pressed',String(s.slot===selectedSlot));const preview=`<span class="character-preview ${s.job} ${s.rank?'promoted-preview rank-'+s.rank:''}"><img src="./assets/${job.art}.png" alt="${esc(jobName(s))}" decoding="sync"></span>`;b.innerHTML=preview+`<b>${esc(jobName(s))}</b><small>Lv.${s.level} · ${job.role}</small>`;b.onclick=()=>{selectedSlot=s.slot;document.querySelectorAll('.character-card').forEach(el=>el.setAttribute('aria-pressed',String(Number(el.dataset.slot)===selectedSlot)));};$('characterCards').append(b);}await Promise.all([...$('characterCards').querySelectorAll('img')].map(im=>im.decode()));$('selectPanel').hidden=false;}
+ try{await artReady;$('loadMessage').textContent='친구들과 함께하는 준자마을';roster=me.roster;$('welcome').textContent=me.name+' · 캐릭터 선택';$('characterCards').replaceChildren();for(const s of roster){const job=JOBS[s.job],b=document.createElement('button');b.type='button';b.className='character-card';b.dataset.slot=s.slot;b.setAttribute('aria-pressed',String(s.slot===selectedSlot));const production=s.job==='rogue'&&Number(s.rank||0)>=3,previewSrc=production?`./assets/sprites/rogue-r${Number(s.rank)>=4?4:3}-field.webp?v=${BUILD}`:`./assets/${job.art}.png`,preview=`<span class="character-preview ${s.job} ${s.rank?'promoted-preview rank-'+s.rank:''} ${production?'production-card':''}"><img src="${previewSrc}" alt="${esc(jobName(s))}" decoding="sync"></span>`;b.innerHTML=preview+`<b>${esc(jobName(s))}</b><small>Lv.${s.level} · ${job.role}</small>`;b.onclick=()=>{selectedSlot=s.slot;document.querySelectorAll('.character-card').forEach(el=>el.setAttribute('aria-pressed',String(Number(el.dataset.slot)===selectedSlot)));};$('characterCards').append(b);}await Promise.all([...$('characterCards').querySelectorAll('img')].map(im=>im.decode()));$('selectPanel').hidden=false;}
  catch(e){$('retryBtn').hidden=false;$('loadMessage').textContent=e.message;}
 }
 async function login(register=false){if(!$('authForm').reportValidity())return;const username=$('username').value.trim(),password=$('password').value;$('authMessage').textContent='접속 중…';$('loginBtn').disabled=$('registerBtn').disabled=true;
