@@ -154,7 +154,7 @@ function motion(el,art,mode,row,mirror,time,phase=0,dx=0,dy=0){
  el.style.setProperty('--lean',mode==='walk'?(stride*1.35)+'deg':(stride*.25)+'deg');
  el.style.setProperty('--squash',mode==='walk'?(1-foot*.02):(1+stride*.005));
  el.style.setProperty('--weapon-angle',mode==='walk'?(stride*-5.5)+'deg':'0deg');
- el.style.setProperty('--attack-power','0');el.style.setProperty('--arm-angle','0deg');el.style.setProperty('--trail-angle','0deg');el.style.setProperty('--trail-scale','.76');el.style.setProperty('--lunge-x','0px');el.style.setProperty('--lunge-y','0px');
+ el.style.setProperty('--attack-power','0');el.style.setProperty('--arm-angle','0deg');el.style.setProperty('--trail-angle','0deg');el.style.setProperty('--trail-scale','.76');el.style.setProperty('--lunge-x','0px');el.style.setProperty('--lunge-y','0px');el.style.setProperty('--coat-sway',(stride*5.5)+'deg');el.style.setProperty('--cape-lag',(stride*-3.2)+'deg');el.style.setProperty('--shoulder-lift',(foot*1.4)+'px');el.style.setProperty('--offhand-angle',(stride*7)+'deg');
 }
 function attackPose(el,art,row,mirror,started,duration=.44,job='warrior',skill=-1,variant=0,dx=0,dy=0){
  const pose=applyHeading(el,dx,dy,row,mirror),p=Math.max(0,Math.min(1,(clock-started)/duration));
@@ -176,7 +176,7 @@ function attackPose(el,art,row,mirror,started,duration=.44,job='warrior',skill=-
  }
  el.dataset.motion='attack';el.dataset.attackVariant=String(variant%3);el.dataset.attackSkill=String(skill);
  const armFactor=job==='rogue'?.34:job==='mage'?.16:job==='healer'?.12:.28,trailFactor=job==='rogue'?.23:job==='mage'?.4:job==='healer'?.3:.18;
- el.style.setProperty('--bob',bob+'px');el.style.setProperty('--lean',lean+'deg');el.style.setProperty('--squash',p>.18&&p<.62?.958:1);el.style.setProperty('--weapon-angle',weapon+'deg');el.style.setProperty('--arm-angle',(weapon*armFactor)+'deg');el.style.setProperty('--trail-angle',(weapon*trailFactor)+'deg');el.style.setProperty('--trail-scale',String(.74+Math.max(0,power)*.28));el.style.setProperty('--attack-power',String(Math.max(0,power)));el.style.setProperty('--lunge-x',(lunge*pose.nx)+'px');el.style.setProperty('--lunge-y',(lunge*pose.ny*.38)+'px');
+ el.style.setProperty('--bob',bob+'px');el.style.setProperty('--lean',lean+'deg');el.style.setProperty('--squash',p>.18&&p<.62?.958:1);el.style.setProperty('--weapon-angle',weapon+'deg');el.style.setProperty('--arm-angle',(weapon*armFactor)+'deg');el.style.setProperty('--trail-angle',(weapon*trailFactor)+'deg');el.style.setProperty('--trail-scale',String(.74+Math.max(0,power)*.28));el.style.setProperty('--attack-power',String(Math.max(0,power)));el.style.setProperty('--lunge-x',(lunge*pose.nx)+'px');el.style.setProperty('--lunge-y',(lunge*pose.ny*.38)+'px');el.style.setProperty('--coat-sway',(lean*.55-weapon*.045)+'deg');el.style.setProperty('--cape-lag',(lean*-.32-weapon*.025)+'deg');el.style.setProperty('--shoulder-lift',(Math.max(0,power)*-2.2)+'px');el.style.setProperty('--offhand-angle',(-weapon*.72)+'deg');
 }
 function actorArt(el,s){
  const art=JOBS[s.job].art,useMotion=motionArt.has(art),url=`url('./assets/${art}${useMotion?'-motion.webp':'.png'}?v=${BUILD}')`,parent=el.parentElement;
@@ -187,8 +187,8 @@ function decorate(el,s){const eq=s.equipment||{};el.dataset.job=s.job;el.dataset
 function layers(el){
  const base=el.querySelector('.sprite');
  if(base&&!el.querySelector('.sprite-b')){base.classList.add('sprite-a');const twin=base.cloneNode(false);twin.removeAttribute('id');twin.classList.remove('sprite-a');twin.classList.add('sprite-b');twin.style.opacity='0';base.after(twin);}
- if(!el.querySelector('.gear-layers')){const div=document.createElement('div');div.className='gear-layers';div.innerHTML='<i class="gear-cape"></i><i class="gear-armor"></i><i class="gear-head"></i><i class="gear-boots"></i>';el.append(div);}
- if(!el.querySelector('.weapon-rig')){const rig=document.createElement('span');rig.className='weapon-rig';rig.innerHTML='<span class="weapon-core"><i class="gear-arm"></i><i class="gear-hand"></i><i class="gear-weapon"></i></span>';el.append(rig);}
+ if(!el.querySelector('.gear-layers')){const div=document.createElement('div');div.className='gear-layers';div.innerHTML='<i class="gear-cape"></i><i class="gear-coat-back gear-coat-back-l"></i><i class="gear-coat-back gear-coat-back-r"></i><i class="gear-boots"></i><i class="gear-thigh gear-thigh-l"></i><i class="gear-thigh gear-thigh-r"></i><i class="gear-armor"></i><i class="gear-shoulder gear-shoulder-l"></i><i class="gear-shoulder gear-shoulder-r"></i><i class="gear-head"></i><i class="gear-belt"></i><i class="gear-coat-front gear-coat-front-l"></i><i class="gear-coat-front gear-coat-front-r"></i>';el.append(div);}
+ if(!el.querySelector('.weapon-rig')){const rig=document.createElement('span');rig.className='weapon-rig';rig.innerHTML='<span class="weapon-core"><i class="gear-arm"></i><i class="gear-hand"></i><i class="gear-weapon"></i></span><span class="weapon-sub-core"><i class="gear-arm-sub"></i><i class="gear-hand-sub"></i><i class="gear-weapon-sub"></i></span>';el.append(rig);}
 }
 layers($('hero'));
 function entity(type){const el=document.createElement('div');el.className='entity '+type;el.innerHTML='<div class="shadow"></div><div class="sprite"></div><b class="entity-name"></b><div class="life"><i></i></div><div class="tell" hidden></div>';return el;}
