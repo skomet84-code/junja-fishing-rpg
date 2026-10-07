@@ -1095,3 +1095,34 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .doll-actor[data-job='rogue'] .weapon-core{transform:rotate(31deg)!important}.doll-actor[data-job='rogue'] .weapon-sub-core{display:block!important;transform:rotate(-31deg)!important}
 .doll-actor[data-job='warrior'] .weapon-core{transform:rotate(30deg)!important}
 .doll-actor[data-job='rogue'] .gear-layers,.doll-actor[data-job='warrior'] .gear-layers{z-index:2}
+
+/* ===== Production sprite sheets: Shadow + Warrior ===== */
+.production-sprite{
+ display:none;position:absolute;left:50%;bottom:-13px;width:112px;height:112px;
+ transform:translateX(-50%);transform-origin:50% 100%;z-index:5;pointer-events:none;
+ background-repeat:no-repeat;background-size:800% 400%;
+ filter:drop-shadow(0 5px 4px #0008);will-change:background-position,transform;
+ backface-visibility:hidden;-webkit-backface-visibility:hidden;
+}
+.entity.hero.production-active>.sprite,
+.entity.hero.production-active>.sprite-b,
+.entity.hero.production-active>.gear-layers,
+.entity.hero.production-active>.weapon-rig{opacity:0!important;visibility:hidden!important}
+.entity.hero.production-active>.production-sprite{display:block}
+.entity.hero.production-active.attacking>.production-sprite{filter:drop-shadow(0 5px 4px #0008) drop-shadow(0 0 5px #ffffff22)}
+.entity.hero.production-active[data-job='rogue']>.production-sprite{width:118px;height:118px;bottom:-15px}
+.entity.hero.production-active[data-job='warrior']>.production-sprite{width:120px;height:120px;bottom:-16px}
+.entity.hero.production-active[data-rank='3']>.production-sprite{filter:drop-shadow(0 5px 4px #0008) drop-shadow(0 0 8px #bb65e866)}
+.doll-actor.production-active>.production-sprite{width:178px;height:178px;bottom:-28px}
+.doll-actor.production-active[data-job='rogue']>.production-sprite{width:174px;height:174px}
+.doll-actor.production-active[data-job='warrior']>.production-sprite{width:180px;height:180px}
+.doll-actor.production-active>.shadow{opacity:.55}
+@media(max-width:600px){
+ .entity.hero.production-active>.production-sprite{width:104px;height:104px;bottom:-10px}
+ .entity.hero.production-active[data-job='rogue']>.production-sprite{width:108px;height:108px}
+ .entity.hero.production-active[data-job='warrior']>.production-sprite{width:110px;height:110px}
+ .doll-actor.production-active>.production-sprite{width:160px;height:160px;bottom:-20px}
+}
+
+.character-preview.production-card{background-repeat:no-repeat!important;background-color:transparent!important;filter:drop-shadow(0 5px 4px #0008);border-radius:10px}
+.portrait.production-portrait{background-repeat:no-repeat;border:1px solid #8d7b5b;box-shadow:inset 0 0 8px #0007,0 0 8px #bda76c22}
