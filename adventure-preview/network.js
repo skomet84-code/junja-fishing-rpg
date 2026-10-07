@@ -31,12 +31,13 @@ function present(snapshot){
  snapshot={...snapshot,self:{...snapshot.self,storyQuest:raw,quest:SAFE[raw]||raw}};
  lastSelf=snapshot.self;
  if(raw!==lastStory&&STORY[raw]){lastStory=raw;flash(raw,snapshot.self);}
+ if(typeof document!=='undefined')queueMicrotask(paint);
  return snapshot;
 }
 function paint(){
  const s=lastSelf,raw=s?.storyQuest,m=STORY[raw];if(!s||!m)return;
- const title=document.getElementById('questTitle'),text=document.getElementById('questText'),action=document.getElementById('questAction');
- if(title)title.textContent=m[0];if(text)text.textContent=typeof m[1]==='function'?m[1](s):m[1];if(action)action.textContent=m[2];
+ // The main app owns #quest. Do not rewrite quest title/text here:
+ // two writers caused the HUD to alternate every few frames.
  const bar=document.getElementById('skillbar'),info=SKILL_INFO[s.job];if(bar&&info)[...bar.querySelectorAll('button')].forEach((b,i)=>{b.title=info[i]||'';b.dataset.skillRole=info[i]||'';});
  const modal=document.getElementById('modal'),titleEl=document.getElementById('modalTitle'),body=document.getElementById('modalBody'),actions=document.getElementById('modalActions');
  if(modal&&!modal.hidden&&titleEl?.textContent==='준자마을 촌장'&&raw.endsWith('Intro')){
@@ -63,7 +64,7 @@ if(typeof document!=='undefined'){
   setTimeout(()=>document.getElementById('attackBtn')?.click(),30);
  },true);
 
- const style=document.createElement('style');style.textContent='.quest-net-flash{position:absolute;left:50%;top:29%;z-index:3300;transform:translate(-50%,-50%) scale(.82);opacity:0;min-width:min(520px,86vw);padding:14px 28px;text-align:center;background:linear-gradient(90deg,transparent,#14261de8 16%,#203b2df2 50%,#14261de8 84%,transparent);border-top:1px solid #e3cd7c88;border-bottom:1px solid #e3cd7c88;text-shadow:0 2px 7px #000;transition:.3s;pointer-events:none}.quest-net-flash.show{opacity:1;transform:translate(-50%,-50%) scale(1)}.quest-net-flash small{display:block;font-size:9px;letter-spacing:4px;color:#d9c885}.quest-net-flash b{display:block;font-size:22px;color:#fff0ae;margin:4px}.quest-net-flash span{font-size:11px;color:#d9e1d3}';document.head.append(style);setInterval(paint,80);
+ const style=document.createElement('style');style.textContent='.quest-net-flash{position:absolute;left:50%;top:29%;z-index:3300;transform:translate(-50%,-50%) scale(.82);opacity:0;min-width:min(520px,86vw);padding:14px 28px;text-align:center;background:linear-gradient(90deg,transparent,#14261de8 16%,#203b2df2 50%,#14261de8 84%,transparent);border-top:1px solid #e3cd7c88;border-bottom:1px solid #e3cd7c88;text-shadow:0 2px 7px #000;transition:.3s;pointer-events:none}.quest-net-flash.show{opacity:1;transform:translate(-50%,-50%) scale(1)}.quest-net-flash small{display:block;font-size:9px;letter-spacing:4px;color:#d9c885}.quest-net-flash b{display:block;font-size:22px;color:#fff0ae;margin:4px}.quest-net-flash span{font-size:11px;color:#d9e1d3}';document.head.append(style);
 }
 export function mergeSnapshot(previous,data){
  if(!data.delta)return present(data);
