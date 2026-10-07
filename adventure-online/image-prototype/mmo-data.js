@@ -61,6 +61,13 @@ export const EXTRA_ITEMS={
  primeboots:{name:'신화 · 시공초월 장화',slot:'boots',rarity:'mythic',atk:150,def:240,hp:3200,speed:.15,tier:6,level:320},
  primering:{name:'신화 · 태초의 절대반지',slot:'ring',rarity:'mythic',atk:450,def:140,hp:2400,speed:.16,tier:6,level:320},
  primeear:{name:'신화 · 창세의 귀걸이',slot:'ear',rarity:'mythic',atk:300,def:220,hp:3000,tier:6,level:320},
+ raidblade:{name:'신화 · 신격의 종언검',slot:'weapon',rarity:'mythic',atk:2200,def:220,hp:2200,speed:.21,tier:7,level:400,raid:true},
+ raidarmor:{name:'신화 · 신격의 불멸갑',slot:'armor',rarity:'mythic',atk:320,def:900,hp:13000,tier:7,level:400,raid:true},
+ raidcape:{name:'신화 · 신격의 성운망토',slot:'cape',rarity:'mythic',atk:720,def:420,hp:6500,tier:7,level:400,raid:true},
+ raidcrown:{name:'신화 · 신격의 왕관',slot:'head',rarity:'mythic',atk:420,def:390,hp:4200,tier:7,level:400,raid:true},
+ raidboots:{name:'신화 · 신격의 차원장화',slot:'boots',rarity:'mythic',atk:220,def:360,hp:4800,speed:.18,tier:7,level:400,raid:true},
+ raidring:{name:'신화 · 신격심장 반지',slot:'ring',rarity:'mythic',atk:680,def:210,hp:3600,speed:.19,tier:7,level:400,raid:true},
+ raidear:{name:'신화 · 신격의 귀걸이',slot:'ear',rarity:'mythic',atk:440,def:330,hp:4300,tier:7,level:400,raid:true},
 };
 export const RECIPES={
  potion:{name:'회복 물약 × 3',materials:{wood:3,stone:1},gold:15,level:1,potions:3},
@@ -76,7 +83,9 @@ export const ZONES={
  cave:{name:'수정 동굴',level:28,theme:'cave'},
  ruins:{name:'붉은 폐허',level:55,theme:'ruins'},
  abyss:{name:'그림자 심연',level:95,theme:'abyss'},
- celestial:{name:'천룡의 유적',level:190,theme:'celestial'}
+ celestial:{name:'천룡의 유적',level:190,theme:'celestial'},
+ void:{name:'공허 성채',level:300,theme:'abyss'},
+ origin:{name:'태초의 신전',level:400,theme:'celestial'}
 };
 export const TRAVEL_PORTALS={
  surface:[{to:'grove',x:768,y:1870,label:'깊은 다람쥐숲'}],
@@ -84,15 +93,19 @@ export const TRAVEL_PORTALS={
  cave:[{to:'grove',x:768,y:705,label:'깊은 다람쥐숲'},{to:'ruins',x:768,y:1870,label:'붉은 폐허'}],
  ruins:[{to:'cave',x:768,y:705,label:'수정 동굴'},{to:'abyss',x:768,y:1870,label:'그림자 심연'}],
  abyss:[{to:'ruins',x:768,y:705,label:'붉은 폐허'},{to:'celestial',x:768,y:1870,label:'천룡의 유적'}],
- celestial:[{to:'abyss',x:768,y:705,label:'그림자 심연'}]
+ celestial:[{to:'abyss',x:768,y:705,label:'그림자 심연'},{to:'void',x:768,y:1870,label:'공허 성채'}],
+ void:[{to:'celestial',x:768,y:705,label:'천룡의 유적'},{to:'origin',x:768,y:1870,label:'태초의 신전'}],
+ origin:[{to:'void',x:768,y:705,label:'공허 성채'}]
 };
 export const NAMED=[
  {id:'stoneking',name:'바위 군주',hours:[8,18],zone:'grove',level:35,hp:18000,damage:75,x:1085,y:1710},
  {id:'shadowking',name:'그림자 군왕',hours:[12,20],zone:'abyss',level:120,hp:130000,damage:280,x:1080,y:1760},
- {id:'dragon',name:'천룡 · 일일 최상급',hours:[22],zone:'celestial',level:220,hp:350000,damage:550,x:1060,y:1720},
+ {id:'dragon',name:'천룡 · 일일 레이드',hours:[22],zone:'celestial',level:240,hp:2500000,damage:1150,x:1060,y:1720,raid:true,minParty:3,dropTier:'high'},
+ {id:'voidlord',name:'공허제 · 아르카논',hours:[21],zone:'void',level:360,hp:8000000,damage:2200,x:1060,y:1720,raid:true,minParty:3,dropTier:'raid'},
+ {id:'originGod',name:'태초신 · 카이로스',hours:[23],zone:'origin',level:460,hp:18000000,damage:3600,x:1060,y:1720,raid:true,minParty:4,dropTier:'raid'},
 ];
 export const DAILY_TASKS={hunt:{name:'숲의 토벌',goal:20,gold:600,xp:600},gather:{name:'재료 수집',goal:12,gold:400,xp:400},dungeon:{name:'던전 토벌',goal:5,gold:1200,xp:1600}};
 export function koreaDay(seconds){return new Date((seconds+9*3600)*1000).toISOString().slice(0,10);}
 export function bossWindow(b,seconds){const shifted=seconds+9*3600,day=Math.floor(shifted/86400),hour=(shifted-day*86400)/3600;const active=b.hours.find(h=>hour>=h&&hour<h+1);const next=b.hours.find(h=>h>hour);return {active:active!==undefined,key:day+':'+(active??''),end:active===undefined?0:(day*86400+active*3600-9*3600+3600),next:(day*86400+(next??b.hours[0]+24)*3600-9*3600)};}
-export const MMO_XP=level=>level<50?60+(level-1)*40:Math.round(2000+Math.pow(level-49,1.35)*100);
+export const MMO_XP=level=>{const base=level<50?60+(level-1)*40:Math.round(2000+Math.pow(level-49,1.35)*100);return Math.round(base*(level>=400?8:level>=300?4.5:1));};
 export const MMO_HP=level=>100+(level-1)*14;
