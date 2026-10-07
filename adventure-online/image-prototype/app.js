@@ -1,14 +1,14 @@
-import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261007-immersion6';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp} from './catalog.js?v=20261007-immersion6';
+import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261007-immersion6b';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp} from './catalog.js?v=20261007-immersion6b';
 import {mergeSnapshot} from './network.js';
-import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,CHANNEL_CAP,LEVEL_CAP} from './mmo-data.js?v=20261007-immersion6';
+import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,CHANNEL_CAP,LEVEL_CAP} from './mmo-data.js?v=20261007-immersion6b';
 import {API_URL} from './config.js';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 let wireSnapshot=null;
 let token='',connectionKey='',legacy=null,roster=[],selectedSlot=0,state=profile(),view={x:768,y:355},connected=false,paused=false,serverNow=0,receivedAt=0,last=0,clock=0,lastSend=0,movePending=false,streamController=null,streamGeneration=0;
 let path=[],selected=null,auto=false,cam={x:0,y:0},scale=1,face=0,flip=false,headingX=0,headingY=1,attackUntil=0,attackSerial=0,nearNpc=null,npcIntent=null,gesture=null,stick={x:0,y:0};
-let systems={nodes:[],bosses:[],trade:null,duel:null,daily:null},gatherIntent=null,travelIntent=null,mmoPanel='',bossSector=false,minimapAt=0;const resourceEls=new Map(),portalEls=new Map(),bossIntroSeen=new Set();
+let systems={nodes:[],bosses:[],trade:null,duel:null,daily:null},gatherIntent=null,travelIntent=null,mmoPanel='',bossSector=false,minimapAt=0,audioCtx=null,audioBus=null,audioNodes=[],soundOn=false;const resourceEls=new Map(),portalEls=new Map(),bossIntroSeen=new Set();
 const keys=new Set(),enemies=new Map(),peers=new Map(),seenEvents=new Set(),npcs=[{id:'elder',x:580,y:330},{id:'merchant',x:1000,y:330}];
 const DECOR_SPOTS=[
  [305,720,.85],[1225,750,1.05],[355,930,.75],[1165,955,.9],
@@ -62,6 +62,25 @@ function renderMinimap(){
 }
 function syncBossSector(){
  const next=view.y>=1580;if(next!==bossSector){bossSector=next;$('game').classList.toggle('boss-sector',next);if(next){const boss=[...enemies.values()].filter(e=>e.alive&&e.boss).sort((a,b)=>distance(view,a)-distance(view,b))[0];if(boss)showBossIntro(boss);}}
+}
+const REGION_AUDIO={
+ surface:[196,246.94,293.66,'sine'],grove:[146.83,196,220,'triangle'],cave:[110,164.81,220,'sine'],
+ ruins:[123.47,185,246.94,'triangle'],abyss:[82.41,123.47,164.81,'sine'],celestial:[220,293.66,369.99,'sine']
+};
+function stopRegionAudio(){for(const n of audioNodes){try{n.stop?.();n.disconnect?.();}catch{}}audioNodes=[];}
+function setRegionAudio(zone){
+ if(!soundOn||!audioCtx)return;stopRegionAudio();const cfg=REGION_AUDIO[zone]||REGION_AUDIO.surface;
+ if(!audioBus){audioBus=audioCtx.createGain();audioBus.gain.value=.028;audioBus.connect(audioCtx.destination);}
+ const filter=audioCtx.createBiquadFilter();filter.type='lowpass';filter.frequency.value=zone==='celestial'?1400:zone==='cave'?620:900;filter.Q.value=.45;filter.connect(audioBus);audioNodes.push(filter);
+ cfg.slice(0,3).forEach((freq,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=cfg[3];o.frequency.value=freq;g.gain.value=[.16,.10,.07][i];o.connect(g);g.connect(filter);o.start();audioNodes.push(o,g);});
+ const lfo=audioCtx.createOscillator(),lg=audioCtx.createGain();lfo.type='sine';lfo.frequency.value=zone==='abyss'?.07:.11;lg.gain.value=.008;lfo.connect(lg);lg.connect(audioBus.gain);lfo.start();audioNodes.push(lfo,lg);
+}
+async function toggleSound(){
+ if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+ if(audioCtx.state==='suspended')await audioCtx.resume();soundOn=!soundOn;
+ $('soundBtn').setAttribute('aria-pressed',String(soundOn));$('soundBtn').querySelector('small').textContent=soundOn?'ON':'OFF';
+ try{localStorage.setItem('junja-adventure-sound',soundOn?'1':'0');}catch{}
+ if(soundOn)setRegionAudio(state.zone);else stopRegionAudio();
 }
 try{token=localStorage.getItem('junja-online-token')||'';const old=localStorage.getItem('junja-adventure-play-v2');if(old)legacy=JSON.parse(old);}catch{}
 if(legacy)$('legacyRow').hidden=false;
@@ -170,7 +189,7 @@ function layers(el){
 }
 layers($('hero'));
 function entity(type){const el=document.createElement('div');el.className='entity '+type;el.innerHTML='<div class="shadow"></div><div class="sprite"></div><b class="entity-name"></b><div class="life"><i></i></div><div class="tell" hidden></div>';return el;}
-function updateSnapshot(data){data=mergeSnapshot(wireSnapshot,data);if(!data)return;wireSnapshot=data;if(data.disconnected){connected=false;streamController?.abort();toast(data.disconnected);showSelection();return;}if(!data.self)return;serverNow=data.now;receivedAt=performance.now();const old=state;state=data.self;systems={nodes:data.nodes||[],bosses:data.bosses||[],trade:data.trade,duel:data.duel,daily:data.daily};syncMMO();if(old.zone!==state.zone)showZoneArrival(state.zone);auto=state.auto;connected=true;
+function updateSnapshot(data){data=mergeSnapshot(wireSnapshot,data);if(!data)return;wireSnapshot=data;if(data.disconnected){connected=false;streamController?.abort();toast(data.disconnected);showSelection();return;}if(!data.self)return;serverNow=data.now;receivedAt=performance.now();const old=state;state=data.self;systems={nodes:data.nodes||[],bosses:data.bosses||[],trade:data.trade,duel:data.duel,daily:data.daily};syncMMO();if(old.zone!==state.zone){showZoneArrival(state.zone);if(soundOn)setRegionAudio(state.zone);}auto=state.auto;connected=true;
  if(distance(view,state)>165){view={x:state.x,y:state.y};path=[];camera(true);}
  if(auto||state.navMoving){
  const me=data.players.find(p=>p.id===state.id);
@@ -289,7 +308,7 @@ $('viewport').addEventListener('pointerdown',ev=>{if(paused||!connected||ev.targ
 $('viewport').addEventListener('pointermove',ev=>{if(!gesture||ev.pointerId!==gesture.id)return;const dx=ev.clientX-gesture.x,dy=ev.clientY-gesture.y;if(Math.hypot(dx,dy)>9)gesture.drag=true;if(gesture.drag){path=[];stick={x:dx,y:dy};$('joystick').hidden=false;$('joystick').style.left=gesture.x+'px';$('joystick').style.top=gesture.y+'px';const d=Math.hypot(dx,dy),r=Math.min(27,d);$('joystick').querySelector('i').style.transform=d?`translate(${dx/d*r}px,${dy/d*r}px)`:'none';}});
 function release(){gesture=null;stick={x:0,y:0};$('joystick').hidden=true;}for(const event of ['pointerup','pointercancel','lostpointercapture'])$('viewport').addEventListener(event,release);
 window.addEventListener('keydown',ev=>{if(ev.target.closest('input,textarea'))return;if(paused){if(ev.key==='Escape')closeModal();return;}const key=ev.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d'].includes(key)){ev.preventDefault();keys.add(key);path=[];npcIntent=null;if(auto)command({type:'auto',on:false});if(key===' ')attack();}if(['1','2','3','4'].includes(key))attack(Number(key)-1);if(key==='e'&&nearNpc)talk(nearNpc.id);if(key==='q')attack(0);});window.addEventListener('keyup',ev=>keys.delete(ev.key.toLowerCase()));window.addEventListener('blur',stopMovement);document.addEventListener('visibilitychange',()=>{stopMovement();last=performance.now();});window.addEventListener('resize',resize);
-for(const n of npcs)$(n.id).onclick=()=>distance(view,n)<115?talk(n.id):seekNpc(n.id);$('contextBtn').onclick=()=>nearNpc&&talk(nearNpc.id);$('attackBtn').onclick=()=>attack();$('potionBtn').onclick=()=>command({type:'potion'});$('autoBtn').onclick=()=>{path=[];npcIntent=null;command({type:'auto',on:!auto});toast(!auto?'자동 사냥 ON · 숲에서 작동':'자동 사냥 OFF');};$('homeBtn').onclick=()=>{stopMovement();selected=null;command({type:'home'});};$('questToggle').onclick=()=>{$('quest').classList.toggle('collapsed');$('questToggle').textContent=$('quest').classList.contains('collapsed')?'+':'−';};$('questAction').onclick=()=>{if(['available','ready','complete','bossReady'].includes(state.quest))seekNpc('elder');else if(state.quest==='bossActive'){const e=[...enemies.values()].find(e=>e.boss);if(e?.alive)select(e.id);else toast('왕꼬리 재출현까지 '+Math.max(0,Math.ceil((e?.respawn||0)-now()))+'초');}else go(768,720);};$('bagBtn').onclick=bagWindow;$('jobBtn').onclick=jobWindow;$('onlineBtn').onclick=onlineWindow;$('chatBtn').onclick=chatWindow;$('helpBtn').onclick=()=>modal('모험 안내','<p>빈 곳 터치로 이동. 화면 어디서든 드래그하면 방향 이동합니다. PC: WASD / 방향키, Space 공격, Q 첫 스킬, 1~4 스킬, E 대화.</p><p>촌장 임무 → 다람쥐 10마리 → 왕꼬리 → 정예·던전 → Lv.99 첫 전직. 직업에 따라 공격 범위·스킬이 달라집니다.</p><p>가방에서 장비를 장착하세요. 보스 보상은 공격하거나 도사 회복으로 지원한 참여자에게 따로 지급됩니다.</p><p>성장은 계정에 저장됩니다. 같은 아이디의 동시 접속은 마지막 접속만 유지됩니다.</p>');$('modalClose').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal();};
+for(const n of npcs)$(n.id).onclick=()=>distance(view,n)<115?talk(n.id):seekNpc(n.id);$('contextBtn').onclick=()=>nearNpc&&talk(nearNpc.id);$('attackBtn').onclick=()=>attack();$('potionBtn').onclick=()=>command({type:'potion'});$('autoBtn').onclick=()=>{path=[];npcIntent=null;command({type:'auto',on:!auto});toast(!auto?'자동 사냥 ON · 숲에서 작동':'자동 사냥 OFF');};$('homeBtn').onclick=()=>{stopMovement();selected=null;command({type:'home'});};$('questToggle').onclick=()=>{$('quest').classList.toggle('collapsed');$('questToggle').textContent=$('quest').classList.contains('collapsed')?'+':'−';};$('questAction').onclick=()=>{if(['available','ready','complete','bossReady'].includes(state.quest))seekNpc('elder');else if(state.quest==='bossActive'){const e=[...enemies.values()].find(e=>e.boss);if(e?.alive)select(e.id);else toast('왕꼬리 재출현까지 '+Math.max(0,Math.ceil((e?.respawn||0)-now()))+'초');}else go(768,720);};$('bagBtn').onclick=bagWindow;$('jobBtn').onclick=jobWindow;$('onlineBtn').onclick=onlineWindow;$('chatBtn').onclick=chatWindow;$('soundBtn').onclick=toggleSound;$('helpBtn').onclick=()=>modal('모험 안내','<p>빈 곳 터치로 이동. 화면 어디서든 드래그하면 방향 이동합니다. PC: WASD / 방향키, Space 공격, Q 첫 스킬, 1~4 스킬, E 대화.</p><p>촌장 임무 → 다람쥐 10마리 → 왕꼬리 → 정예·던전 → Lv.99 첫 전직. 직업에 따라 공격 범위·스킬이 달라집니다.</p><p>가방에서 장비를 장착하세요. 보스 보상은 공격하거나 도사 회복으로 지원한 참여자에게 따로 지급됩니다.</p><p>성장은 계정에 저장됩니다. 같은 아이디의 동시 접속은 마지막 접속만 유지됩니다.</p>');$('modalClose').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal();};
 let hudAt=0;
 function frame(time){const dt=Math.min(.05,(time-last)/1000||.016);last=time;clock+=dt;if(connected){let dx=0,dy=0,manualMove=false;if(!paused&&!document.hidden){dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0);dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);if(!dx&&!dy&&Math.hypot(stick.x,stick.y)>5){dx=stick.x;dy=stick.y;}manualMove=!!(dx||dy);if(!dx&&!dy&&path.length){if(distance(view,path[0])<16)path.shift();if(path.length){dx=path[0].x-view.x;dy=path[0].y-view.y;}}}const len=Math.hypot(dx,dy);if(len){dx/=len;dy/=len;}if(!auto&&clock>=attackUntil&&len){const x=view.x+dx*250*dt,y=view.y+dy*250*dt;if(walkable(x,view.y))view.x=x;if(walkable(view.x,y))view.y=y;headingX=dx;headingY=dy;const pose=headingPose(dx,dy,face,flip);face=pose.row;flip=pose.mirror;}if(!len||auto){
   const f=1-Math.exp(-11*dt);view.x+=(state.x-view.x)*f;view.y+=(state.y-view.y)*f;
@@ -318,7 +337,9 @@ function frame(time){const dt=Math.min(.05,(time-last)/1000||.016);last=time;clo
  if(travelIntent){const portal=(TRAVEL_PORTALS[state.zone]||[]).find(p=>p.to===travelIntent);if(!portal)travelIntent=null;else if(distance(state,portal)<125){const to=travelIntent,label=portal.label;travelIntent=null;path=[];startWarp(label);command({type:'travel',zone:to});}}
  syncBossSector();camera(false,dt);if(clock-hudAt>.1){hud();if(clock-minimapAt>.18){renderMinimap();minimapAt=clock;}hudAt=clock;}}
  requestAnimationFrame(frame);}
-const invite=new URL(location.href).searchParams.get('channel');if(invite&&/^[A-Za-z0-9가-힣_-]{2,16}$/.test(invite))$('channelInput').value=invite;if(innerWidth<600){$('quest').classList.add('collapsed');$('questToggle').textContent='+';}resize();makeSkills();requestAnimationFrame(frame);if(token)showSelection();
+const invite=new URL(location.href).searchParams.get('channel');if(invite&&/^[A-Za-z0-9가-힣_-]{2,16}$/.test(invite))$('channelInput').value=invite;
+try{soundOn=localStorage.getItem('junja-adventure-sound')==='1';}catch{}$('soundBtn').setAttribute('aria-pressed',String(soundOn));$('soundBtn').querySelector('small').textContent=soundOn?'ON':'OFF';document.addEventListener('pointerdown',async()=>{if(soundOn&&!audioCtx){audioCtx=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')await audioCtx.resume();setRegionAudio(state.zone);}},{once:true});
+if(innerWidth<600){$('quest').classList.add('collapsed');$('questToggle').textContent='+';}resize();makeSkills();requestAnimationFrame(frame);if(token)showSelection();
 window.__adventure={build:BUILD,snapshot:()=>({...state,systems:structuredClone(systems),connected,paused,auto,selected,peers:[...peers.values()].map(({id,name,x,y,job,equipment})=>({id,name,x,y,job,equipment})),enemies:[...enemies.values()].map(({id,x,y,hp,alive,boss})=>({id,x,y,hp,alive,boss}))})};
 function syncMMO(){
  const dungeon=state.zone!=='surface';$('world').dataset.zone=state.zone;syncZoneDecor(state.zone);$('elder').hidden=$('merchant').hidden=dungeon;

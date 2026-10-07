@@ -730,3 +730,7 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
  #minimapWrap>b{font-size:7px}#minimapLabel{font-size:8px}
  #bossWarning b{font-size:22px}
 }
+
+#soundBtn[aria-pressed=true]{background:linear-gradient(#3d6658,#1b3d34);border-color:#9bd9c3;box-shadow:0 0 10px #72c9ae44}
+#soundBtn small{display:block;font-size:9px;color:#cdd8ce}
+#soundBtn[aria-pressed=true] small{color:#a9f0d6}
