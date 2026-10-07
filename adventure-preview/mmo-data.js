@@ -1,5 +1,9 @@
 export const LEVEL_CAP=500,CHANNEL_CAP=48,WORLD_CAP=192;
 export const PROMOTIONS=[{level:100,name:'1차 전직',bosses:1},{level:200,name:'2차 전직',bosses:5},{level:300,name:'3차 전직',bosses:15},{level:400,name:'4차 전직',bosses:30}];
+export const PROMOTION_MATERIALS={
+ 3:{key:'voidSeal',name:'공허의 인장',need:100,zone:'void',source:'공허 성채 정예 · 공허성의 파괴자 · 공허제 아르카논'},
+ 4:{key:'originMark',name:'태초의 성흔',need:100,zone:'origin',source:'태초의 신전 정예 · 태초신전 수문신 · 태초신 카이로스'}
+};
 export const MATERIALS={wood:'나무',stone:'돌',ore:'철광석',crystal:'던전 수정',stardust:'별빛 파편'};
 export const QUICK_CHATS=['안녕하세요!','같이 사냥해요!','보스 잡으러 가요!','잠깐만요!','도와주세요!','고마워요!','축하해요!','ㅋㅋㅋㅋ','좋아요!','마을에서 만나요!'];
 export const EXTRA_ITEMS={
@@ -107,5 +111,5 @@ export const NAMED=[
 export const DAILY_TASKS={hunt:{name:'숲의 토벌',goal:20,gold:600,xp:600},gather:{name:'재료 수집',goal:12,gold:400,xp:400},dungeon:{name:'던전 토벌',goal:5,gold:1200,xp:1600}};
 export function koreaDay(seconds){return new Date((seconds+9*3600)*1000).toISOString().slice(0,10);}
 export function bossWindow(b,seconds){const shifted=seconds+9*3600,day=Math.floor(shifted/86400),hour=(shifted-day*86400)/3600;const active=b.hours.find(h=>hour>=h&&hour<h+1);const next=b.hours.find(h=>h>hour);return {active:active!==undefined,key:day+':'+(active??''),end:active===undefined?0:(day*86400+active*3600-9*3600+3600),next:(day*86400+(next??b.hours[0]+24)*3600-9*3600)};}
-export const MMO_XP=level=>{const base=level<50?60+(level-1)*40:Math.round(2000+Math.pow(level-49,1.35)*100);return Math.round(base*(level>=400?8:level>=300?4.5:1));};
+export const MMO_XP=level=>{const base=level<50?60+(level-1)*40:Math.round(2000+Math.pow(level-49,1.35)*100),mult=level>=450?6.5:level>=400?5:level>=350?3.8:level>=300?3:1;return Math.round(base*mult);};
 export const MMO_HP=level=>100+(level-1)*14;
