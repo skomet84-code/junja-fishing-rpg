@@ -1,7 +1,7 @@
-import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261007-combatqol2';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,MAX_ENHANCE,enhanceChance,enhancementLevel,skillCastDelay,skillMpCost} from './catalog.js?v=20261007-combatqol2';
+import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261007-camera1';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,MAX_ENHANCE,enhanceChance,enhancementLevel,skillCastDelay,skillMpCost} from './catalog.js?v=20261007-camera1';
 import {mergeSnapshot} from './network.js';
-import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261007-combatqol2';
+import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261007-camera1';
 import {API_URL} from './config.js';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
@@ -103,7 +103,7 @@ function go(x,y){
  command({type:'navigate',x,y});
  $('marker').style.left=x+'px';$('marker').style.top=y+'px';$('marker').classList.remove('show');void $('marker').offsetWidth;$('marker').classList.add('show');
 }
-function camera(force=false,dt=.016){const vw=$('viewport').clientWidth/scale,vh=$('viewport').clientHeight/scale;const x=clamp(view.x-vw*.5,Math.min(0,(W-vw)/2),Math.max(0,W-vw)),y=clamp(view.y-vh*.53,Math.min(0,(H-vh)/2),Math.max(0,H-vh)),f=force?1:1-Math.exp(-12*dt);cam.x+=(x-cam.x)*f;cam.y+=(y-cam.y)*f;$('world').style.transform=`scale(${scale}) translate3d(${-cam.x}px,${-cam.y}px,0)`;}
+function camera(force=false,dt=.016){const vw=$('viewport').clientWidth/scale,vh=$('viewport').clientHeight/scale;const x=clamp(view.x-vw*.5,Math.min(0,(W-vw)/2),Math.max(0,W-vw)),y=clamp(view.y-vh*.53,Math.min(0,(H-vh)/2),Math.max(0,H-vh)),f=force?1:1-Math.exp(-12*dt);cam.x+=(x-cam.x)*f;cam.y+=(y-cam.y)*f;const px=-cam.x*scale,py=-cam.y*scale;$('world').style.transform=`translate3d(${px}px,${py}px,0) scale(${scale})`;}
 function resize(){scale=innerWidth<600?.85:Math.min(1,innerWidth/1150);camera(true);}
 function screenToWorld(x,y){const r=$('viewport').getBoundingClientRect();return {x:(x-r.left)/scale+cam.x,y:(y-r.top)/scale+cam.y};}
 function sprite(el,col,row,rows=3,mirror=false){
