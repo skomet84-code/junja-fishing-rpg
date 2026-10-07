@@ -1,5 +1,5 @@
-export const LEVEL_CAP=399,CHANNEL_CAP=48,WORLD_CAP=192;
-export const PROMOTIONS=[{level:99,name:'1차 전직',bosses:1},{level:199,name:'2차 전직',bosses:5},{level:299,name:'3차 전직',bosses:15}];
+export const LEVEL_CAP=500,CHANNEL_CAP=48,WORLD_CAP=192;
+export const PROMOTIONS=[{level:100,name:'1차 전직',bosses:1},{level:200,name:'2차 전직',bosses:5},{level:300,name:'3차 전직',bosses:15},{level:400,name:'4차 전직',bosses:30}];
 export const MATERIALS={wood:'나무',stone:'돌',ore:'철광석',crystal:'던전 수정',stardust:'별빛 파편'};
 export const QUICK_CHATS=['안녕하세요!','같이 사냥해요!','보스 잡으러 가요!','잠깐만요!','도와주세요!','고마워요!','축하해요!','ㅋㅋㅋㅋ','좋아요!','마을에서 만나요!'];
 export const EXTRA_ITEMS={
