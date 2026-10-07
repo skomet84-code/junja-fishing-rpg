@@ -981,3 +981,117 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .entity.hero[data-job='rogue'][data-motion='attack'] .gear-hand,
 .entity.hero[data-job='rogue'][data-motion='attack'] .gear-arm-sub,
 .entity.hero[data-job='rogue'][data-motion='attack'] .gear-hand-sub{opacity:.92!important}
+
+
+/* ===== Ranking / bulk shop ===== */
+.buy-qty{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;padding:10px 12px;border:1px solid #756b4b;background:#10261c;border-radius:10px}
+.buy-qty input{width:120px;margin:0;min-height:40px;text-align:center;font-weight:800}
+.shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.shop-grid button{display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left}
+.shop-grid button small{font-size:10px;color:#e8cd85}
+.ranking-board{display:grid;gap:7px;margin:10px 0;max-height:54dvh;overflow:auto;padding-right:3px}
+.rank-row{display:grid;grid-template-columns:38px 1fr auto;grid-template-areas:"pos who power" "pos stat stat";gap:2px 8px;align-items:center;padding:9px;border:1px solid #52634d;border-radius:10px;background:#10251c}
+.rank-row>strong{grid-area:pos;font-size:19px;text-align:center;color:#e4c678}
+.rank-row>span{grid-area:who;min-width:0}.rank-row>span>b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rank-row>span>small{display:block;color:#bbc9b3;font-size:10px}
+.rank-row>em{grid-area:power;font-style:normal;color:#f0d58b;font-size:11px;white-space:nowrap}.rank-row>small{grid-area:stat;color:#9eb19c;font-size:10px}
+.rank-row.online{border-color:#75b88c;box-shadow:inset 0 0 10px #4e9f6330}.rank-row:nth-child(1)>strong{color:#ffe475}.rank-row:nth-child(2)>strong{color:#e5ecf3}.rank-row:nth-child(3)>strong{color:#d79a67}
+.ranking-note{font-size:11px!important;color:#aebaa5!important}
+@media(max-width:600px){.shop-grid{grid-template-columns:1fr}.buy-qty input{width:92px}.utility{overflow-x:auto;scrollbar-width:none}.utility::-webkit-scrollbar{display:none}.utility button{flex:0 0 auto}.rank-row{grid-template-columns:30px 1fr auto;padding:7px}.rank-row>em{font-size:10px}}
+
+/* ===== A plan FINAL: Shadow articulated armor ===== */
+.hero[data-job='rogue']{--shadow-a:#262330;--shadow-b:#14131b;--shadow-metal:#777180;--shadow-edge:#b79aba;--shadow-glow:#804d8c}
+.hero[data-job='rogue'][data-armor='1'] .gear-armor,
+.hero[data-job='rogue'][data-armor='2'] .gear-armor,
+.hero[data-job='rogue'][data-armor='3'] .gear-armor,
+.hero[data-job='rogue'][data-armor='4'] .gear-armor,
+.hero[data-job='rogue'][data-armor='1'] .gear-shoulder,
+.hero[data-job='rogue'][data-armor='2'] .gear-shoulder,
+.hero[data-job='rogue'][data-armor='3'] .gear-shoulder,
+.hero[data-job='rogue'][data-armor='4'] .gear-shoulder,
+.hero[data-job='rogue'][data-armor='1'] .gear-thigh,
+.hero[data-job='rogue'][data-armor='2'] .gear-thigh,
+.hero[data-job='rogue'][data-armor='3'] .gear-thigh,
+.hero[data-job='rogue'][data-armor='4'] .gear-thigh,
+.hero[data-job='rogue'][data-armor='1'] .gear-belt,
+.hero[data-job='rogue'][data-armor='2'] .gear-belt,
+.hero[data-job='rogue'][data-armor='3'] .gear-belt,
+.hero[data-job='rogue'][data-armor='4'] .gear-belt,
+.hero[data-job='rogue'][data-armor='1'] .gear-coat-front,
+.hero[data-job='rogue'][data-armor='2'] .gear-coat-front,
+.hero[data-job='rogue'][data-armor='3'] .gear-coat-front,
+.hero[data-job='rogue'][data-armor='4'] .gear-coat-front,
+.hero[data-job='rogue'][data-armor='1'] .gear-coat-back,
+.hero[data-job='rogue'][data-armor='2'] .gear-coat-back,
+.hero[data-job='rogue'][data-armor='3'] .gear-coat-back,
+.hero[data-job='rogue'][data-armor='4'] .gear-coat-back{display:block}
+.hero[data-job='rogue'] .gear-armor{left:38%;top:39%;width:24%;height:24%;border:0!important;border-radius:0!important;clip-path:polygon(18% 0,40% 5%,50% 2%,60% 5%,82% 0,94% 20%,78% 30%,70% 88%,50% 100%,30% 88%,22% 30%,6% 20%);background:linear-gradient(100deg,#17161f,#3b3643 47%,#17161e)!important;box-shadow:inset 0 0 3px #d8c5e82e,0 2px 3px #0009!important}
+.hero[data-job='rogue'] .gear-armor:before{content:'';position:absolute;left:23%;top:21%;width:54%;height:54%;clip-path:polygon(50% 0,100% 28%,78% 100%,50% 82%,22% 100%,0 28%);background:linear-gradient(140deg,#82788b55,#25232ecc 58%,#743b6b55)!important}
+.hero[data-job='rogue'] .gear-shoulder{top:39%;width:13%;height:9%;background:linear-gradient(145deg,#2b2934,#5a5260 50%,#17161e)!important;clip-path:polygon(6% 38%,32% 5%,78% 18%,100% 52%,67% 100%,18% 78%);box-shadow:inset 0 0 2px #ead6f333,0 1px 2px #0009}
+.hero[data-job='rogue'] .gear-shoulder-l{left:31%;transform:translateY(var(--shoulder-lift)) rotate(-5deg)}
+.hero[data-job='rogue'] .gear-shoulder-r{right:31%;transform:translateY(var(--shoulder-lift)) rotate(5deg) scaleX(-1)}
+.hero[data-job='rogue'] .gear-belt{left:39%;top:61%;width:22%;height:4%;border-radius:3px;background:linear-gradient(90deg,#15131a,#67443f 35%,#a47b5c 50%,#67443f 65%,#15131a);box-shadow:0 1px 2px #0009}
+.hero[data-job='rogue'] .gear-thigh{top:65%;width:8%;height:18%;background:linear-gradient(160deg,#302d39,#15141b 72%);clip-path:polygon(12% 0,88% 0,100% 86%,62% 100%,0 90%)}
+.hero[data-job='rogue'] .gear-thigh-l{left:40%;transform:rotate(var(--coat-sway))}.hero[data-job='rogue'] .gear-thigh-r{right:40%;transform:rotate(calc(0deg - var(--coat-sway))) scaleX(-1)}
+.hero[data-job='rogue'] .gear-coat-front{top:63%;width:10%;height:29%;transform-origin:50% 0;background:linear-gradient(180deg,#342238e8,#15121be8);clip-path:polygon(8% 0,92% 0,78% 78%,50% 100%,12% 82%);border-left:1px solid #8b4d6c55}
+.hero[data-job='rogue'] .gear-coat-front-l{left:40%;transform:rotate(var(--coat-sway))}.hero[data-job='rogue'] .gear-coat-front-r{right:40%;transform:rotate(calc(0deg - var(--coat-sway))) scaleX(-1)}
+.hero[data-job='rogue'] .gear-coat-back{top:60%;width:16%;height:34%;z-index:-1;transform-origin:50% 0;background:linear-gradient(180deg,#342238d6,#120f17e6);clip-path:polygon(8% 0,92% 0,100% 70%,56% 100%,10% 78%)}
+.hero[data-job='rogue'] .gear-coat-back-l{left:34%;transform:rotate(var(--cape-lag))}.hero[data-job='rogue'] .gear-coat-back-r{right:34%;transform:rotate(calc(0deg - var(--cape-lag))) scaleX(-1)}
+.hero[data-job='rogue'] .gear-boots{left:38%;bottom:6%;width:24%;height:13%;border:0!important;border-radius:0!important;background:linear-gradient(90deg,#14141b,#4d4955 48%,#15151c)!important;clip-path:polygon(12% 0,42% 8%,50% 26%,58% 8%,88% 0,100% 78%,78% 100%,55% 90%,45% 90%,22% 100%,0 78%)}
+.hero[data-job='rogue'] .gear-head{left:38%;top:15%;width:24%;height:14%;border:0!important;background:linear-gradient(155deg,#111018e8,#3b2c40d8 58%,#17121ce8)!important;clip-path:polygon(16% 0,84% 0,100% 44%,82% 100%,58% 77%,42% 77%,18% 100%,0 44%)}
+.hero[data-job='rogue'][data-armor='2']{--shadow-glow:#6678a7}.hero[data-job='rogue'][data-armor='2'] .gear-armor{background:linear-gradient(100deg,#161922,#374158 48%,#151821)!important;box-shadow:inset 0 0 4px #bdccff42,0 0 5px #5f75a044!important}
+.hero[data-job='rogue'][data-armor='3']{--shadow-glow:#b57b48}.hero[data-job='rogue'][data-armor='3'] .gear-armor{background:linear-gradient(100deg,#171318,#624632 48%,#171318)!important;box-shadow:inset 0 0 5px #ffe0a650,0 0 7px #b9784b55!important}
+.hero[data-job='rogue'][data-armor='4']{--shadow-glow:#c15bd8}.hero[data-job='rogue'][data-armor='4'] .gear-armor{background:linear-gradient(100deg,#0e0a14,#4a245f 46%,#130b1d)!important;box-shadow:inset 0 0 6px #f1caff66,0 0 10px #b44fd188!important}
+.hero[data-job='rogue'][data-armor='4']>.gear-layers:before{content:'';position:absolute;left:31%;top:27%;width:38%;height:58%;border-radius:48%;box-shadow:0 0 13px #b74ad055,0 0 24px #6f288844;pointer-events:none}
+.hero[data-job='rogue']:not([data-motion='attack']) .gear-arm,.hero[data-job='rogue']:not([data-motion='attack']) .gear-hand,.hero[data-job='rogue']:not([data-motion='attack']) .gear-arm-sub,.hero[data-job='rogue']:not([data-motion='attack']) .gear-hand-sub{opacity:0!important}
+.hero[data-job='rogue']:not([data-motion='attack'])>.weapon-rig{z-index:0!important}
+.hero[data-job='rogue']:not([data-motion='attack']) .weapon-core{transform:rotate(26deg)!important}.hero[data-job='rogue']:not([data-motion='attack']) .weapon-sub-core{display:block!important;transform:rotate(-26deg)!important}
+.hero[data-job='rogue']:not([data-motion='attack']) .gear-weapon,.hero[data-job='rogue']:not([data-motion='attack']) .gear-weapon-sub{top:30%!important;width:4.4%!important;height:41%!important;background:linear-gradient(90deg,#555a65,#eff4f9 48%,#69717d)!important;box-shadow:0 0 4px #d5c8e055!important}
+.hero[data-job='rogue']:not([data-motion='attack']) .gear-weapon{left:59%!important}.hero[data-job='rogue']:not([data-motion='attack']) .gear-weapon-sub{left:36%!important;transform:none!important}
+.hero[data-job='rogue'][data-motion='attack']>.weapon-rig{z-index:4!important}.hero[data-job='rogue'][data-motion='attack'] .weapon-sub-core{display:block!important}
+
+/* ===== B plan: Warrior articulated heavy armor ===== */
+.hero[data-job='warrior']{--warrior-metal:#7d858d;--warrior-dark:#27292d;--warrior-edge:#d6c58f;--warrior-cloth:#553926}
+.hero[data-job='warrior'][data-armor='1'] .gear-armor,
+.hero[data-job='warrior'][data-armor='2'] .gear-armor,
+.hero[data-job='warrior'][data-armor='3'] .gear-armor,
+.hero[data-job='warrior'][data-armor='4'] .gear-armor,
+.hero[data-job='warrior'][data-armor='1'] .gear-shoulder,
+.hero[data-job='warrior'][data-armor='2'] .gear-shoulder,
+.hero[data-job='warrior'][data-armor='3'] .gear-shoulder,
+.hero[data-job='warrior'][data-armor='4'] .gear-shoulder,
+.hero[data-job='warrior'][data-armor='1'] .gear-thigh,
+.hero[data-job='warrior'][data-armor='2'] .gear-thigh,
+.hero[data-job='warrior'][data-armor='3'] .gear-thigh,
+.hero[data-job='warrior'][data-armor='4'] .gear-thigh,
+.hero[data-job='warrior'][data-armor='1'] .gear-belt,
+.hero[data-job='warrior'][data-armor='2'] .gear-belt,
+.hero[data-job='warrior'][data-armor='3'] .gear-belt,
+.hero[data-job='warrior'][data-armor='4'] .gear-belt{display:block}
+.hero[data-job='warrior'] .gear-armor{left:34%;top:37%;width:32%;height:30%;border:0!important;border-radius:0!important;clip-path:polygon(20% 0,39% 5%,50% 2%,61% 5%,80% 0,100% 25%,82% 39%,76% 92%,50% 100%,24% 92%,18% 39%,0 25%);background:linear-gradient(100deg,#303238,#828890 47%,#2a2c31)!important;box-shadow:inset 0 0 4px #f2ecd966,0 2px 4px #0009!important}
+.hero[data-job='warrior'] .gear-armor:before{content:'';position:absolute;left:26%;top:20%;width:48%;height:58%;clip-path:polygon(50% 0,92% 24%,80% 100%,50% 82%,20% 100%,8% 24%);background:linear-gradient(150deg,#d5c18455,#5a5d63aa 48%,#2d3035cc)}
+.hero[data-job='warrior'] .gear-shoulder{top:36%;width:18%;height:12%;background:linear-gradient(145deg,#a1a6ac,#555a61 52%,#282a2f)!important;clip-path:polygon(0 40%,28% 0,82% 12%,100% 48%,76% 94%,20% 78%);box-shadow:inset 0 0 3px #fff6cc55,0 2px 3px #0009}
+.hero[data-job='warrior'] .gear-shoulder-l{left:24%;transform:translateY(var(--shoulder-lift)) rotate(-5deg)}.hero[data-job='warrior'] .gear-shoulder-r{right:24%;transform:translateY(var(--shoulder-lift)) rotate(5deg) scaleX(-1)}
+.hero[data-job='warrior'] .gear-belt{left:34%;top:64%;width:32%;height:5%;background:linear-gradient(90deg,#231c17,#755036 35%,#d3a95f 50%,#755036 65%,#231c17);border-radius:3px;box-shadow:0 1px 2px #000b}
+.hero[data-job='warrior'] .gear-thigh{top:67%;width:12%;height:19%;background:linear-gradient(160deg,#777b80,#303237 72%);clip-path:polygon(10% 0,90% 0,100% 84%,66% 100%,0 88%)}
+.hero[data-job='warrior'] .gear-thigh-l{left:36%;transform:rotate(calc(var(--coat-sway) * .3))}.hero[data-job='warrior'] .gear-thigh-r{right:36%;transform:rotate(calc(0deg - var(--coat-sway))) scaleX(-1)}
+.hero[data-job='warrior'] .gear-boots{left:33%;bottom:5%;width:34%;height:15%;border:0!important;border-radius:0!important;background:linear-gradient(90deg,#2b2d31,#85898f 48%,#2a2c30)!important;clip-path:polygon(8% 0,42% 7%,50% 24%,58% 7%,92% 0,100% 76%,78% 100%,55% 90%,45% 90%,22% 100%,0 76%)}
+.hero[data-job='warrior'] .gear-head{left:35%;top:12%;width:30%;height:18%;border:0!important;background:linear-gradient(145deg,#8c9197,#3a3d43 62%,#22242a)!important;clip-path:polygon(18% 4%,50% 0,82% 4%,100% 42%,82% 100%,60% 78%,40% 78%,18% 100%,0 42%)}
+.hero[data-job='warrior'][data-cape='1'] .gear-cape,.hero[data-job='warrior'][data-cape='2'] .gear-cape,.hero[data-job='warrior'][data-cape='3'] .gear-cape,.hero[data-job='warrior'][data-cape='4'] .gear-cape{transform-origin:50% 0;transform:rotate(var(--cape-lag));background:linear-gradient(110deg,#483421d6,#79502ea8)!important}
+.hero[data-job='warrior'][data-armor='2'] .gear-armor{background:linear-gradient(100deg,#293543,#718fb0 48%,#25303c)!important;box-shadow:inset 0 0 5px #d6e8ff55,0 0 6px #527da855!important}
+.hero[data-job='warrior'][data-armor='3'] .gear-armor{background:linear-gradient(100deg,#3c3020,#b78c3f 48%,#312719)!important;box-shadow:inset 0 0 6px #fff2b477,0 0 9px #d39d3d66!important}
+.hero[data-job='warrior'][data-armor='4'] .gear-armor{background:linear-gradient(100deg,#251a31,#8461b5 48%,#1b1425)!important;box-shadow:inset 0 0 7px #eadbff88,0 0 12px #8e61cf88!important}
+.hero[data-job='warrior'][data-armor='4']>.gear-layers:before{content:'';position:absolute;left:27%;top:25%;width:46%;height:64%;border-radius:45%;box-shadow:0 0 15px #9e75dd66,0 0 25px #6f4ba944;pointer-events:none}
+.hero[data-job='warrior']:not([data-motion='attack']) .gear-arm,.hero[data-job='warrior']:not([data-motion='attack']) .gear-hand{opacity:0!important}
+.hero[data-job='warrior']:not([data-motion='attack'])>.weapon-rig{z-index:0!important}
+.hero[data-job='warrior']:not([data-motion='attack']) .weapon-core{transform:rotate(31deg)!important}
+.hero[data-job='warrior']:not([data-motion='attack']) .gear-weapon{left:61%!important;top:24%!important;width:5.5%!important;height:56%!important;background:linear-gradient(90deg,#656b70,#edf2ef 48%,#737b80)!important;box-shadow:0 0 4px #e6d6a866!important}
+.hero[data-job='warrior'][data-motion='attack']>.weapon-rig{z-index:4!important}
+
+/* Paperdoll polish for A/B */
+.doll-actor[data-job='rogue'],.doll-actor[data-job='warrior']{filter:drop-shadow(0 8px 10px #0008)}
+.doll-actor[data-job='rogue'] .gear-arm,.doll-actor[data-job='rogue'] .gear-hand,.doll-actor[data-job='rogue'] .gear-arm-sub,.doll-actor[data-job='rogue'] .gear-hand-sub,
+.doll-actor[data-job='warrior'] .gear-arm,.doll-actor[data-job='warrior'] .gear-hand{display:none!important}
+.doll-actor[data-job='rogue']>.weapon-rig,.doll-actor[data-job='warrior']>.weapon-rig{z-index:0!important}
+.doll-actor[data-job='rogue'] .weapon-core{transform:rotate(31deg)!important}.doll-actor[data-job='rogue'] .weapon-sub-core{display:block!important;transform:rotate(-31deg)!important}
+.doll-actor[data-job='warrior'] .weapon-core{transform:rotate(30deg)!important}
+.doll-actor[data-job='rogue'] .gear-layers,.doll-actor[data-job='warrior'] .gear-layers{z-index:2}
