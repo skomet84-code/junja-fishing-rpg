@@ -53,7 +53,7 @@ function flash(raw,s){
 if(typeof document!=='undefined'){
  document.addEventListener('click',e=>{
   const q=e.target.closest?.('#questAction');if(!q||!lastSelf)return;
-  const raw=lastSelf.storyQuest;if(raw==='storyDone'){e.preventDefault();e.stopImmediatePropagation();document.getElementById('adventureBtn')?.click();return;}
+  const raw=lastSelf.storyQuest;if(raw?.endsWith('Intro')&&lastSelf.zone!=='surface'){e.preventDefault();e.stopImmediatePropagation();document.getElementById('homeBtn')?.click();return;}if(raw==='storyDone'){e.preventDefault();e.stopImmediatePropagation();document.getElementById('adventureBtn')?.click();return;}
   if(!['groveHunt','caveHunt','ruinsHunt','abyssHunt','abyssElite','celestialHunt'].includes(raw))return;
   e.preventDefault();e.stopImmediatePropagation();
   const selector=raw==='abyssElite'?'.enemy.elite:not(.dead)':'.enemy:not(.boss):not(.dead)',hero=document.getElementById('hero')?.getBoundingClientRect();
