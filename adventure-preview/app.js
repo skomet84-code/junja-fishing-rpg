@@ -207,7 +207,7 @@ function updateSnapshot(data){
  syncMMO();if(old.zone!==state.zone){showZoneArrival(state.zone);serverVelocity={x:0,y:0};view={x:state.x,y:state.y};path=[];targetIntent=null;camera(true);if(soundOn)setRegionAudio(state.zone);}
  auto=state.auto;connected=true;
  if(old.zone===state.zone&&distance(view,state)>320){view={x:state.x,y:state.y};path=[];targetIntent=null;camera(true);}
- if(auto&&state.autoTarget!=null&&enemies.get(state.autoTarget)?.alive){selected=state.autoTarget;targetIntent=null;}
+ if(auto&&state.autoTarget!=null&&enemies.get(state.autoTarget)?.alive){selected=state.autoTarget;targetIntent=null;}else if(state.combatTarget!=null&&enemies.get(state.combatTarget)?.alive){selected=state.combatTarget;targetIntent=null;}
  if(auto||state.navMoving){
   const me=data.players.find(p=>p.id===state.id);
   if(me){face=me.face;flip=me.flip;if(Number.isFinite(me.dirX)&&Number.isFinite(me.dirY)){headingX=me.dirX;headingY=me.dirY;}if(me.attacking){const key=[me.attackSkill??-1,me.attackTarget??'',state.nextAttack||0].join(':');if(key!==lastServerAttackKey){lastServerAttackKey=key;const hero=$('hero'),skill=me.attackSkill??-1,target=fxTarget(me.attackTarget),duration=combatAnimDuration(skill);attackUntil=clock+duration;hero.dataset.attackStarted=String(clock);hero.dataset.attackDuration=String(duration);hero.dataset.attackSkill=String(skill);hero.dataset.attackVariant=String(attackSerial++%3);if(skill>=0)skillEffect(state.job,skill,target,view);else if(target)combatContact(state.job,-1,target,view);}}else lastServerAttackKey='';}
@@ -274,7 +274,7 @@ $('authForm').onsubmit=e=>{e.preventDefault();login();};$('registerBtn').onclick
 async function join(){$('joinBtn').disabled=true;$('loadMessage').textContent='준자마을에 접속 중…';try{await artReady;const r=await api('join',{slot:selectedSlot,channel:$('channelInput').value.trim()});connectionKey=r.connectionKey;wireSnapshot=null;lastSelfSampleAt=0;state=r.snapshot.self;view={x:state.x,y:state.y};selected=null;targetIntent=null;path=[];updateSnapshot(r.snapshot);resize();makeSkills();face=0;flip=false;headingX=0;headingY=1;placeEntity($('hero'),view.x,view.y);$('hero').style.zIndex=Math.round(view.y);sprite($('heroArt'),0,0);$('loading').hidden=true;last=performance.now();consumeStream(++streamGeneration);toast(state.channel+'에 접속했습니다. 친구에게 같은 채널을 알려 주세요.');}catch(e){$('loadMessage').textContent=e.message;}finally{$('joinBtn').disabled=false;}}
 $('joinBtn').onclick=join;$('retryBtn').onclick=()=>token?showSelection():location.reload();
 function nearestTarget(maxDistance=560){return [...enemies.values()].filter(e=>e.alive&&distance(view,e)<=maxDistance).sort((a,b)=>{const ad=distance(view,a),bd=distance(view,b);return (a.boss?25:0)+(ad)-(b.boss?25:0)-(bd);})[0]||null;}
-function select(id,engage=false){const e=enemies.get(id);if(!e?.alive)return;selected=id;npcIntent=null;path=[];if(auto){auto=false;command({type:'auto',on:false});}const range=stats(state).range*.92,d=distance(view,e);targetIntent=engage?{id,skill:-1}:null;if(d>range){go(e.x,e.y);if(engage)toast(e.name+' 추적 · 사거리 도착 시 공격');}else if(engage){targetIntent=null;setTimeout(()=>attack(-1),0);}hud();}
+function select(id,engage=false){const e=enemies.get(id);if(!e?.alive)return;selected=id;npcIntent=null;path=[];targetIntent=null;if(auto){auto=false;command({type:'auto',on:false});}if(engage){command({type:'engage',target:e.id,skill:-1});toast(e.name+' 타겟 고정 · 자동 추적/공격');}hud();}
 function combatAnimDuration(skill=-1,s=state){if(skill>=0){const ability=JOBS[s.job]?.skills?.[skill];return Math.max(.30,Math.min(.78,skillCastDelay(s,ability)*.72));}const speed=stats(s).speed||1;return Math.max(.30,.44/Math.min(1.45,speed));}
 function startLocalAttack(skill=-1){
  const hero=$('hero'),ability=skill>=0?JOBS[state.job]?.skills?.[skill]:null,duration=combatAnimDuration(skill),lock=skill>=0?skillCastDelay(state,ability):duration;attackUntil=clock+duration;localActionLockUntil=Math.max(localActionLockUntil,now()+lock);hero.dataset.attackStarted=String(clock);hero.dataset.attackDuration=String(duration);hero.dataset.attackSkill=String(skill);hero.dataset.attackVariant=String(attackSerial++%3);
@@ -282,12 +282,12 @@ function startLocalAttack(skill=-1){
 function attack(skill=-1){
  if(paused||!connected)return;
  const t=now(),serverReady=systems.duel?.accepted?(systems.duel.next?.[state.id]||systems.duel.start||0):(state.nextAttack||0),actionReady=Math.max(serverReady,localActionLockUntil);if(t<actionReady)return;
- const ability=skill>=0?JOBS[state.job].skills[skill]:null,mpCost=ability?.[5]?.mp||0;if(ability&&state.mp<mpCost){toast('마나가 부족합니다.');return;}
+ const ability=skill>=0?JOBS[state.job].skills[skill]:null,mpCost=skillMpCost(state,ability);if(ability&&state.mp<mpCost){toast('마나가 부족합니다. · 필요 MP '+mpCost);return;}
  if(systems.duel?.accepted){const other=systems.duel.players.find(id=>id!==state.id),target=peers.get(other);command({type:'duelAttack',skill});startLocalAttack(skill);if(skill>=0)skillEffect(state.job,skill,target,view);else if(target)combatContact(state.job,-1,target,view);return;}
  if(ability&&['heal','partyHeal','guard','partyGuard'].includes(ability[4])){command({type:'attack',skill});startLocalAttack(skill);skillEffect(state.job,skill,null,view);return;}
  let e=enemies.get(selected);if(!e?.alive)e=nearestTarget(560);
  if(!e){toast('근처에 공격할 몬스터가 없습니다.');return;}selected=e.id;
- if(distance(view,e)>stats(state).range*.96){targetIntent={id:e.id,skill};go(e.x,e.y);toast(e.name+' 자동 타겟 · 접근 중');hud();return;}
+ if(distance(view,e)>stats(state).range*.96){targetIntent=null;path=[];command({type:'engage',target:e.id,skill});toast(e.name+' 자동 타겟 · 현재 위치를 추적합니다.');hud();return;}
  targetIntent=null;command({type:'attack',skill,target:e.id});startLocalAttack(skill);headingX=e.x-view.x;headingY=e.y-view.y;
  const pose=headingPose(headingX,headingY,face,flip);face=pose.row;flip=pose.mirror;path=[];
  if(skill>=0)skillEffect(state.job,skill,e,view);else combatContact(state.job,-1,e,view);hud();
@@ -430,9 +430,7 @@ function frame(time){
    if(p.attacking){if(!p.localAttackStarted||clock-p.localAttackStarted>.55){p.localAttackStarted=clock;const target=fxTarget(p.attackTarget),origin={x:p.vx,y:p.vy};if((p.attackSkill??-1)>=0)skillEffect(p.job,p.attackSkill,target,origin);else if(target)combatContact(p.job,-1,target,origin);}attackPose(p.el,p.art,p.face,p.flip,p.localAttackStarted,.44,p.job,p.attackSkill??-1,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)%3,p.dirX??0,p.dirY??0);}
    else{p.localAttackStarted=0;motion(p.el,p.art,p.moving?'walk':'idle',p.face,p.flip,clock,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)*.13,p.dirX??0,p.dirY??0);}
   }
-  if(targetIntent){
-   const e=enemies.get(targetIntent.id);if(!e?.alive){targetIntent=null;selected=null;}else if(distance(view,e)<=stats(state).range*.96){const intent=targetIntent;targetIntent=null;attack(intent.skill);}
-  }
+  if(targetIntent){targetIntent=null;}
   nearNpc=state.zone==='surface'?npcs.find(n=>distance(view,n)<115)||null:null;
   if(gatherIntent){const n=systems.nodes.find(n=>n.id===gatherIntent);if(n&&distance(state,n)<95){gatherIntent=null;command({type:'gather',node:n.id});}}
   if(npcIntent&&nearNpc?.id===npcIntent&&!path.length){const id=npcIntent;npcIntent=null;talk(id);}
