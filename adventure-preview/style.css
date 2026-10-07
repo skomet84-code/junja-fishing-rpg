@@ -860,14 +860,14 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .hero[data-job='rogue'] .gear-shoulder-r{right:25%;transform:translateY(var(--shoulder-lift)) rotate(8deg) scaleX(-1)}
 .hero[data-job='rogue'] .gear-belt{left:35%;top:61%;width:30%;height:5%;border-radius:3px;background:linear-gradient(90deg,#18151d,#8a5b43 35%,#c29a63 50%,#8a5b43 65%,#18151d);box-shadow:0 1px 2px #0009}
 .hero[data-job='rogue'] .gear-thigh{top:64%;width:11%;height:20%;background:linear-gradient(160deg,#34313d,#171720 70%);clip-path:polygon(12% 0,88% 0,100% 86%,62% 100%,0 90%)}
-.hero[data-job='rogue'] .gear-thigh-l{left:38%;transform:rotate(calc(var(--coat-sway) * .18))}
-.hero[data-job='rogue'] .gear-thigh-r{right:38%;transform:rotate(calc(var(--coat-sway) * -.18)) scaleX(-1)}
+.hero[data-job='rogue'] .gear-thigh-l{left:38%;transform:rotate(var(--coat-sway))}
+.hero[data-job='rogue'] .gear-thigh-r{right:38%;transform:rotate(calc(0deg - var(--coat-sway))) scaleX(-1)}
 .hero[data-job='rogue'] .gear-coat-front{top:63%;width:13%;height:31%;transform-origin:50% 0;background:linear-gradient(180deg,#332138dd,#18151fee);clip-path:polygon(8% 0,92% 0,78% 78%,50% 100%,12% 82%);border-left:1px solid #a34f8466}
 .hero[data-job='rogue'] .gear-coat-front-l{left:37%;transform:rotate(var(--coat-sway))}
-.hero[data-job='rogue'] .gear-coat-front-r{right:37%;transform:rotate(calc(var(--coat-sway) * -1)) scaleX(-1)}
+.hero[data-job='rogue'] .gear-coat-front-r{right:37%;transform:rotate(calc(0deg - var(--coat-sway))) scaleX(-1)}
 .hero[data-job='rogue'] .gear-coat-back{top:59%;width:20%;height:37%;z-index:-1;transform-origin:50% 0;background:linear-gradient(180deg,#3a263dcc,#160f1add);clip-path:polygon(8% 0,92% 0,100% 70%,56% 100%,10% 78%)}
 .hero[data-job='rogue'] .gear-coat-back-l{left:31%;transform:rotate(calc(var(--cape-lag) - 4deg))}
-.hero[data-job='rogue'] .gear-coat-back-r{right:31%;transform:rotate(calc(var(--cape-lag) * -1 + 4deg)) scaleX(-1)}
+.hero[data-job='rogue'] .gear-coat-back-r{right:31%;transform:rotate(calc(4deg - var(--cape-lag))) scaleX(-1)}
 
 .hero[data-job='rogue'] .gear-boots{left:34%;bottom:5%;width:32%;height:16%;border:0;border-radius:0;background:linear-gradient(90deg,#16161e,#5c5c67 48%,#181820);clip-path:polygon(12% 0,42% 8%,50% 26%,58% 8%,88% 0,100% 78%,78% 100%,55% 90%,45% 90%,22% 100%,0 78%)}
 .hero[data-job='rogue'] .gear-head{left:35%;top:13%;width:30%;height:18%;border:0;background:linear-gradient(155deg,#111018e8,#433048d8 58%,#18121dee);clip-path:polygon(16% 0,84% 0,100% 44%,82% 100%,58% 77%,42% 77%,18% 100%,0 44%)}
