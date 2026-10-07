@@ -33,10 +33,10 @@ export const RECIPES={
 export const ZONES={
  surface:{name:'준자마을 · 초원숲',level:1,theme:'forest'},
  grove:{name:'깊은 다람쥐숲',level:5,theme:'deepforest'},
- cave:{name:'수정 동굴',level:30,theme:'cave'},
- ruins:{name:'붉은 폐허',level:60,theme:'ruins'},
- abyss:{name:'그림자 심연',level:100,theme:'abyss'},
- celestial:{name:'천룡의 유적',level:200,theme:'celestial'}
+ cave:{name:'수정 동굴',level:28,theme:'cave'},
+ ruins:{name:'붉은 폐허',level:55,theme:'ruins'},
+ abyss:{name:'그림자 심연',level:95,theme:'abyss'},
+ celestial:{name:'천룡의 유적',level:190,theme:'celestial'}
 };
 export const TRAVEL_PORTALS={
  surface:[{to:'grove',x:768,y:1870,label:'깊은 다람쥐숲'}],
