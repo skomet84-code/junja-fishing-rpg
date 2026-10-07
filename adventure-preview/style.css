@@ -959,3 +959,25 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .doll-actor[data-job='rogue'] .gear-cape{opacity:.62;z-index:-2!important}
 .doll-actor[data-job='rogue'] .gear-coat-back{z-index:-1}
 .doll-actor[data-job='rogue'] .gear-layers{z-index:2}
+
+/* Shadow field pose: keep blades/body connected outside attack frames */
+.entity.hero[data-job='rogue']:not([data-motion='attack']) .gear-arm,
+.entity.hero[data-job='rogue']:not([data-motion='attack']) .gear-hand,
+.entity.hero[data-job='rogue']:not([data-motion='attack']) .gear-arm-sub,
+.entity.hero[data-job='rogue']:not([data-motion='attack']) .gear-hand-sub{opacity:0!important}
+.entity.hero[data-job='rogue']:not([data-motion='attack'])>.weapon-rig{z-index:0!important}
+.entity.hero[data-job='rogue']:not([data-motion='attack']) .weapon-core{transform:rotate(26deg)!important}
+.entity.hero[data-job='rogue']:not([data-motion='attack']) .weapon-sub-core{display:block!important;transform:rotate(-26deg)!important}
+.entity.hero[data-job='rogue']:not([data-motion='attack']) .gear-weapon,
+.entity.hero[data-job='rogue']:not([data-motion='attack']) .gear-weapon-sub{
+ top:30%!important;width:4.6%!important;height:41%!important;
+ background:linear-gradient(90deg,#555a65,#eef3f8 48%,#69717d)!important;
+ box-shadow:0 0 4px #d5c8e055!important
+}
+.entity.hero[data-job='rogue']:not([data-motion='attack']) .gear-weapon{left:59%!important}
+.entity.hero[data-job='rogue']:not([data-motion='attack']) .gear-weapon-sub{left:36%!important;transform:none!important}
+.entity.hero[data-job='rogue'][data-motion='attack']>.weapon-rig{z-index:4!important}
+.entity.hero[data-job='rogue'][data-motion='attack'] .gear-arm,
+.entity.hero[data-job='rogue'][data-motion='attack'] .gear-hand,
+.entity.hero[data-job='rogue'][data-motion='attack'] .gear-arm-sub,
+.entity.hero[data-job='rogue'][data-motion='attack'] .gear-hand-sub{opacity:.92!important}
