@@ -1,7 +1,7 @@
 import {normalize} from './core.js';
 import {EXTRA_ITEMS,LEVEL_CAP,MMO_XP,MMO_HP} from './mmo-data.js';
 export {MMO_XP as needXp} from './mmo-data.js';
-export const BUILD='20261007-manaauto1';
+export const BUILD='20261007-forgechat1';
 export const JOBS={
  warrior:{name:'전사',title:'검호',role:'근접 · 방어',art:'hero',color:'#efbd68',attack:3,def:4,range:115,mana:70,skills:[['회전베기',2,5,1.9,'area',{mp:8,center:'self',radius:175,knockback:38}],['철벽',4,12,0,'guard',{mp:12,guard:8,guardFactor:.28}],['강타',8,8,3.4,'hit',{mp:14,stun:1.1,knockback:55}],['검기폭풍',10,15,2.8,'area',{mp:20,center:'target',radius:245,hits:3,knockback:24}]]},
  rogue:{name:'도적',title:'그림자',role:'기습 · 연속공격',art:'rogue',color:'#e791a4',attack:5,def:1,range:120,mana:80,skills:[['쌍검난무',2,5,2.45,'hit',{mp:7,hits:4}],['흡혈검',4,9,1.8,'drain',{mp:11,leech:.6}],['그림자 일격',8,8,3.7,'hit',{mp:14,execute:.35,executeBonus:1.45,stun:.55}],['월영참',10,15,3.1,'area',{mp:19,center:'target',radius:190,slow:2.5}]]},
@@ -26,17 +26,22 @@ export const ITEMS={
 };
 export const RARE_POOL=['kingblade','kingarmor','kingcrown','kingcape','kingring','kingear'];
 export const UNCOMMON_POOL=['leather','hood','boots','cape'];
+export const LEGENDARY_POOL=['astralblade','astralarmor','astralcape','astralcrown','astralboots','astralring','astralear'];
+export const MYTHIC_POOL=['mythicblade','mythicarmor','mythiccape','mythiccrown','mythicboots','mythicring','mythicear'];
+export const MAX_ENHANCE=12;
+export function enhanceChance(level){return [1,1,1,.95,.85,.72,.58,.42,.28,.16,.08,.04][Math.max(0,Math.min(MAX_ENHANCE-1,Math.floor(level)||0))]??0;}
+export function enhancementLevel(s,id){return Math.max(0,Math.min(MAX_ENHANCE,Math.floor(Number(s.enhancements?.[id])||0)));}
 export function profile(raw={},job='warrior'){
  const s=normalize(raw);s.version=4;s.level=Math.min(LEVEL_CAP,Math.max(1,Math.floor(Number(raw.level)||1)));s.exp=Math.min(1000000000,Math.max(0,Math.floor(Number(raw.exp)||0)));while(s.exp>=MMO_XP(s.level)&&s.level<LEVEL_CAP){s.exp-=MMO_XP(s.level);s.level++;}s.job=Object.hasOwn(JOBS,raw.job)?raw.job:job;s.rank=Math.min(3,Math.max(0,Math.floor(Number(raw.rank)||0)));
  s.zone=['surface','grove','cave','ruins','abyss','celestial'].includes(raw.zone)?raw.zone:'surface';s.materials={};for(const key of ['wood','stone','ore','crystal','stardust'])s.materials[key]=Math.min(100000,Math.max(0,Math.floor(Number(raw.materials?.[key])||0)));
  s.daily=raw.daily&&typeof raw.daily==='object'?{day:String(raw.daily.day||'').slice(0,10),hunt:Math.min(20,Math.max(0,Number(raw.daily.hunt)||0)),gather:Math.min(12,Math.max(0,Number(raw.daily.gather)||0)),dungeon:Math.min(5,Math.max(0,Number(raw.daily.dungeon)||0)),claimed:Array.isArray(raw.daily.claimed)?raw.daily.claimed.filter(x=>['hunt','gather','dungeon'].includes(x)):[]}:null;
  s.bossClaims=Array.isArray(raw.bossClaims)?raw.bossClaims.filter(x=>typeof x==='string').slice(-12):[];s.gatherTimes=raw.gatherTimes&&typeof raw.gatherTimes==='object'?raw.gatherTimes:{};s.pvpWins=Math.max(0,Math.floor(Number(raw.pvpWins)||0));
- s.bossKills=Math.max(0,Math.floor(Number(raw.bossKills)||0));s.bag=Array.isArray(raw.bag)?raw.bag.filter(id=>Object.hasOwn(ITEMS,id)).slice(0,80):['training'];
+ s.bossKills=Math.max(0,Math.floor(Number(raw.bossKills)||0));s.bag=Array.isArray(raw.bag)?raw.bag.filter(id=>Object.hasOwn(ITEMS,id)).slice(0,80):['training'];s.enhanceStones=Math.min(9999,Math.max(0,Math.floor(Number(raw.enhanceStones)||0)));s.shiningStones=Math.min(9999,Math.max(0,Math.floor(Number(raw.shiningStones)||0)));s.enhancements={};for(const [id,n] of Object.entries(raw.enhancements||{}))if(Object.hasOwn(ITEMS,id))s.enhancements[id]=Math.max(0,Math.min(MAX_ENHANCE,Math.floor(Number(n)||0)));
  if(!s.bag.includes('training'))s.bag.unshift('training');if(s.weapon&&!s.bag.includes('glowing'))s.bag.push('glowing');
  s.equipment={weapon:s.weapon?'glowing':'training'};for(const [slot,id] of Object.entries(raw.equipment||{}))if(SLOTS[slot]&&ITEMS[id]?.slot===slot&&s.bag.includes(id))s.equipment[slot]=id;
  const st=stats(s),rawMp=Number(raw.mp);s.hp=Math.min(Math.max(1,Number(raw.hp)||MMO_HP(s.level)),st.hp);s.mp=Math.min(st.mp,Math.max(0,Number.isFinite(rawMp)?rawMp:st.mp));return s;
 }
-export function stats(s){const job=JOBS[s.job]||JOBS.warrior;let atk=10+s.level*3+job.attack+s.rank*30,def=job.def+Math.floor(s.level*.35)+s.rank*15,hp=MMO_HP(s.level),mp=job.mana+s.level*5+s.rank*25;for(const id of Object.values(s.equipment||{})){const item=ITEMS[id];if(item){atk+=item.atk||0;def+=item.def||0;hp+=item.hp||0;}}return {atk,def,hp,mp,range:job.range};}
+export function stats(s){const job=JOBS[s.job]||JOBS.warrior;let atk=10+s.level*3+job.attack+s.rank*30,def=job.def+Math.floor(s.level*.35)+s.rank*15,hp=MMO_HP(s.level),mp=job.mana+s.level*5+s.rank*25;for(const id of Object.values(s.equipment||{})){const item=ITEMS[id];if(item){const factor=1+enhancementLevel(s,id)*.07;atk+=Math.round((item.atk||0)*factor);def+=Math.round((item.def||0)*factor);hp+=Math.round((item.hp||0)*factor);}}return {atk,def,hp,mp,range:job.range};}
 export function jobName(s){return s.rank?JOBS[s.job].title+' · '+s.rank+'차':JOBS[s.job].name;}
 export function gainXp(s,xp){s.exp+=xp;const before=s.level;while(s.exp>=MMO_XP(s.level)&&s.level<LEVEL_CAP){s.exp-=MMO_XP(s.level);s.level++;}if(s.level>before){const st=stats(s);s.hp=st.hp;s.mp=st.mp;}return s.level>before;}
 export function rollLoot(boss,random=Math.random){const r=random();if(boss){if(r<.10)return RARE_POOL[Math.min(5,Math.floor(random()*6))];if(r<.40)return UNCOMMON_POOL[Math.min(3,Math.floor(random()*4))];}else if(r<.03)return UNCOMMON_POOL[Math.min(3,Math.floor(random()*4))];return null;}
