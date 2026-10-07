@@ -3,9 +3,13 @@ import {distance} from '../../image-prototype/core.js';
 import {ITEMS,profile,stats,gainXp} from '../../image-prototype/catalog.js';
 import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,koreaDay,NAMED,bossWindow} from '../../image-prototype/mmo-data.js';
 export const NODES=[
- {id:'wood1',material:'wood',x:450,y:730,zone:'surface',cooldown:60},{id:'wood2',material:'wood',x:510,y:850,zone:'surface',cooldown:60},{id:'stone1',material:'stone',x:950,y:650,zone:'surface',cooldown:90},{id:'ore1',material:'ore',x:1160,y:900,zone:'surface',cooldown:120},
- {id:'woodG1',material:'wood',x:410,y:810,zone:'grove',cooldown:55},{id:'woodG2',material:'wood',x:1110,y:845,zone:'grove',cooldown:55},{id:'stoneG',material:'stone',x:920,y:710,zone:'grove',cooldown:80},
- ...['cave','ruins','abyss','celestial'].map((zone,i)=>({id:'crystal'+i,material:'crystal',x:470+(i%2)*590,y:790+(i%2)*55,zone,cooldown:600}))
+ {id:'wood1',material:'wood',x:390,y:780,zone:'surface',cooldown:60},{id:'wood2',material:'wood',x:1110,y:925,zone:'surface',cooldown:60},{id:'stone1',material:'stone',x:410,y:1320,zone:'surface',cooldown:90},{id:'ore1',material:'ore',x:1120,y:1740,zone:'surface',cooldown:120},
+ {id:'woodG1',material:'wood',x:390,y:840,zone:'grove',cooldown:55},{id:'woodG2',material:'wood',x:1120,y:1270,zone:'grove',cooldown:55},{id:'stoneG',material:'stone',x:420,y:1740,zone:'grove',cooldown:80},{id:'oreG',material:'ore',x:1080,y:1870,zone:'grove',cooldown:110},
+ ...['cave','ruins','abyss','celestial'].flatMap((zone,i)=>[
+  {id:'crystal'+i+'a',material:'crystal',x:405,y:860,zone,cooldown:600},
+  {id:'crystal'+i+'b',material:'crystal',x:1110,y:1370,zone,cooldown:600},
+  {id:'crystal'+i+'c',material:'crystal',x:520,y:1810,zone,cooldown:600}
+ ])
 ];
 export function daily(p,now){if(p.state.daily?.day!==koreaDay(now))p.state.daily={day:koreaDay(now),hunt:0,gather:0,dungeon:0,claimed:[]};return p.state.daily;}
 export function progress(w,p,key,n=1){const d=daily(p,w.now());d[key]=Math.min(DAILY_TASKS[key].goal,d[key]+n);}
@@ -25,7 +29,7 @@ export function mmoAction(w,p,data){const s=p.state,now=w.now(),kind=data.type;i
   if(!z||!portal){w.event(p,'연결된 포탈로 이동하세요.');return true;}
   if(s.level<z.level){w.event(p,'입장 레벨이 부족합니다. · Lv.'+z.level);return true;}
   if(distance(s,portal)>135){w.event(p,'포탈 가까이에서 이동하세요.');return true;}
-  clearMotion(p);s.zone=data.zone;s.x=768;s.y=data.zone==='surface'?555:portal.y>700?555:865;w.channel(p.channel,s.zone);w.dirty(p);w.event(p,ZONES[s.zone].name+' 입장');return true;
+  clearMotion(p);s.zone=data.zone;s.x=768;s.y=portal.y>1500?790:1760;w.channel(p.channel,s.zone);w.dirty(p);w.event(p,ZONES[s.zone].name+' 입장');return true;
  }
  if(kind==='gather'){if(socialId(w,p))return true;const node=NODES.find(n=>n.id===data.node&&n.zone===s.zone);if(!node||distance(s,node)>110){w.event(p,'채집 지점 가까이 이동하세요.');return true;}if((s.gatherTimes[node.id]||0)>now){w.event(p,'이 자원은 아직 회복 중입니다.');return true;}s.gatherTimes[node.id]=now+node.cooldown;const amount=node.material==='crystal'?1:2+Math.floor(w.random()*2);s.materials[node.material]=Math.min(100000,s.materials[node.material]+amount);if(node.material==='crystal'&&w.random()<.15)s.materials.stardust=Math.min(100000,s.materials.stardust+1);progress(w,p,'gather');gainXp(s,20+Math.floor(s.level*2));clearMotion(p);w.dirty(p);w.event(p,MATERIALS[node.material]+' '+amount+'개 채집');return true;}
  if(kind==='craft'){if(socialId(w,p))return true;if(s.zone!=='surface'||distance(s,{x:1000,y:330})>145){w.event(p,'마을 상인 가까이에서 제작하세요.');return true;}const r=Object.hasOwn(RECIPES,data.recipe)?RECIPES[data.recipe]:null;if(!r||s.level<r.level||s.gold<r.gold||Object.entries(r.materials).some(([k,n])=>s.materials[k]<n)){w.event(p,'레벨·재료·골드를 확인하세요.');return true;}if(r.item&&s.bag.length>=80){w.event(p,'가방이 가득 찼습니다.');return true;}for(const [k,n] of Object.entries(r.materials))s.materials[k]-=n;s.gold-=r.gold;if(r.item)s.bag.push(r.item);if(r.potions)s.potions+=r.potions;w.dirty(p);w.event(p,r.name+' 제작 완료');return true;}
