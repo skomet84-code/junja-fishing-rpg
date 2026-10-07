@@ -779,3 +779,25 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .world-route .route-row{margin:5px 0;padding:5px 8px;border-radius:8px;background:#0b1b1488}
 .world-route .route-row.current{background:#5d562d55;color:#ffe5a3;border:1px solid #ccb77055}
 @media(max-width:600px){.enemy:before{inset:-24px}.shadow{filter:blur(1.5px)}#hint{max-width:72vw;white-space:normal;text-align:center;line-height:1.25}}
+
+/* Zone performance pass: keep later maps visually distinct without full-field repaints */
+#world[data-zone=grove]:before,
+#world[data-zone=cave]:before,
+#world[data-zone=ruins]:before,
+#world[data-zone=abyss]:before,
+#world[data-zone=celestial]:before{
+ animation:none!important;
+ background-position:0 0,0 0,0 0!important;
+}
+.zone-decor.mist,.zone-decor.abyss-mist{
+ animation:none!important;
+ filter:none!important;
+ opacity:.48;
+}
+@media(max-width:700px){
+ #world:not([data-zone=surface]) .zone-decor{filter:none}
+ #world:not([data-zone=surface]) .zone-decor.ember,
+ #world:not([data-zone=surface]) .zone-decor.rune,
+ #world:not([data-zone=surface]) .zone-decor.rune:before{animation:none!important}
+ .enemy.elite .sprite,.enemy.named .sprite{filter:none}
+}
