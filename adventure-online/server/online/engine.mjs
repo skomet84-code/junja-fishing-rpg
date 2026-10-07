@@ -1,10 +1,13 @@
 import {randomUUID,randomInt} from 'node:crypto';
 import {clamp,distance,walkable,pathfind} from '../../image-prototype/core.js';
-import {profile,JOBS,ITEMS,stats,gainXp,rollLoot,equip,claim,RARE_POOL,CRYSTAL_POOL,RUIN_POOL,LEGENDARY_POOL,MYTHIC_POOL,RAID_POOL,itemSellPrice,promotionSkillLearned,promotionSkillKey,MAX_ENHANCE,enhanceChance,enhancementLevel,basicAttackDelay,skillCastDelay,skillMpCost} from '../../image-prototype/catalog.js';
+import {profile,JOBS,ITEMS,stats,gainXp,rollLoot,equip,claim,RARE_POOL,CRYSTAL_POOL,RUIN_POOL,LEGENDARY_POOL,MYTHIC_POOL,RAID_POOL,itemSellPrice,promotionSkillLearned,promotionSkillKey,CONQUEST_CAP,conquestNeed,MAX_ENHANCE,enhanceChance,enhancementLevel,basicAttackDelay,skillCastDelay,skillMpCost} from '../../image-prototype/catalog.js';
 import {CHANNEL_CAP,WORLD_CAP,LEVEL_CAP,NAMED,bossWindow,PROMOTIONS,PROMOTION_MATERIALS,ZONES,QUICK_CHATS} from '../../image-prototype/mmo-data.js';
 import {initSystems,mmoAction,tickSystems,snapshotSystems,progress,removeSocial,socialId,partyOf,partyMembers} from './systems.mjs';
 const canAggro=(p,e)=>{if(e.tags?.has(p.id))return true;const gap=(e.level||1)-(p.state.level||1);if(e.named)return gap<=10;if(e.boss)return gap<=5;if(e.elite)return gap<=4;return gap<=6;};
 const enemyDamage=e=>Math.max(2,Math.round(Number.isFinite(e.damage)?e.damage:e.boss?18+e.level*4.2:e.elite?8+e.level*3.2:4+e.level*2.2));
+const kstDay=t=>new Date((Number(t)+9*3600)*1000).toISOString().slice(0,10);
+const ensureEndgame=(state,now)=>{if(!state.endgame)state.endgame={mastery:0,xp:0,tokens:0,day:'',hunt:0,elite:0,boss:0,claimed:[],pity:{void:0,origin:0}};const day=kstDay(now);if(state.endgame.day!==day){state.endgame.day=day;state.endgame.hunt=0;state.endgame.elite=0;state.endgame.boss=0;state.endgame.claimed=[];}state.endgame.pity=state.endgame.pity||{void:0,origin:0};return state.endgame;};
+const addConquest=(state,amount)=>{const e=state.endgame;if(!e||state.level<300||e.mastery>=CONQUEST_CAP)return 0;e.xp+=Math.max(0,Math.floor(amount||0));let ups=0;while(e.mastery<CONQUEST_CAP&&e.xp>=conquestNeed(e.mastery)){e.xp-=conquestNeed(e.mastery);e.mastery++;ups++;e.tokens=Math.min(99999,e.tokens+2+(e.mastery%10===0?10:0));}if(e.mastery>=CONQUEST_CAP)e.xp=0;return ups;};
 export class World{
  constructor({random=()=>randomInt(1000000)/1000000,now=()=>Date.now()/1000,onDirty=()=>{},onExchange=async()=>{},onUrgent=()=>{}}={}){this.random=random;this.now=now;this.onDirty=onDirty;this.onExchange=onExchange;this.onUrgent=onUrgent;this.jobs=JOBS;initSystems(this);this.players=new Map();this.channels=new Map();this.events=[];}
  channel(name,zone='surface'){
