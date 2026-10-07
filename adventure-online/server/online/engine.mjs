@@ -1,7 +1,7 @@
 import {randomUUID,randomInt} from 'node:crypto';
 import {clamp,distance,walkable,pathfind} from '../../image-prototype/core.js';
-import {profile,JOBS,ITEMS,stats,gainXp,rollLoot,equip,claim,RARE_POOL,CRYSTAL_POOL,RUIN_POOL,LEGENDARY_POOL,MYTHIC_POOL,RAID_POOL,itemSellPrice,MAX_ENHANCE,enhanceChance,enhancementLevel,basicAttackDelay,skillCastDelay,skillMpCost} from '../../image-prototype/catalog.js';
-import {CHANNEL_CAP,WORLD_CAP,LEVEL_CAP,NAMED,bossWindow,PROMOTIONS,ZONES,QUICK_CHATS} from '../../image-prototype/mmo-data.js';
+import {profile,JOBS,ITEMS,stats,gainXp,rollLoot,equip,claim,RARE_POOL,CRYSTAL_POOL,RUIN_POOL,LEGENDARY_POOL,MYTHIC_POOL,RAID_POOL,itemSellPrice,promotionSkillLearned,promotionSkillKey,MAX_ENHANCE,enhanceChance,enhancementLevel,basicAttackDelay,skillCastDelay,skillMpCost} from '../../image-prototype/catalog.js';
+import {CHANNEL_CAP,WORLD_CAP,LEVEL_CAP,NAMED,bossWindow,PROMOTIONS,PROMOTION_MATERIALS,ZONES,QUICK_CHATS} from '../../image-prototype/mmo-data.js';
 import {initSystems,mmoAction,tickSystems,snapshotSystems,progress,removeSocial,socialId} from './systems.mjs';
 const canAggro=(p,e)=>{if(e.tags?.has(p.id))return true;const gap=(e.level||1)-(p.state.level||1);if(e.named)return gap<=10;if(e.boss)return gap<=5;if(e.elite)return gap<=4;return gap<=6;};
 const enemyDamage=e=>Math.max(2,Math.round(Number.isFinite(e.damage)?e.damage:e.boss?18+e.level*4.2:e.elite?8+e.level*3.2:4+e.level*2.2));
