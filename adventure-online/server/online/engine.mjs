@@ -1,29 +1,30 @@
 import {randomUUID,randomInt} from 'node:crypto';
 import {clamp,distance,walkable,pathfind} from '../../image-prototype/core.js';
-import {profile,JOBS,ITEMS,stats,gainXp,rollLoot,equip,claim,LEGENDARY_POOL,MYTHIC_POOL,MAX_ENHANCE,enhanceChance,enhancementLevel} from '../../image-prototype/catalog.js';
+import {profile,JOBS,ITEMS,stats,gainXp,rollLoot,equip,claim,LEGENDARY_POOL,MYTHIC_POOL,MAX_ENHANCE,enhanceChance,enhancementLevel,basicAttackDelay,skillCastDelay} from '../../image-prototype/catalog.js';
 import {CHANNEL_CAP,WORLD_CAP,NAMED,bossWindow,PROMOTIONS,ZONES,QUICK_CHATS} from '../../image-prototype/mmo-data.js';
 import {initSystems,mmoAction,tickSystems,snapshotSystems,progress,removeSocial,socialId} from './systems.mjs';
 export class World{
  constructor({random=()=>randomInt(1000000)/1000000,now=()=>Date.now()/1000,onDirty=()=>{},onExchange=async()=>{},onUrgent=()=>{}}={}){this.random=random;this.now=now;this.onDirty=onDirty;this.onExchange=onExchange;this.onUrgent=onUrgent;this.jobs=JOBS;initSystems(this);this.players=new Map();this.channels=new Map();this.events=[];}
  channel(name,zone='surface'){
   const key=name+'|'+zone;if(!this.channels.has(key)){
+   const atlasElites=[{name:'정예 · 석갑 파수꾼',skin:0},{name:'정예 · 그림자 추적자',skin:1},{name:'정예 · 비룡 수호자',skin:2},{name:'정예 · 마수 대장',skin:3}];
    const cfg={
-    surface:{tier:1,names:['들다람쥐','갈색 다람쥐','들토끼'],elite:'정예 · 붉은발톱',boss:'왕꼬리 다람쥐'},
-    grove:{tier:8,names:['검은꼬리','숲너구리','독버섯 요괴'],elite:'정예 · 가시송곳니',boss:'고목의 수호수'},
-    cave:{tier:30,names:['수정 마수','동굴박쥐','수정골렘'],elite:'정예 · 수정 파수꾼',boss:'수정 동굴주'},
-    ruins:{tier:60,names:['폐허 망령','붉은 갑주병','저주받은 석상'],elite:'정예 · 피의 기사',boss:'폐허의 집행자'},
-    abyss:{tier:100,names:['심연 사냥꾼','그림자 악귀','공허의 눈'],elite:'정예 · 암흑 추적자',boss:'심연 파수왕'},
-    celestial:{tier:200,names:['천룡 수호병','별빛 정령','청룡의 혼'],elite:'정예 · 천계 무장',boss:'천룡 수문장'}
-   }[zone]||{tier:1,names:['마수'],elite:'정예 마수',boss:'수호자'};
+    surface:{tier:1,types:[{name:'들다람쥐',skin:0,atlas:false},{name:'갈색 다람쥐',skin:0,atlas:false},{name:'붉은꼬리 다람쥐',skin:0,atlas:false}],eliteTypes:[{name:'정예 · 붉은발톱 다람쥐',skin:0,atlas:false}],boss:'왕꼬리 다람쥐',bossSkin:1,bossAtlas:false},
+    grove:{tier:8,types:[{name:'검은꼬리 다람쥐',skin:0,atlas:false},{name:'고목 골렘',skin:0},{name:'그림자 짐승',skin:1},{name:'숲 비룡',skin:2}],boss:'고목의 수호수',bossSkin:0},
+    cave:{tier:30,types:[{name:'수정 골렘',skin:0},{name:'동굴 그림자',skin:1},{name:'수정 비룡',skin:2},{name:'동굴 마수',skin:3}],boss:'수정 동굴주',bossSkin:0},
+    ruins:{tier:60,types:[{name:'저주받은 석상',skin:0},{name:'폐허 망령',skin:1},{name:'붉은 비룡',skin:2},{name:'폐허 마수',skin:3}],boss:'폐허의 집행자',bossSkin:1},
+    abyss:{tier:100,types:[{name:'심연 석마',skin:0},{name:'그림자 악귀',skin:1},{name:'공허룡',skin:2},{name:'심연 마수',skin:3}],boss:'심연 파수왕',bossSkin:1},
+    celestial:{tier:200,types:[{name:'천계 석장군',skin:0},{name:'별빛 정령',skin:1},{name:'청룡의 혼',skin:2},{name:'천룡 수호병',skin:3}],boss:'천룡 수문장',bossSkin:2}
+   }[zone]||{tier:1,types:[{name:'마수',skin:3}],boss:'수호자',bossSkin:3};
    const spots=[
     [360,690],[515,735],[675,690],[845,740],[1010,695],[1170,760],[430,900],[690,920],
     [360,1195],[520,1270],[690,1205],[855,1300],[1030,1215],[1180,1370],[470,1440],[785,1435],
     [340,1685],[510,1760],[675,1695],[835,1785],[1010,1705],[1180,1820],[505,1885],[940,1880]
    ];
-   const mobs=spots.map(([x,y],id)=>{const sector=Math.floor(id/8),level=cfg.tier+sector*3+Math.floor((id%8)/4),name=cfg.names[id%cfg.names.length],hp=Math.round((72+level*10)*(1+sector*.18+(id%8)*.018));return {id,x,y,homeX:x,homeY:y,zone,level,name,skin:(id+sector)%4,hp,max:hp,boss:false,alive:true,next:0,tellAt:0,respawn:0,slow:0,stun:0,tags:new Map()};});
-   for(const [j,[x,y]] of [[0,[1160,930]],[1,[350,1400]],[2,[1160,1480]],[3,[360,1870]]]){const id=40+j,level=cfg.tier+10+j*5,hp=level*165;mobs.push({id,x,y,homeX:x,homeY:y,zone,level,name:cfg.elite,skin:(j+2)%4,hp,max:hp,elite:true,boss:false,alive:true,next:0,tellAt:0,respawn:0,slow:0,stun:0,tags:new Map()});}
-   const bossLevel=cfg.tier+20,bossHp=Math.max(1100,bossLevel*195);mobs.push({id:60,x:760,y:1815,homeX:760,homeY:1815,zone,level:bossLevel,name:cfg.boss,skin:3,hp:bossHp,max:bossHp,boss:true,alive:true,next:0,tellAt:0,respawn:0,slow:0,stun:0,tags:new Map()});
-   for(const [i,b] of NAMED.entries())if(b.zone===zone)mobs.push({id:80+i,x:b.x,y:b.y,homeX:b.x,homeY:b.y,zone,level:b.level,name:b.name,hp:b.hp,max:b.hp,damage:b.damage,boss:true,named:b.id,alive:false,next:0,tellAt:0,respawn:0,slow:0,stun:0,tags:new Map(),window:''});
+   const mobs=spots.map(([x,y],id)=>{const sector=Math.floor(id/8),level=cfg.tier+sector*3+Math.floor((id%8)/4),type=cfg.types[(id+sector)%cfg.types.length],hp=Math.round((72+level*10)*(1+sector*.18+(id%8)*.018));return {id,x,y,homeX:x,homeY:y,zone,level,name:type.name,skin:type.skin??3,atlas:type.atlas!==false,hp,max:hp,boss:false,alive:true,next:0,tellAt:0,respawn:0,slow:0,stun:0,tags:new Map()};});
+   for(const [j,[x,y]] of [[0,[1160,930]],[1,[350,1400]],[2,[1160,1480]],[3,[360,1870]]]){const id=40+j,level=cfg.tier+10+j*5,hp=level*165,elite=(cfg.eliteTypes||atlasElites)[j%(cfg.eliteTypes||atlasElites).length];mobs.push({id,x,y,homeX:x,homeY:y,zone,level,name:elite.name,skin:elite.skin??3,atlas:elite.atlas!==false,hp,max:hp,elite:true,boss:false,alive:true,next:0,tellAt:0,respawn:0,slow:0,stun:0,tags:new Map()});}
+   const bossLevel=cfg.tier+20,bossHp=Math.max(1100,bossLevel*195);mobs.push({id:60,x:760,y:1815,homeX:760,homeY:1815,zone,level:bossLevel,name:cfg.boss,skin:cfg.bossSkin??3,atlas:cfg.bossAtlas!==false,hp:bossHp,max:bossHp,boss:true,alive:true,next:0,tellAt:0,respawn:0,slow:0,stun:0,tags:new Map()});
+   for(const [i,b] of NAMED.entries())if(b.zone===zone)mobs.push({id:80+i,x:b.x,y:b.y,homeX:b.x,homeY:b.y,zone,level:b.level,name:b.name,skin:({stoneking:0,shadowking:1,dragon:2}[b.id]??3),atlas:true,hp:b.hp,max:b.hp,damage:b.damage,boss:true,named:b.id,alive:false,next:0,tellAt:0,respawn:0,slow:0,stun:0,tags:new Map(),window:''});
    this.channels.set(key,mobs);
   }return this.channels.get(key);
  }
@@ -67,7 +68,7 @@ export class World{
     if(spec.guard){q.guard=now+spec.guard;q.guardFactor=spec.guardFactor??.65;}
     for(const e of this.channel(p.channel,p.state.zone))if(e.tags.has(q.id)&&e.alive&&distance(e,s)<450)e.tags.set(p.id,{damage:(e.tags.get(p.id)?.damage||0),support:true,at:now});
    }
-   s.mp=Math.max(0,s.mp-mpCost);this.dirty(p);p.cooldowns[index]=now+skill[2];p.nextAttack=now+.4;p.attackSkill=index;p.attackTarget=null;p.attackUntil=now+.44;this.event(p,skill[0]+' 사용','skill');return;
+   s.mp=Math.max(0,s.mp-mpCost);this.dirty(p);p.cooldowns[index]=now+skill[2];p.nextAttack=now+skillCastDelay(s);p.attackSkill=index;p.attackTarget=null;p.attackUntil=now+Math.min(.54,skillCastDelay(s)*.72);this.event(p,skill[0]+' 사용','skill');return;
   }
   const mobs=this.channel(p.channel,p.state.zone);let e=mobs.find(e=>e.id===targetId&&e.alive);if(!e)e=mobs.filter(e=>e.alive&&distance(s,e)<=st.range).sort((a,b)=>distance(s,a)-distance(s,b))[0];if(!e||distance(s,e)>st.range)return;
   let targets=[e];
@@ -76,7 +77,7 @@ export class World{
   else if(spec.splash){targets=[e,...mobs.filter(t=>t!==e&&t.alive&&distance(t,e)<spec.splash)];}
   const base=st.atk*(skill?skill[3]:1);
   if(skill){s.mp=Math.max(0,s.mp-mpCost);this.dirty(p);}
-  p.nextAttack=now+(skill?.6:job===JOBS.rogue?.38:.48);p.attackSkill=index;p.attackTarget=e.id;p.attackUntil=now+.44;p.input={x:0,y:0};p.navPath=[];if(skill)p.cooldowns[index]=now+skill[2];
+  const actionDelay=skill?skillCastDelay(s):basicAttackDelay(s);p.nextAttack=now+actionDelay;p.attackSkill=index;p.attackTarget=e.id;p.attackUntil=now+Math.min(.52,actionDelay*.82);p.input={x:0,y:0};p.navPath=[];if(skill)p.cooldowns[index]=now+skill[2];
   const adx=e.x-s.x,ady=e.y-s.y,alen=Math.hypot(adx,ady)||1;p.dirX=adx/alen;p.dirY=ady/alen;p.face=Math.abs(adx)>Math.abs(ady)?2:ady<0?1:0;p.flip=p.face===2&&adx<0;
   let totalDamage=0;
   targets.forEach((t,i)=>{
