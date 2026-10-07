@@ -23,6 +23,12 @@ const VOID_NPCS=[
  {id:'void-smith',name:'균열 대장장이 바르크',x:1090,y:1190,slot:2,desc:'공허 원정대의 장비 강화 담당입니다.'},
  {id:'void-captain',name:'원정대장 카인',x:455,y:1640,slot:3,desc:'공허성의 파괴자와 레이드 공략을 지휘합니다.'}
 ];
+const ORIGIN_DECOR_SPOTS=[[260,690,1.2],[1275,690,1.2],[410,820,.72],[1125,820,.72],[260,1040,1.05],[1270,1040,1.05],[460,1220,.78],[1080,1220,.78],[270,1430,1.12],[1260,1430,1.12],[420,1595,.8],[1115,1595,.8],[270,1800,1.18],[1260,1800,1.18],[610,900,.52],[925,900,.52],[600,1480,.56],[940,1480,.56],[768,1720,.75]];
+const ORIGIN_NPCS=[
+ {id:'origin-scribe',name:'신전 기록관 세라',x:425,y:720,slot:1,desc:'태초의 신전 역사와 성흔 수집을 안내합니다.'},
+ {id:'origin-artificer',name:'성유물 장인 이안',x:1100,y:1180,slot:2,desc:'태초신 장비와 세트효과를 연구합니다.'},
+ {id:'origin-commander',name:'성전 지휘관 레온',x:455,y:1640,slot:3,desc:'수문신과 카이로스 레이드 공략을 지휘합니다.'}
+];
 let zoneNpcEls=[];
 const ZONE_DECOR_TYPES={
  surface:['tree','grass','rock','flower'],
@@ -34,7 +40,14 @@ const ZONE_DECOR_TYPES={
  void:['rift','obelisk','voidstone','abyss-mist'],
  origin:['sky-pillar','altar','cloudstone','rune']
 };
-function regionalNpcWindow(id){const npc=VOID_NPCS.find(n=>n.id===id);if(!npc)return;if(id==='void-scout')modal(npc.name,'<p>공허 성채는 일반 사냥터와 다르게 <b>외성 → 균열 회랑 → 왕좌 구역</b>으로 이어집니다.</p><p>3차 전직 스킬 재료 <b>공허의 인장 100개</b>는 정예 공허검성·차원포식자·공허천룡·심연마도장과 지역보스, 공허제 레이드에서 얻습니다.</p>',[['정예 구역으로',()=>{closeModal();go(768,1320);}],['전직 현황',jobWindow]]);else if(id==='void-smith')modal(npc.name,'<p>공허 장비는 강화 수치 차이가 전투력을 크게 좌우합니다. 지역보스에 도전하기 전에 주력 장비를 먼저 강화하는 편이 효율적입니다.</p><p>+12 이상부터는 후반 장비의 체감 차이가 특히 커집니다.</p>',[['장비 강화',enhanceWindow],['가방 확인',bagWindow]]);else modal(npc.name,'<p><b>공허성의 파괴자</b>는 체력이 내려갈수록 패턴이 강화됩니다. 보라색 원형 경고는 보스에게서 떨어지고, 표식 장판은 즉시 벗어나세요.</p><p>21:00에는 <b>공허제 · 아르카논</b>이 출현합니다. 최소 3명이 모여야 피해가 들어가며, 최상급 신화 보상을 노릴 수 있습니다.</p>',[['보스 구역으로',()=>{closeModal();go(760,1760);}],['네임드 시간표',bossWindowUI]]);}
+function regionalNpcWindow(id){const npc=[...VOID_NPCS,...ORIGIN_NPCS].find(n=>n.id===id);if(!npc)return;
+ if(id==='void-scout')modal(npc.name,'<p>공허 성채는 <b>외성 → 균열 회랑 → 왕좌 구역</b>으로 이어집니다.</p><p>3차 전직 스킬 재료 <b>공허의 인장 100개</b>는 정예·지역보스·공허제 레이드에서 얻습니다.</p>',[['정예 구역으로',()=>{closeModal();go(768,1320);}],['전직 현황',jobWindow]]);
+ else if(id==='void-smith')modal(npc.name,'<p>공허 장비는 강화 수치 차이가 큽니다. +12 이상부터 후반 전투력이 크게 달라집니다.</p>',[['장비 강화',enhanceWindow],['가방 확인',bagWindow]]);
+ else if(id==='void-captain')modal(npc.name,'<p><b>공허성의 파괴자</b>는 체력에 따라 3페이즈로 바뀝니다. 장판 경고가 보이면 즉시 이동하세요.</p><p>21:00 공허제 레이드는 실제 파티 최소 3명이 보스 근처에 있어야 공격할 수 있습니다.</p>',[['보스 구역으로',()=>{closeModal();go(760,1760);}],['네임드 시간표',bossWindowUI],['파티 관리',partyWindow]]);
+ else if(id==='origin-scribe')modal(npc.name,'<p>태초의 신전은 <b>성광 회랑 → 창세 제단 → 신좌</b>로 이어지는 최종 지역입니다.</p><p>4차 궁극기 재료 <b>태초의 성흔 100개</b>는 정예·수문신·카이로스 레이드에서 얻습니다.</p>',[['창세 제단으로',()=>{closeModal();go(768,1310);}],['전직 현황',jobWindow]]);
+ else if(id==='origin-artificer'){const sets=setBonuses(state),setText=sets.length?sets.map(x=>x.name+' '+x.count+'/7').join(' · '):'활성 신화 세트 없음';modal(npc.name,'<p>신화 장비는 이제 <b>3 / 5 / 7세트 효과</b>가 있습니다. 같은 계열 장비를 맞출수록 공격·방어·HP·속도가 추가 상승합니다.</p><p>현재: <b>'+esc(setText)+'</b></p>',[['가방·세트 확인',bagWindow],['장비 강화',enhanceWindow]]);}
+ else modal(npc.name,'<p><b>태초신전 수문신</b>은 성광 장판과 심판 표식을 사용합니다. 3페이즈에서는 연속 심판을 피하면서 공격해야 합니다.</p><p>23:00 <b>태초신 · 카이로스</b>는 실제 파티 최소 4명이 필요합니다. 신격 세트의 핵심 파밍처입니다.</p>',[['신좌 구역으로',()=>{closeModal();go(760,1760);}],['네임드 시간표',bossWindowUI],['파티 관리',partyWindow]]);
+}
 function syncZoneDecor(zone){
  const layer=$('zoneDecor');if(!layer||layer.dataset.zone===zone)return;layer.dataset.zone=zone;layer.replaceChildren();zoneNpcEls.forEach(el=>el.remove());zoneNpcEls=[];
  const types=ZONE_DECOR_TYPES[zone]||ZONE_DECOR_TYPES.surface,spots=zone==='void'?VOID_DECOR_SPOTS:DECOR_SPOTS;
