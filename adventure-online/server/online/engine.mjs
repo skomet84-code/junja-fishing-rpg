@@ -36,19 +36,26 @@ export class World{
   if(kind==='move'){if(p.navPath.length&&!data.manual)return;if(data.manual)p.navPath=[];const x=Number(data.x),y=Number(data.y);if(!Number.isFinite(x)||!Number.isFinite(y))return;p.input={x:clamp(x,-1,1),y:clamp(y,-1,1)};const d=Math.hypot(x,y);if(d>.01){p.dirX=x/d;p.dirY=y/d;}p.lastInput=now;return;}
   if(kind==='auto'){p.auto=!!data.on;p.navPath=[];p.input={x:0,y:0};return;}
   if(kind==='attack'){return this.attack(p,Number.isInteger(data.skill)?data.skill:-1,data.target);}
-  if(kind==='home'){s.zone='surface';s.x=768;s.y=350;s.hp=stats(s).hp;p.input={x:0,y:0};p.navPath=[];p.auto=false;this.dirty(p);return;}
+  if(kind==='home'){s.zone='surface';s.x=768;s.y=350;const st=stats(s);s.hp=st.hp;s.mp=st.mp;p.input={x:0,y:0};p.navPath=[];p.auto=false;this.dirty(p);return;}
   if(kind==='potion'){if(s.potions>0&&s.hp<stats(s).hp){s.potions--;s.hp=Math.min(stats(s).hp,s.hp+stats(s).hp*.5);this.dirty(p);}return;}
   if(kind==='equip'){if(equip(s,data.item))this.dirty(p);else this.event(p,'보유 아이템과 장착 레벨을 확인하세요.');return;}
   if(kind==='unequip'){if(data.slot!=='weapon'&&s.equipment[data.slot]){delete s.equipment[data.slot];s.hp=Math.min(s.hp,stats(s).hp);this.dirty(p);}return;}
   if(kind==='quest'){if(s.zone!=='surface')return;if(distance(s,{x:580,y:330})>145){this.event(p,'촌장 가까이에서 대화하세요.');return;}if(s.quest==='available'){s.quest='active';s.questKills=0;}else if(s.quest==='complete'){s.quest='bossActive';}else claim(s);this.dirty(p);return;}
   if(kind==='buy'){if(s.zone!=='surface')return;if(distance(s,{x:1000,y:330})>145)return;const costs={potion:30,heal:20,leather:120,hood:100,boots:80,cape:180};const cost=Object.hasOwn(costs,data.item)?costs[data.item]:null;if(!cost||s.gold<cost){this.event(p,'골드가 부족합니다.');return;}if(ITEMS[data.item]&&s.bag.length>=80){this.event(p,'가방이 가득 찼습니다.');return;}s.gold-=cost;if(data.item==='potion')s.potions++;else if(data.item==='heal')s.hp=stats(s).hp;else s.bag.push(data.item);this.dirty(p);return;}
   if(kind==='promote'){if(s.zone!=='surface'||distance(s,{x:580,y:330})>145)return;const r=PROMOTIONS[s.rank];if(!r){this.event(p,'최종 전직을 마쳤습니다.');return;}if(s.level<r.level||s.bossKills<r.bosses){this.event(p,r.level+'레벨과 보스 '+r.bosses+'회 처치가 필요합니다.');return;}s.rank++;s.hp=stats(s).hp;this.dirty(p);this.event(p,JOBS[s.job].title+' '+s.rank+'차 전직 완료!');return;}
-  if(kind==='job'){if(s.zone!=='surface')return;if(distance(s,{x:580,y:330})>145)return;if(s.level<10||!Object.hasOwn(JOBS,data.job)||s.job===data.job)return;if(s.gold<500){this.event(p,'직업 변경에는 500 G가 필요합니다.');return;}s.gold-=500;s.job=data.job;p.cooldowns=[now+5,now+5,now+5,now+5];s.hp=Math.min(s.hp,stats(s).hp);this.dirty(p);this.event(p,JOBS[s.job].name+' 직업으로 변경했습니다. 성장과 장비는 유지됩니다.');return;}
+  if(kind==='job'){if(s.zone!=='surface')return;if(distance(s,{x:580,y:330})>145)return;if(s.level<10||!Object.hasOwn(JOBS,data.job)||s.job===data.job)return;if(s.gold<500){this.event(p,'직업 변경에는 500 G가 필요합니다.');return;}s.gold-=500;s.job=data.job;p.cooldowns=[now+5,now+5,now+5,now+5];const changed=stats(s);s.hp=Math.min(s.hp,changed.hp);s.mp=Math.min(s.mp,changed.mp);this.dirty(p);this.event(p,JOBS[s.job].name+' 직업으로 변경했습니다. 성장과 장비는 유지됩니다.');return;}
   if(kind==='chat'){if(now-p.lastChat<1)return;const text=String(data.text||'').trim().slice(0,100);if(!text)return;p.lastChat=now;this.events.push({id:randomUUID(),channel:p.channel,text:p.name+': '+text,kind:'chat'});if(this.events.length>100)this.events.shift();}
+ }
+ autoSkill(p,now){
+  const s=p.state,job=JOBS[s.job],st=stats(s),usable=i=>{const skill=job.skills[i],spec=skill?.[5]||{};return !!skill&&s.level>=skill[1]&&(i!==3||s.rank)&&now>=p.cooldowns[i]&&s.mp>=(spec.mp||0);};
+  if(s.hp<st.hp*.62){for(const i of [3,2,1,0])if(usable(i)&&['heal','partyHeal'].includes(job.skills[i][4]))return i;}
+  if(s.hp<st.hp*.8&&p.guard<=now){for(const i of [3,2,1,0])if(usable(i)&&['guard','partyGuard'].includes(job.skills[i][4]))return i;}
+  for(const i of [3,2,1,0])if(usable(i)&&!['heal','partyHeal','guard','partyGuard'].includes(job.skills[i][4]))return i;
+  return -1;
  }
  attack(p,index=-1,targetId){
   const now=this.now(),s=p.state,job=JOBS[s.job],st=stats(s);if(now<p.nextAttack)return;
-  const skill=index>=0?job.skills[index]:null,spec=skill?.[5]||{};if(index>=0&&(!skill||s.level<skill[1]||(index===3&&!s.rank)||now<p.cooldowns[index]))return;
+  const skill=index>=0?job.skills[index]:null,spec=skill?.[5]||{},mpCost=Number(spec.mp)||0;if(index>=0&&(!skill||s.level<skill[1]||(index===3&&!s.rank)||now<p.cooldowns[index]))return;if(skill&&s.mp<mpCost){if(!p.auto)this.event(p,'마나가 부족합니다.');return;}
   if(skill&&['heal','partyHeal','guard','partyGuard'].includes(skill[4])){
    const radius=spec.radius||300,friends=[...this.players.values()].filter(q=>q.channel===p.channel&&q.state.zone===s.zone&&distance(q.state,s)<radius);
    if(skill[4]==='guard'){p.guard=now+(spec.guard||7);p.guardFactor=spec.guardFactor??.4;}
@@ -59,7 +66,7 @@ export class World{
     if(spec.guard){q.guard=now+spec.guard;q.guardFactor=spec.guardFactor??.65;}
     for(const e of this.channel(p.channel,p.state.zone))if(e.tags.has(q.id)&&e.alive&&distance(e,s)<450)e.tags.set(p.id,{damage:(e.tags.get(p.id)?.damage||0),support:true,at:now});
    }
-   p.cooldowns[index]=now+skill[2];p.nextAttack=now+.4;p.attackSkill=index;p.attackTarget=null;p.attackUntil=now+.44;this.event(p,skill[0]+' 사용','skill');return;
+   s.mp=Math.max(0,s.mp-mpCost);this.dirty(p);p.cooldowns[index]=now+skill[2];p.nextAttack=now+.4;p.attackSkill=index;p.attackTarget=null;p.attackUntil=now+.44;this.event(p,skill[0]+' 사용','skill');return;
   }
   const mobs=this.channel(p.channel,p.state.zone);let e=mobs.find(e=>e.id===targetId&&e.alive);if(!e)e=mobs.filter(e=>e.alive&&distance(s,e)<=st.range).sort((a,b)=>distance(s,a)-distance(s,b))[0];if(!e||distance(s,e)>st.range)return;
   let targets=[e];
@@ -67,6 +74,7 @@ export class World{
   else if(spec.radius){const center=spec.center==='self'?s:e;targets=mobs.filter(t=>t.alive&&distance(t,center)<spec.radius);}
   else if(spec.splash){targets=[e,...mobs.filter(t=>t!==e&&t.alive&&distance(t,e)<spec.splash)];}
   const base=st.atk*(skill?skill[3]:1);
+  if(skill){s.mp=Math.max(0,s.mp-mpCost);this.dirty(p);}
   p.nextAttack=now+(skill?.6:job===JOBS.rogue?.38:.48);p.attackSkill=index;p.attackTarget=e.id;p.attackUntil=now+.44;p.input={x:0,y:0};p.navPath=[];if(skill)p.cooldowns[index]=now+skill[2];
   const adx=e.x-s.x,ady=e.y-s.y,alen=Math.hypot(adx,ady)||1;p.dirX=adx/alen;p.dirY=ady/alen;p.face=Math.abs(adx)>Math.abs(ady)?2:ady<0?1:0;p.flip=p.face===2&&adx<0;
   let totalDamage=0;
@@ -103,13 +111,13 @@ export class World{
    this.event(p,e.name+' 공동 처치 · '+(leveled?'레벨 업!':'EXP +'+xp));this.dirty(p);if(e.named)p.urgentSave=this.onUrgent(p);
   }e.tags.clear();}
  tick(dt=.1){const now=this.now();tickSystems(this);for(const p of this.players.values()){if(p.exchangeBusy)continue;
-  let {x:dx,y:dy}=p.input;const s=p.state;if(now-p.lastInput>.6)dx=dy=0;
+  let {x:dx,y:dy}=p.input;const s=p.state,st=stats(s);s.mp=Math.min(st.mp,Math.max(0,Number(s.mp)||0)+st.mp*.025*dt);if(now-p.lastInput>.6)dx=dy=0;
   if(p.navPath.length&&!p.auto){const point=p.navPath[0],d=distance(s,point);if(d<=250*dt){s.x=point.x;s.y=point.y;p.navPath.shift();dx=dy=0;}else{dx=point.x-s.x;dy=point.y-s.y;}}
-  if(p.auto&&s.y>590){const e=this.channel(p.channel,p.state.zone).filter(e=>e.alive&&!e.boss).sort((a,b)=>distance(a,s)-distance(b,s))[0];if(e){if(distance(s,e)<=stats(s).range*.8){this.attack(p,-1,e.id);dx=dy=0;}else{const point=pathfind(s,e)[0]||e;dx=point.x-s.x;dy=point.y-s.y;}}}
+  if(p.auto&&s.y>590){const e=this.channel(p.channel,p.state.zone).filter(e=>e.alive&&!e.boss).sort((a,b)=>distance(a,s)-distance(b,s))[0];if(e){if(distance(s,e)<=st.range*.8){const skill=this.autoSkill(p,now);this.attack(p,skill,e.id);dx=dy=0;}else{const point=pathfind(s,e)[0]||e;dx=point.x-s.x;dy=point.y-s.y;}}}
   if(now>=p.attackUntil){const d=Math.hypot(dx,dy);if(d>.01){const nx=dx/d,ny=dy/d,x=s.x+nx*250*dt,y=s.y+ny*250*dt;if(walkable(x,s.y))s.x=x;if(walkable(s.x,y))s.y=y;p.dirX=nx;p.dirY=ny;p.face=Math.abs(dx)>Math.abs(dy)?2:dy<0?1:0;p.flip=p.face===2&&dx<0;}}
  }
  for(const [key,mobs] of this.channels){const [channel,zone]=key.split('|');const players=[...this.players.values()].filter(p=>p.channel===channel&&p.state.zone===zone&&!p.exchangeBusy);if(!players.length){continue;}for(const e of mobs){if(e.named){const config=NAMED.find(b=>b.id===e.named),window=bossWindow(config,now);if(!window.active){e.alive=false;e.tags.clear();e.tellAt=0;continue;}if(e.window!==window.key){e.window=window.key;e.alive=true;e.hp=e.max;e.x=e.homeX;e.y=e.homeY;e.tags.clear();}e.respawn=window.next;}if(!e.alive){if(!e.named&&now>=e.respawn){e.alive=true;e.hp=e.max;e.x=e.homeX;e.y=e.homeY;e.slow=0;e.stun=0;}continue;}if((e.stun||0)>now)continue;const p=players.filter(p=>p.state.y>590&&distance(p.state,e)<(e.named?320:e.boss?260:e.elite?200:180)).sort((a,b)=>distance(a.state,e)-distance(b.state,e))[0];const d=p?distance(p.state,e):Infinity;
-  if(e.tellAt){if(now>=e.tellAt){e.tellAt=0;e.next=now+(e.boss?2.8:2.1);for(const q of players){if(q.exchangeBusy||distance(q.state,e)>95||q.state.y<590)continue;const st=stats(q.state),hit=Math.max(2,(e.damage|| (e.elite?e.level*3:e.boss?26*e.level:9*e.level))-st.def);q.state.hp=Math.max(0,q.state.hp-Math.round(hit*(q.guard>now?(q.guardFactor??.4):1)));if(q.state.hp===0){q.state.zone='surface';q.state.x=768;q.state.y=350;q.state.hp=st.hp;q.auto=false;q.navPath=[];q.input={x:0,y:0};this.event(q,'촌장이 치료했습니다. 성장과 장비는 유지됩니다.');}this.dirty(q);}}}
+  if(e.tellAt){if(now>=e.tellAt){e.tellAt=0;e.next=now+(e.boss?2.8:2.1);for(const q of players){if(q.exchangeBusy||distance(q.state,e)>95||q.state.y<590)continue;const st=stats(q.state),hit=Math.max(2,(e.damage|| (e.elite?e.level*3:e.boss?26*e.level:9*e.level))-st.def);q.state.hp=Math.max(0,q.state.hp-Math.round(hit*(q.guard>now?(q.guardFactor??.4):1)));if(q.state.hp===0){q.state.zone='surface';q.state.x=768;q.state.y=350;q.state.hp=st.hp;q.state.mp=st.mp;q.auto=false;q.navPath=[];q.input={x:0,y:0};this.event(q,'촌장이 치료했습니다. 성장과 장비는 유지됩니다.');}this.dirty(q);}}}
   else if(p&&d<=75&&now>=e.next)e.tellAt=now+(e.boss?1.1:.75);
   else if(p&&d>70){const speed=(e.boss?55:70)*dt*(e.slow>now?.4:1);e.x+=(p.state.x-e.x)/d*speed;e.y+=(p.state.y-e.y)/d*speed;}
   else{const dx=e.homeX+Math.sin(now*.45+e.id)*35-e.x,dy=e.homeY+Math.cos(now*.35+e.id)*20-e.y,d=Math.hypot(dx,dy);if(d>3){const speed=Math.min(24*dt,d);e.x+=dx/d*speed;e.y+=dy/d*speed;}}
