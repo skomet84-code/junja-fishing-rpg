@@ -50,13 +50,14 @@ function regionalNpcWindow(id){const npc=[...VOID_NPCS,...ORIGIN_NPCS].find(n=>n
 }
 function syncZoneDecor(zone){
  const layer=$('zoneDecor');if(!layer||layer.dataset.zone===zone)return;layer.dataset.zone=zone;layer.replaceChildren();zoneNpcEls.forEach(el=>el.remove());zoneNpcEls=[];
- const types=ZONE_DECOR_TYPES[zone]||ZONE_DECOR_TYPES.surface,spots=zone==='void'?VOID_DECOR_SPOTS:DECOR_SPOTS;
+ const types=ZONE_DECOR_TYPES[zone]||ZONE_DECOR_TYPES.surface,spots=zone==='void'?VOID_DECOR_SPOTS:zone==='origin'?ORIGIN_DECOR_SPOTS:DECOR_SPOTS;
  spots.forEach(([x,y,scale],i)=>{const el=document.createElement('i');el.className='zone-decor '+types[i%types.length];el.style.left=x+'px';el.style.top=y+'px';el.style.setProperty('--decor-scale',scale);el.style.zIndex=String(Math.round(y-80));layer.append(el);});
- const labels=zone==='void'?[[768,655,'무너진 외성','Lv.300+ · 진입 전투'],[768,1160,'균열 회랑','정예 · 공허의 인장'],[768,1660,'공허 왕좌','3페이즈 지역보스 · 레이드']]:[[768,655,'초입 사냥터','일반 몬스터'],[768,1165,'깊은 사냥터','정예 몬스터'],[768,1665,'보스 구역','지역 보스 · 포탈']];
+ const labels=zone==='void'?[[768,655,'무너진 외성','Lv.300+ · 진입 전투'],[768,1160,'균열 회랑','정예 · 공허의 인장'],[768,1660,'공허 왕좌','3페이즈 지역보스 · 레이드']]:zone==='origin'?[[768,655,'성광 회랑','Lv.400+ · 신전 진입'],[768,1160,'창세 제단','정예 · 태초의 성흔'],[768,1660,'태초의 신좌','3페이즈 수문신 · 카이로스']]:[[768,655,'초입 사냥터','일반 몬스터'],[768,1165,'깊은 사냥터','정예 몬스터'],[768,1665,'보스 구역','지역 보스 · 포탈']];
  labels.forEach(([x,y,title,sub],i)=>{const el=document.createElement('div');el.className='hunt-sector sector-'+(i+1);el.style.left=x+'px';el.style.top=y+'px';el.innerHTML='<b>'+title+'</b><small>'+sub+'</small>';layer.append(el);});
- if(zone==='void'){
-  [['void-gate',768,610],['void-tower left',325,1040],['void-tower right',1210,1040],['void-chain',768,1410],['void-throne',768,1775]].forEach(([cls,x,y])=>{const el=document.createElement('i');el.className='void-landmark '+cls;el.style.left=x+'px';el.style.top=y+'px';layer.append(el);});
-  for(const npc of VOID_NPCS){const b=document.createElement('button');b.className='regional-npc';b.style.left=npc.x+'px';b.style.top=npc.y+'px';b.innerHTML='<span class="regional-npc-art" style="--npc-slot:'+npc.slot+'"></span><b>'+npc.name+'</b><small>'+npc.desc+'</small>';b.onclick=e=>{e.stopPropagation();regionalNpcWindow(npc.id);};$('world').append(b);zoneNpcEls.push(b);}
+ if(zone==='void'||zone==='origin'){
+  const landmarks=zone==='void'?[['void-gate',768,610],['void-tower left',325,1040],['void-tower right',1210,1040],['void-chain',768,1410],['void-throne',768,1775]]:[['origin-gate',768,610],['origin-pillar left',325,1040],['origin-pillar right',1210,1040],['origin-altar',768,1410],['origin-throne',768,1775]];
+  for(const [cls,x,y] of landmarks){const el=document.createElement('i');el.className=(zone==='void'?'void-landmark ':'origin-landmark ')+cls;el.style.left=x+'px';el.style.top=y+'px';layer.append(el);}
+  const list=zone==='void'?VOID_NPCS:ORIGIN_NPCS;for(const npc of list){const b=document.createElement('button');b.className='regional-npc '+zone;b.style.left=npc.x+'px';b.style.top=npc.y+'px';b.innerHTML='<span class="regional-npc-art" style="--npc-slot:'+npc.slot+'"></span><b>'+npc.name+'</b><small>'+npc.desc+'</small>';b.onclick=e=>{e.stopPropagation();regionalNpcWindow(npc.id);};$('world').append(b);zoneNpcEls.push(b);}
  }
 }
 function showZoneArrival(zone){
