@@ -1,14 +1,22 @@
-export const W=1536,H=1024,CELL=24;
+export const W=1536,H=2048,CELL=24;
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const needXp=level=>60+(level-1)*40;
 export const maxHp=level=>100+(level-1)*12;
+const WALK_AREAS=[
+ [440,220,1090,490],
+ [680,440,880,650],
+ [260,610,1270,1010],
+ [615,970,925,1190],
+ [300,1150,1235,1515],
+ [610,1475,930,1670],
+ [250,1630,1280,1940]
+];
 export function walkable(x,y){
- return (y>=220&&y<=490&&x>=440&&x<=1090)||(y>=440&&y<=650&&x>=680&&x<=880)||(y>=610&&y<=935&&x>=330&&x<=1210);
+ return WALK_AREAS.some(([l,t,r,b])=>x>=l&&x<=r&&y>=t&&y<=b);
 }
 export function project(x,y){
- const areas=[[440,220,1090,490],[680,440,880,650],[330,610,1210,935]];
- return areas.map(([l,t,r,b])=>({x:clamp(x,l,r),y:clamp(y,t,b)})).sort((a,b)=>distance(a,{x,y})-distance(b,{x,y}))[0];
+ return WALK_AREAS.map(([l,t,r,b])=>({x:clamp(x,l,r),y:clamp(y,t,b)})).sort((a,b)=>distance(a,{x,y})-distance(b,{x,y}))[0];
 }
 export function pathfind(start,end){
  end=project(end.x,end.y); start=project(start.x,start.y);
