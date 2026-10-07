@@ -39,7 +39,7 @@ export class World{
   if(kind==='move'){if(p.navPath.length&&!data.manual)return;if(data.manual){p.navPath=[];p.auto=false;p.autoTarget=null;}const x=Number(data.x),y=Number(data.y);if(!Number.isFinite(x)||!Number.isFinite(y))return;p.input={x:clamp(x,-1,1),y:clamp(y,-1,1)};const d=Math.hypot(x,y);if(d>.01){p.dirX=x/d;p.dirY=y/d;}p.lastInput=now;return;}
   if(kind==='auto'){p.auto=!!data.on;p.autoTarget=null;p.navPath=[];p.input={x:0,y:0};return;}
   if(kind==='attack'){return this.attack(p,Number.isInteger(data.skill)?data.skill:-1,data.target);}
-  if(kind==='home'){s.zone='surface';s.x=768;s.y=350;const st=stats(s);s.hp=st.hp;s.mp=st.mp;p.input={x:0,y:0};p.navPath=[];p.auto=false;p.autoTarget=null;this.dirty(p);return;
+  if(kind==='home'){s.zone='surface';s.x=768;s.y=350;const st=stats(s);s.hp=st.hp;s.mp=st.mp;p.input={x:0,y:0};p.navPath=[];p.auto=false;p.autoTarget=null;this.dirty(p);return;}
   if(kind==='potion'){if(s.potions>0&&s.hp<stats(s).hp){s.potions--;s.hp=Math.min(stats(s).hp,s.hp+stats(s).hp*.5);this.dirty(p);}return;}
   if(kind==='equip'){if(equip(s,data.item))this.dirty(p);else this.event(p,'보유 아이템과 장착 레벨을 확인하세요.');return;}
   if(kind==='unequip'){if(data.slot!=='weapon'&&s.equipment[data.slot]){delete s.equipment[data.slot];s.hp=Math.min(s.hp,stats(s).hp);this.dirty(p);}return;}
