@@ -38,10 +38,18 @@ export function pathfind(start,end){
  while(n.x!==s.x||n.y!==s.y){result.push({x:n.x*CELL+CELL/2,y:n.y*CELL+CELL/2});n=parent.get(key(n.x,n.y));}
  return result.reverse();
 }
+export const QUEST_STATES=[
+ 'available','active','ready','complete','bossActive','bossReady',
+ 'groveIntro','groveHunt','groveBoss',
+ 'caveIntro','caveHunt','caveBoss',
+ 'ruinsIntro','ruinsHunt','ruinsBoss',
+ 'abyssIntro','abyssHunt','abyssElite','abyssBoss',
+ 'celestialIntro','celestialHunt','celestialBoss','storyDone'
+];
 export function fresh(){return {version:2,level:1,exp:0,kills:0,gold:0,tails:0,potions:5,hp:100,x:768,y:355,quest:'available',questKills:0,questBoss:0,weapon:0};}
 export function normalize(raw={}){
  const s=fresh();for(const k of ['level','exp','kills','gold','tails','potions','questKills','questBoss','weapon'])if(Number.isFinite(raw[k]))s[k]=Math.max(0,Math.floor(raw[k]));
- s.level=clamp(s.level,1,50);s.weapon=clamp(s.weapon,0,1);s.quest=['available','active','ready','complete','bossActive','bossReady','done'].includes(raw.quest)?raw.quest:'available';
+ s.level=clamp(s.level,1,50);s.weapon=clamp(s.weapon,0,1);const migrated=raw.quest==='done'?'groveIntro':raw.quest;s.quest=QUEST_STATES.includes(migrated)?migrated:'available';
  const pos=project(Number.isFinite(raw.x)?raw.x:768,Number.isFinite(raw.y)?raw.y:355);Object.assign(s,pos);
  s.hp=clamp(Number.isFinite(raw.hp)?raw.hp:maxHp(s.level),1,maxHp(s.level));
  while(s.exp>=needXp(s.level)&&s.level<50){s.exp-=needXp(s.level);s.level++;}return s;
@@ -55,7 +63,7 @@ export function rewardKill(s,boss=false){
 }
 export function claimQuest(s){
  if(s.quest==='ready'){s.gold+=200;s.exp+=80;s.potions+=3;s.quest='complete';}
- else if(s.quest==='bossReady'){s.gold+=500;s.exp+=180;s.weapon=1;s.quest='done';}
+ else if(s.quest==='bossReady'){s.gold+=500;s.exp+=180;s.weapon=1;s.quest='groveIntro';s.questKills=0;s.questBoss=0;}
  else return false;
  while(s.exp>=needXp(s.level)&&s.level<50){s.exp-=needXp(s.level);s.level++;s.hp=maxHp(s.level);}return true;
 }
