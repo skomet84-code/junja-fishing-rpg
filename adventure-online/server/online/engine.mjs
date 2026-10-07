@@ -17,8 +17,8 @@ export class World{
     ruins:{sectorLevels:[55,60,65],eliteLevels:[68,72,76,80],types:[{name:'저주받은 석상',skin:0},{name:'폐허 망령',skin:1},{name:'붉은 비룡',skin:2},{name:'폐허 마수',skin:3}],boss:'폐허의 집행자',bossLevel:85,bossSkin:1},
     abyss:{sectorLevels:[95,100,106],eliteLevels:[112,118,124,130],types:[{name:'심연 석마',skin:0},{name:'그림자 악귀',skin:1},{name:'공허룡',skin:2},{name:'심연 마수',skin:3}],boss:'심연 파수왕',bossLevel:138,bossSkin:1},
     celestial:{sectorLevels:[190,200,210],eliteLevels:[220,232,244,256],types:[{name:'천계 석장군',skin:0},{name:'별빛 정령',skin:1},{name:'청룡의 혼',skin:2},{name:'천룡 수호병',skin:3}],boss:'천룡 수문장',bossLevel:270,bossSkin:2},
-    void:{sectorLevels:[300,312,326],eliteLevels:[338,350,362,374],types:[{name:'공허 기사',skin:0},{name:'차원 망령',skin:1},{name:'공허 비룡',skin:2},{name:'심연 마도병',skin:3}],boss:'공허성의 파괴자',bossLevel:390,bossSkin:1},
-    origin:{sectorLevels:[400,414,430],eliteLevels:[442,454,466,478],types:[{name:'태초의 성기사',skin:0},{name:'창세의 영혼',skin:1},{name:'신룡의 잔영',skin:2},{name:'신전 집행관',skin:3}],boss:'태초신전 수문신',bossLevel:490,bossSkin:2}
+    void:{sectorLevels:[300,312,326],eliteLevels:[338,350,362,374],types:[{name:'공허 기사',skin:0},{name:'차원 망령',skin:1},{name:'공허 비룡',skin:2},{name:'심연 마도병',skin:3}],eliteTypes:[{name:'정예 · 공허검성',skin:0},{name:'정예 · 차원포식자',skin:1},{name:'정예 · 공허천룡',skin:2},{name:'정예 · 심연마도장',skin:3}],boss:'공허성의 파괴자',bossLevel:390,bossSkin:1},
+    origin:{sectorLevels:[400,414,430],eliteLevels:[442,454,466,478],types:[{name:'태초의 성기사',skin:0},{name:'창세의 영혼',skin:1},{name:'신룡의 잔영',skin:2},{name:'신전 집행관',skin:3}],eliteTypes:[{name:'정예 · 창세검황',skin:0},{name:'정예 · 태초의 예언자',skin:1},{name:'정예 · 신룡왕의 잔영',skin:2},{name:'정예 · 신전대집행관',skin:3}],boss:'태초신전 수문신',bossLevel:490,bossSkin:2}
    }[zone]||{sectorLevels:[1,2,3],eliteLevels:[5,6,7,8],types:[{name:'마수',skin:3}],boss:'수호자',bossLevel:10,bossSkin:3};
    const spots=[
     [360,690],[515,735],[675,690],[845,740],[1010,695],[1170,760],[430,900],[690,920],
