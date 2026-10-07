@@ -54,7 +54,7 @@ export class World{
   if(kind==='chat'){if(now-p.lastChat<1)return;const quick=Number(data.quick);if(!Number.isInteger(quick)||quick<0||quick>=QUICK_CHATS.length)return;const phrase=QUICK_CHATS[quick];p.lastChat=now;this.events.push({id:randomUUID(),channel:p.channel,from:p.id,name:p.name,phrase,text:p.name+': '+phrase,kind:'chat'});if(this.events.length>100)this.events.shift();}
  }
  autoSkill(p,now){
-  const s=p.state,job=JOBS[s.job],st=stats(s),usable=i=>{const skill=job.skills[i],spec=skill?.[5]||{};return !!skill&&s.level>=skill[1]&&(i!==3||s.rank)&&now>=p.cooldowns[i]&&s.mp>=(spec.mp||0);};
+  const s=p.state,job=JOBS[s.job],st=stats(s),usable=i=>{const skill=job.skills[i];return !!skill&&s.level>=skill[1]&&(i!==3||s.rank)&&now>=p.cooldowns[i]&&s.mp>=skillMpCost(s,skill);};
   if(s.hp<st.hp*.62){for(const i of [3,2,1,0])if(usable(i)&&['heal','partyHeal'].includes(job.skills[i][4]))return i;}
   if(s.hp<st.hp*.8&&p.guard<=now){for(const i of [3,2,1,0])if(usable(i)&&['guard','partyGuard'].includes(job.skills[i][4]))return i;}
   for(const i of [3,2,1,0])if(usable(i)&&!['heal','partyHeal','guard','partyGuard'].includes(job.skills[i][4]))return i;
