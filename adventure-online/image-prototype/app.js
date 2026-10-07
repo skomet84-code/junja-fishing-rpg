@@ -74,10 +74,10 @@ function showBossIntro(e){
  clearTimeout(showBossIntro.timer);showBossIntro.timer=setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.hidden=true,400);},2400);
 }
 const bossPatternEls=new Map();
-function syncBossPattern(e){let el=bossPatternEls.get(e.id);if(!e.alive||!e.pattern){if(el){el.remove();bossPatternEls.delete(e.id);}return;}if(!el){el=document.createElement('div');bossPatternEls.set(e.id,el);$('effects').append(el);}const x=e.pattern==='meteor'?(e.patternX??e.x):e.x,y=e.pattern==='meteor'?(e.patternY??e.y):e.y,r=e.patternRadius||150;el.className='boss-ground-pattern '+e.pattern+' phase-'+(e.phase||1);el.style.left=x+'px';el.style.top=y+'px';el.style.width=(r*2)+'px';el.style.height=(r*2)+'px';el.innerHTML='<i></i><b>'+(e.pattern==='meteor'?'차원 낙하 · 이동!':'공허 폭발 · 거리 확보!')+'</b>';}
+function syncBossPattern(e){let el=bossPatternEls.get(e.id);if(!e.alive||!e.pattern){if(el){el.remove();bossPatternEls.delete(e.id);}return;}if(!el){el=document.createElement('div');bossPatternEls.set(e.id,el);$('effects').append(el);}const x=e.pattern==='meteor'?(e.patternX??e.x):e.x,y=e.pattern==='meteor'?(e.patternY??e.y):e.y,r=e.patternRadius||150,origin=e.zone==='origin';el.className='boss-ground-pattern '+e.pattern+' phase-'+(e.phase||1)+(origin?' origin-pattern':' void-pattern');el.style.left=x+'px';el.style.top=y+'px';el.style.width=(r*2)+'px';el.style.height=(r*2)+'px';el.innerHTML='<i></i><b>'+(origin?(e.pattern==='meteor'?'신성 낙하 · 이동!':'성광 심판 · 거리 확보!'):(e.pattern==='meteor'?'차원 낙하 · 이동!':'공허 폭발 · 거리 확보!'))+'</b>';}
 function spawnLootFx(e){
- if(!e)return;const tier=e.named?'legendary':e.boss?'boss':e.elite?'elite':'common',el=document.createElement('div');el.className='loot-burst '+tier+(e.zone==='void'?' void-drop':'');el.style.left=e.x+'px';el.style.top=(e.y-22)+'px';
- const label=e.zone==='void'&&e.elite?'공허의 인장 +':e.zone==='void'&&e.boss?'공허 핵심 보상':e.named?'전설 보상':e.boss?'BOSS DROP':e.elite?'ELITE DROP':'';
+ if(!e)return;const tier=e.named?'legendary':e.boss?'boss':e.elite?'elite':'common',el=document.createElement('div');el.className='loot-burst '+tier+(e.zone==='void'?' void-drop':e.zone==='origin'?' origin-drop':'');el.style.left=e.x+'px';el.style.top=(e.y-22)+'px';
+ const label=e.zone==='void'&&e.elite?'공허의 인장 +':e.zone==='void'&&e.boss?'공허 핵심 보상':e.zone==='origin'&&e.elite?'태초의 성흔 +':e.zone==='origin'&&e.boss?'태초 핵심 보상':e.named?'전설 보상':e.boss?'BOSS DROP':e.elite?'ELITE DROP':'';
  el.innerHTML='<i></i><i></i><i></i><i></i><i></i><b>'+label+'</b>';$('effects').append(el);setTimeout(()=>el.remove(),1450);
 }
 function renderMinimap(){
