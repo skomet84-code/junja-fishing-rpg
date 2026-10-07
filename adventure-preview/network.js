@@ -69,6 +69,7 @@ export function mergeSnapshot(previous,data){
  if(!data.delta)return present(data);
  if(!previous)return null;
  const merged={...previous,...data,self:{...previous.self,...data.self}};
+ if(data.self&&Object.hasOwn(data.self,'quest'))merged.self.storyQuest=data.self.quest;
  for(const key of ['players','enemies','nodes'])if(data[key]){const map=new Map(previous[key].map(e=>[e.id,e]));for(const id of data[key].removed)map.delete(id);for(const e of data[key].updates)map.set(e.id,{...map.get(e.id),...e});merged[key]=[...map.values()];}
  delete merged.delta;return present(merged);
 }
