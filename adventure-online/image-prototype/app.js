@@ -1,7 +1,7 @@
-import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-skilltrial1';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,promotionSkillLearned,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-skilltrial1';
+import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-voidshowcase1';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,promotionSkillLearned,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-voidshowcase1';
 import {mergeSnapshot} from './network.js';
-import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-skilltrial1';
+import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-voidshowcase1';
 import {API_URL} from './config.js';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
@@ -17,6 +17,13 @@ const DECOR_SPOTS=[
  [300,1685,.9],[1220,1715,1.0],[390,1880,.78],[1125,1895,.92],
  [540,790,.55],[1010,885,.6],[510,1320,.58],[1025,1395,.62],[535,1770,.6],[1010,1815,.58]
 ];
+const VOID_DECOR_SPOTS=[[255,690,1.3],[1280,690,1.3],[390,820,.7],[1130,825,.7],[255,1060,1.15],[1280,1060,1.15],[470,1260,.75],[1060,1260,.75],[270,1450,1.2],[1260,1450,1.2],[420,1605,.82],[1110,1605,.82],[250,1810,1.3],[1280,1810,1.3],[610,920,.5],[930,920,.5],[600,1490,.55],[940,1490,.55],[765,1715,.7]];
+const VOID_NPCS=[
+ {id:'void-scout',name:'성채 감시자 라헬',x:430,y:720,slot:0,desc:'공허 성채의 안전 경로와 전직 재료를 안내합니다.'},
+ {id:'void-smith',name:'균열 대장장이 바르크',x:1090,y:1190,slot:2,desc:'공허 원정대의 장비 강화 담당입니다.'},
+ {id:'void-captain',name:'원정대장 카인',x:455,y:1640,slot:3,desc:'공허성의 파괴자와 레이드 공략을 지휘합니다.'}
+];
+let zoneNpcEls=[];
 const ZONE_DECOR_TYPES={
  surface:['tree','grass','rock','flower'],
  grove:['ancient-tree','root','mushroom','mist'],
@@ -27,12 +34,17 @@ const ZONE_DECOR_TYPES={
  void:['rift','obelisk','voidstone','abyss-mist'],
  origin:['sky-pillar','altar','cloudstone','rune']
 };
+function regionalNpcWindow(id){const npc=VOID_NPCS.find(n=>n.id===id);if(!npc)return;if(id==='void-scout')modal(npc.name,'<p>공허 성채는 일반 사냥터와 다르게 <b>외성 → 균열 회랑 → 왕좌 구역</b>으로 이어집니다.</p><p>3차 전직 스킬 재료 <b>공허의 인장 100개</b>는 정예 공허검성·차원포식자·공허천룡·심연마도장과 지역보스, 공허제 레이드에서 얻습니다.</p>',[['정예 구역으로',()=>{closeModal();go(768,1320);}],['전직 현황',jobWindow]]);else if(id==='void-smith')modal(npc.name,'<p>공허 장비는 강화 수치 차이가 전투력을 크게 좌우합니다. 지역보스에 도전하기 전에 주력 장비를 먼저 강화하는 편이 효율적입니다.</p><p>+12 이상부터는 후반 장비의 체감 차이가 특히 커집니다.</p>',[['장비 강화',enhanceWindow],['가방 확인',bagWindow]]);else modal(npc.name,'<p><b>공허성의 파괴자</b>는 체력이 내려갈수록 패턴이 강화됩니다. 보라색 원형 경고는 보스에게서 떨어지고, 표식 장판은 즉시 벗어나세요.</p><p>21:00에는 <b>공허제 · 아르카논</b>이 출현합니다. 최소 3명이 모여야 피해가 들어가며, 최상급 신화 보상을 노릴 수 있습니다.</p>',[['보스 구역으로',()=>{closeModal();go(760,1760);}],['네임드 시간표',bossWindowUI]]);}
 function syncZoneDecor(zone){
- const layer=$('zoneDecor');if(!layer||layer.dataset.zone===zone)return;layer.dataset.zone=zone;layer.replaceChildren();
- const types=ZONE_DECOR_TYPES[zone]||ZONE_DECOR_TYPES.surface;
- DECOR_SPOTS.forEach(([x,y,scale],i)=>{const el=document.createElement('i');el.className='zone-decor '+types[i%types.length];el.style.left=x+'px';el.style.top=y+'px';el.style.setProperty('--decor-scale',scale);el.style.zIndex=String(Math.round(y-80));layer.append(el);});
- const labels=[[768,655,'초입 사냥터','일반 몬스터'],[768,1165,'깊은 사냥터','정예 몬스터'],[768,1665,'보스 구역','지역 보스 · 포탈']];
+ const layer=$('zoneDecor');if(!layer||layer.dataset.zone===zone)return;layer.dataset.zone=zone;layer.replaceChildren();zoneNpcEls.forEach(el=>el.remove());zoneNpcEls=[];
+ const types=ZONE_DECOR_TYPES[zone]||ZONE_DECOR_TYPES.surface,spots=zone==='void'?VOID_DECOR_SPOTS:DECOR_SPOTS;
+ spots.forEach(([x,y,scale],i)=>{const el=document.createElement('i');el.className='zone-decor '+types[i%types.length];el.style.left=x+'px';el.style.top=y+'px';el.style.setProperty('--decor-scale',scale);el.style.zIndex=String(Math.round(y-80));layer.append(el);});
+ const labels=zone==='void'?[[768,655,'무너진 외성','Lv.300+ · 진입 전투'],[768,1160,'균열 회랑','정예 · 공허의 인장'],[768,1660,'공허 왕좌','3페이즈 지역보스 · 레이드']]:[[768,655,'초입 사냥터','일반 몬스터'],[768,1165,'깊은 사냥터','정예 몬스터'],[768,1665,'보스 구역','지역 보스 · 포탈']];
  labels.forEach(([x,y,title,sub],i)=>{const el=document.createElement('div');el.className='hunt-sector sector-'+(i+1);el.style.left=x+'px';el.style.top=y+'px';el.innerHTML='<b>'+title+'</b><small>'+sub+'</small>';layer.append(el);});
+ if(zone==='void'){
+  [['void-gate',768,610],['void-tower left',325,1040],['void-tower right',1210,1040],['void-chain',768,1410],['void-throne',768,1775]].forEach(([cls,x,y])=>{const el=document.createElement('i');el.className='void-landmark '+cls;el.style.left=x+'px';el.style.top=y+'px';layer.append(el);});
+  for(const npc of VOID_NPCS){const b=document.createElement('button');b.className='regional-npc';b.style.left=npc.x+'px';b.style.top=npc.y+'px';b.innerHTML='<span class="regional-npc-art" style="--npc-slot:'+npc.slot+'"></span><b>'+npc.name+'</b><small>'+npc.desc+'</small>';b.onclick=e=>{e.stopPropagation();regionalNpcWindow(npc.id);};$('world').append(b);zoneNpcEls.push(b);}
+ }
 }
 function showZoneArrival(zone){
  const z=ZONES[zone];if(!z)return;const old=document.querySelector('.zone-arrival');if(old)old.remove();
@@ -47,9 +59,12 @@ function showBossIntro(e){
  const el=$('bossWarning');el.hidden=false;el.className=e.named?'named':'boss';el.innerHTML='<small>'+(e.named?'WORLD BOSS':'AREA BOSS')+'</small><b>'+esc(e.name)+'</b><span>Lv.'+(e.level||'?')+' · 파티 사냥 권장</span>';void el.offsetWidth;el.classList.add('show');
  clearTimeout(showBossIntro.timer);showBossIntro.timer=setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.hidden=true,400);},2400);
 }
+const bossPatternEls=new Map();
+function syncBossPattern(e){let el=bossPatternEls.get(e.id);if(!e.alive||!e.pattern){if(el){el.remove();bossPatternEls.delete(e.id);}return;}if(!el){el=document.createElement('div');bossPatternEls.set(e.id,el);$('effects').append(el);}const x=e.pattern==='meteor'?(e.patternX??e.x):e.x,y=e.pattern==='meteor'?(e.patternY??e.y):e.y,r=e.patternRadius||150;el.className='boss-ground-pattern '+e.pattern+' phase-'+(e.phase||1);el.style.left=x+'px';el.style.top=y+'px';el.style.width=(r*2)+'px';el.style.height=(r*2)+'px';el.innerHTML='<i></i><b>'+(e.pattern==='meteor'?'차원 낙하 · 이동!':'공허 폭발 · 거리 확보!')+'</b>';}
 function spawnLootFx(e){
- if(!e)return;const tier=e.named?'legendary':e.boss?'boss':e.elite?'elite':'common',el=document.createElement('div');el.className='loot-burst '+tier;el.style.left=e.x+'px';el.style.top=(e.y-22)+'px';
- el.innerHTML='<i></i><i></i><i></i><i></i><i></i><b>'+(e.named?'전설 보상':e.boss?'BOSS DROP':e.elite?'ELITE DROP':'')+'</b>';$('effects').append(el);setTimeout(()=>el.remove(),1200);
+ if(!e)return;const tier=e.named?'legendary':e.boss?'boss':e.elite?'elite':'common',el=document.createElement('div');el.className='loot-burst '+tier+(e.zone==='void'?' void-drop':'');el.style.left=e.x+'px';el.style.top=(e.y-22)+'px';
+ const label=e.zone==='void'&&e.elite?'공허의 인장 +':e.zone==='void'&&e.boss?'공허 핵심 보상':e.named?'전설 보상':e.boss?'BOSS DROP':e.elite?'ELITE DROP':'';
+ el.innerHTML='<i></i><i></i><i></i><i></i><i></i><b>'+label+'</b>';$('effects').append(el);setTimeout(()=>el.remove(),1450);
 }
 function renderMinimap(){
  const c=$('minimap');if(!c)return;const ctx=c.getContext('2d'),w=c.width,h=c.height,sx=w/W,sy=h/H,z=ZONES[state.zone]||{};
@@ -232,9 +247,9 @@ function updateSnapshot(data){
   if(!entry){const el=entity('enemy'+(e.boss?' boss':''));el.querySelector('b').textContent=e.name||'숲 다람쥐';el.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();select(e.id,true);});$('enemyLayer').append(el);entry={el,art:el.querySelector('.sprite'),vx:e.x,vy:e.y,netVx:0,netVy:0,sampleAt};enemies.set(e.id,entry);}
   if(wasKnown&&previousAt&&sampleAt>previousAt+.025){const dt=sampleAt-previousAt,rvx=(e.x-previousX)/dt,rvy=(e.y-previousY)/dt,mag=Math.hypot(rvx,rvy),ratio=mag>260?260/mag:1;entry.netVx=entry.netVx*.4+rvx*ratio*.6;entry.netVy=entry.netVy*.4+rvy*ratio*.6;}
   entry.sampleAt=sampleAt;Object.assign(entry,e);
-  if(wasKnown&&wasAlive&&!e.alive){spawnLootFx(e);if(e.boss)bossIntroSeen.delete(state.zone+':'+e.id);}if(wasKnown&&wasAlive===false&&e.alive&&e.boss&&bossSector)showBossIntro(e);entry.mmo=!!e.atlas;entry.el.classList.toggle('mmo-monster',entry.mmo);entry.art.style.backgroundImage=entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=entry.mmo?'400% 400%':'';entry.el.querySelector('b').textContent=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('dead',!e.alive);entry.el.querySelector('.life i').style.width=e.hp/e.max*100+'%';entry.el.querySelector('.tell').hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);
+  if(wasKnown&&wasAlive&&!e.alive){spawnLootFx(e);if(e.boss)bossIntroSeen.delete(state.zone+':'+e.id);}if(wasKnown&&wasAlive===false&&e.alive&&e.boss&&bossSector)showBossIntro(e);entry.mmo=!!e.atlas;entry.el.classList.toggle('mmo-monster',entry.mmo);entry.art.style.backgroundImage=entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=entry.mmo?'400% 400%':'';entry.el.querySelector('b').textContent=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('dead',!e.alive);entry.el.querySelector('.life i').style.width=e.hp/e.max*100+'%';entry.el.querySelector('.tell').hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);entry.el.dataset.phase=String(e.phase||1);syncBossPattern(e);
  }
- for(const [id,e] of enemies)if(!mobIds.has(id)){e.el.remove();enemies.delete(id);if(selected===id){selected=null;targetIntent=null;}}
+ for(const [id,e] of enemies)if(!mobIds.has(id)){e.el.remove();bossPatternEls.get(id)?.remove();bossPatternEls.delete(id);enemies.delete(id);if(selected===id){selected=null;targetIntent=null;}}
  const peerIds=new Set();for(const p of data.players){
   if(p.id===state.id)continue;peerIds.add(p.id);let peer=peers.get(p.id),previousX=peer?.x,previousY=peer?.y,previousAt=peer?.sampleAt;
   if(!peer){const el=entity('peer hero');layers(el);$('world').append(el);peer={el,art:el.querySelector('.sprite'),vx:p.x,vy:p.y,netVx:0,netVy:0,sampleAt};peers.set(p.id,peer);}
