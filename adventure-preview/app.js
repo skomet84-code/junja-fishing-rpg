@@ -149,12 +149,13 @@ function motion(el,art,mode,row,mirror,time,phase=0,dx=0,dy=0){
  else blendSprite(art,keys[idx],keys[(idx+1)%keys.length],mix,pose.row,3,pose.mirror);
  el.dataset.motion=mode;
  const stride=mode==='walk'?Math.sin((pos/keys.length)*Math.PI*2):Math.sin(time*Math.PI*1.4+phase);
- const foot=Math.abs(Math.sin((pos/keys.length)*Math.PI*4));
- el.style.setProperty('--bob',mode==='walk'?(-1.1-foot*2.5)+'px':(-Math.max(0,stride)*.65)+'px');
- el.style.setProperty('--lean',mode==='walk'?(stride*1.35)+'deg':(stride*.25)+'deg');
- el.style.setProperty('--squash',mode==='walk'?(1-foot*.02):(1+stride*.005));
- el.style.setProperty('--weapon-angle',mode==='walk'?(stride*-5.5)+'deg':'0deg');
- el.style.setProperty('--attack-power','0');el.style.setProperty('--arm-angle','0deg');el.style.setProperty('--trail-angle','0deg');el.style.setProperty('--trail-scale','.76');el.style.setProperty('--lunge-x','0px');el.style.setProperty('--lunge-y','0px');el.style.setProperty('--coat-sway',(stride*5.5)+'deg');el.style.setProperty('--cape-lag',(stride*-3.2)+'deg');el.style.setProperty('--shoulder-lift',(foot*1.4)+'px');el.style.setProperty('--offhand-angle',(stride*7)+'deg');
+ const foot=Math.abs(Math.sin((pos/keys.length)*Math.PI*4)),job=el.dataset.job||'warrior',agile=job==='rogue',heavy=job==='warrior';
+ const bobScale=heavy?.72:agile?1.08:1,leanScale=heavy?.58:agile?1.35:1,coatScale=heavy?.42:agile?1.4:.8;
+ el.style.setProperty('--bob',mode==='walk'?(-.8-foot*2.3*bobScale)+'px':(-Math.max(0,stride)*.65)+'px');
+ el.style.setProperty('--lean',mode==='walk'?(stride*1.35*leanScale)+'deg':(stride*.25)+'deg');
+ el.style.setProperty('--squash',mode==='walk'?(1-foot*(heavy?.012:.02)):(1+stride*.005));
+ el.style.setProperty('--weapon-angle',mode==='walk'?(stride*(agile?-7.5:heavy?-3.1:-5.5))+'deg':'0deg');
+ el.style.setProperty('--attack-power','0');el.style.setProperty('--arm-angle','0deg');el.style.setProperty('--trail-angle','0deg');el.style.setProperty('--trail-scale','.76');el.style.setProperty('--lunge-x','0px');el.style.setProperty('--lunge-y','0px');el.style.setProperty('--coat-sway',(stride*5.5*coatScale)+'deg');el.style.setProperty('--cape-lag',(stride*-3.2*(heavy?.5:agile?1.35:1))+'deg');el.style.setProperty('--shoulder-lift',(foot*(heavy?.75:agile?1.6:1.2))+'px');el.style.setProperty('--offhand-angle',(stride*(agile?9:4))+'deg');
 }
 function attackPose(el,art,row,mirror,started,duration=.44,job='warrior',skill=-1,variant=0,dx=0,dy=0){
  const pose=applyHeading(el,dx,dy,row,mirror),p=Math.max(0,Math.min(1,(clock-started)/duration));
