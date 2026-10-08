@@ -34,3 +34,10 @@ test('low mana should be visible as missing ability resources rather than silent
  const f=setup(true),{w,p}=f;p.state.mp=0;w.action(p,{type:'auto',on:true});f.advance(.1);
  assert.equal(p.attackSkill,-1,'without mana auto uses basic (baseline)');
 });
+
+test('automatic MP recovery eventually resumes skills without administrator exceptions',()=>{
+ const f=setup(true),{w,p}=f;p.state.mp=0;w.action(p,{type:'auto',on:true});
+ let cast=false;
+ for(let i=0;i<85;i++){f.advance(.1);if(p.attackSkill>=0&&p.cooldowns[p.attackSkill]>f.clock){cast=true;break;}}
+ assert.ok(cast,'autohunt should cast after mana regeneration');
+});
