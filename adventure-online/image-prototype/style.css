@@ -1470,3 +1470,14 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 @keyframes warriorParticles{0%,20%{opacity:0;transform:scaleX(.4)}40%{opacity:1}100%{opacity:0;transform:scaleX(1.6) translateY(-24px)}}
 @keyframes warriorImpact{0%{opacity:0;scale:.3}35%{opacity:1;scale:1.1}100%{opacity:0;scale:1.7}}
 @media(prefers-reduced-motion:reduce){.warrior-technique,.warrior-hit-confirm{animation-duration:.01ms!important}.warrior-technique i,.warrior-hit-confirm i{animation-duration:.01ms!important}}
+
+/* Ascension V: existing world artwork gets distinct post-4th-job atmospheres. */
+#world[data-zone="rift"]{background-color:#191025;background-blend-mode:multiply;--zone-ambient:radial-gradient(ellipse 620px 730px at 28% 40%,#ac49e56e,transparent 72%),radial-gradient(ellipse 600px 720px at 78% 70%,#4a99e75b,transparent 72%)}
+#world[data-zone="eclipse"]{background-color:#260d1d;background-blend-mode:multiply;--zone-ambient:radial-gradient(ellipse 580px 760px at 25% 50%,#bf284761,transparent 75%),radial-gradient(ellipse 660px 800px at 82% 28%,#682b8663,transparent 75%)}
+#world[data-zone="sanctum"]{background-color:#283142;background-blend-mode:screen,multiply;--zone-ambient:radial-gradient(ellipse 690px 760px at 48% 24%,#90c7ff6b,transparent 72%),radial-gradient(ellipse 680px 740px at 80% 76%,#ffe6a04b,transparent 74%)}
+#world:is([data-zone="rift"],[data-zone="eclipse"],[data-zone="sanctum"]) .hunt-sector{border-color:#e1baff77;background:#261c39db;box-shadow:0 0 22px #ba78e53f}
+#world[data-zone="eclipse"] .hunt-sector{border-color:#ff888c8c;background:#391924da}
+#world[data-zone="sanctum"] .hunt-sector{border-color:#c5e8ff8c;background:#1e3041da}
+#world:is([data-zone="rift"],[data-zone="eclipse"],[data-zone="sanctum"]) .world-portal{filter:drop-shadow(0 0 8px #a8e2ff99)}
+#skillbar{max-width:min(640px,calc(100vw - 18px));flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:600px){#skillbar{grid-template-columns:repeat(5,minmax(0,1fr))!important;width:min(315px,calc(100vw - 12px))!important;max-width:min(315px,calc(100vw - 12px))!important;gap:3px!important}#skillbar button{min-height:44px!important;max-height:50px!important;padding:4px 1px!important}#skillbar button b{font-size:9px!important}}
