@@ -305,7 +305,7 @@ function actorArt(el,s){
  const twin=parent?.querySelector('.sprite-b');
  if(twin&&twin.dataset.artSource!==url){twin.style.backgroundImage=url;twin.dataset.artSource=url;twin.style.opacity='0';}
 }
-function decorate(el,s){const eq=s.equipment||{},ids=Object.values(eq),rarityOrder={normal:0,uncommon:1,rare:2,legendary:3,mythic:4},best=ids.map(id=>ITEMS[id]?.rarity||'normal').sort((a,b)=>(rarityOrder[b]||0)-(rarityOrder[a]||0))[0]||'normal',set=['raid','prime','void','mythic'].find(k=>ids.some(id=>String(id||'').startsWith(k)))||'';el.dataset.job=s.job;el.dataset.rank=String(s.rank||0);el.dataset.gearRarity=best;el.dataset.gearSet=set;for(const slot of ['armor','head','weapon','cape','boots'])el.dataset[slot]=ITEMS[eq[slot]]?.tier||0;el.classList.toggle('promoted',!!s.rank);}
+function decorate(el,s){const eq=s.equipment||{},ids=Object.values(eq),rarityOrder={normal:0,uncommon:1,rare:2,legendary:3,mythic:4},best=ids.map(id=>ITEMS[id]?.rarity||'normal').sort((a,b)=>(rarityOrder[b]||0)-(rarityOrder[a]||0))[0]||'normal',set=['eternal','eclipse','rift','raid','prime','void','mythic'].find(k=>ids.some(id=>String(id||'').startsWith(k)))||'';el.dataset.job=s.job;el.dataset.rank=String(s.rank||0);el.dataset.gearRarity=best;el.dataset.gearSet=set;for(const slot of ['armor','head','weapon','cape','boots'])el.dataset[slot]=ITEMS[eq[slot]]?.tier||0;el.classList.toggle('promoted',!!s.rank);}
 function layers(el){
  const base=el.querySelector('.sprite');
  if(base&&!el.querySelector('.sprite-b')){base.classList.add('sprite-a');const twin=base.cloneNode(false);twin.removeAttribute('id');twin.classList.remove('sprite-a');twin.classList.add('sprite-b');twin.style.opacity='0';base.after(twin);}
