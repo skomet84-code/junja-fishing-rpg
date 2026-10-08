@@ -1,7 +1,9 @@
 name: Adventure real-browser quality gate
 on:
   push:
-    branches: [fix/adventure-real-screen-verification-20261008]
+    branches: [fix/adventure-real-screen-verification-20261008, junja-adventure-preview]
+  pull_request:
+    branches: [junja-adventure-preview]
 permissions:
   contents: read
 jobs:
