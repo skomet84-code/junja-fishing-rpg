@@ -22,7 +22,7 @@ test('operator action endpoint sends explicit skill accepted and cooldown metada
   const result=await api('action',register.token,join.connectionKey,{type:'attack',skill:0,manual:true});
   assert.equal(result.ok,true);
   assert.equal(result.accepted,false,'no enemy in village, must reject cast');
-  assert.equal(result.cooldowns.length,7);
+  assert.equal(result.cooldowns.length,9);
   assert.equal(result.cooldowns[0],0,'no phantom cooldown on failed cast');
   assert.equal(result.mp,join.snapshot.self.mp,'failed cast does not consume MP');
  }finally{child.kill('SIGTERM');await sleep(100);if(child.exitCode===null)child.kill('SIGKILL');}
