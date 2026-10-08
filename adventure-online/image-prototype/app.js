@@ -1,9 +1,9 @@
-import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-skillack3';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,CONQUEST_CAP,conquestNeed,conquestTitle,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-skillack3';
+import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-polish1';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,CONQUEST_CAP,conquestNeed,conquestTitle,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-polish1';
 import {mergeSnapshot} from './network.js';
-import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-skillack3';
+import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-polish1';
 import {API_URL} from './config.js';
-import {createCombatQueue} from './combat-queue.js?v=20261008-skillack3';
+import {createCombatQueue} from './combat-queue.js?v=20261008-polish1';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 const endgameStyle=document.createElement('style');endgameStyle.textContent=".skillbar{display:grid!important;grid-template-columns:repeat(7,54px);gap:4px;max-width:calc(100vw - 16px)}@media(max-width:600px){.skillbar{grid-template-columns:repeat(7,46px);gap:3px}.skillbar button{width:46px!important;min-height:48px!important;padding:3px!important;font-size:8px!important}}#world[data-zone=void]:after{background:radial-gradient(ellipse at 50% 70%,transparent 22%,#160b2670 72%,#06030bcc 100%)!important}#world[data-zone=origin]:after{background:radial-gradient(ellipse at 50% 70%,transparent 25%,#473a1360 72%,#100c04bb 100%)!important}";document.head.append(endgameStyle);
@@ -145,7 +145,7 @@ function go(x,y){
  command({type:'navigate',x,y});
  $('marker').style.left=x+'px';$('marker').style.top=y+'px';$('marker').classList.remove('show');void $('marker').offsetWidth;$('marker').classList.add('show');
 }
-function camera(force=false,dt=.016){const vw=$('viewport').clientWidth/scale,vh=$('viewport').clientHeight/scale;const x=clamp(view.x-vw*.5,Math.min(0,(W-vw)/2),Math.max(0,W-vw)),y=clamp(view.y-vh*.53,Math.min(0,(H-vh)/2),Math.max(0,H-vh)),f=force?1:1-Math.exp(-12*dt);cam.x+=(x-cam.x)*f;cam.y+=(y-cam.y)*f;const px=-cam.x*scale,py=-cam.y*scale;$('world').style.transform=`translate3d(${px}px,${py}px,0) scale(${scale})`;}
+function camera(force=false,dt=.016){const vw=$('viewport').clientWidth/scale,vh=$('viewport').clientHeight/scale;const x=clamp(view.x-vw*.5,Math.min(0,(W-vw)/2),Math.max(0,W-vw)),y=clamp(view.y-vh*.53,Math.min(0,(H-vh)/2),Math.max(0,H-vh)),f=force?1:1-Math.exp(-12*dt);cam.x+=(x-cam.x)*f;cam.y+=(y-cam.y)*f;const bump=motionReduced?0:cameraKick;const px=-cam.x*scale+Math.sin(clock*73)*bump,py=-cam.y*scale+Math.cos(clock*83)*bump*.55;cameraKick*=Math.exp(-20*dt);if(cameraKick<.05)cameraKick=0;$('world').style.transform=`translate3d(${px.toFixed(2)}px,${py.toFixed(2)}px,0) scale(${scale})`;}
 function resize(){scale=innerWidth<600?.85:Math.min(1,innerWidth/1150);camera(true);}
 function screenToWorld(x,y){const r=$('viewport').getBoundingClientRect();return {x:(x-r.left)/scale+cam.x,y:(y-r.top)/scale+cam.y};}
 function sprite(el,col,row,rows=3,mirror=false){
@@ -153,6 +153,42 @@ function sprite(el,col,row,rows=3,mirror=false){
  el.style.setProperty('--flip',mirror?-1:1);
 }
 const smoothstep=t=>t*t*(3-2*t);
+// Render feedback only after the authoritative server has changed HP.
+let cameraKick=0,damageSoundAt=0,hitTicker=0;
+const motionReduced=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+function combatTone(heavy=false){
+ if(!soundOn||!audioCtx||audioCtx.state!=='running'||performance.now()-damageSoundAt<110)return;
+ damageSoundAt=performance.now();
+ try{
+  const start=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+  osc.type=heavy?'sawtooth':'triangle';
+  osc.frequency.setValueAtTime(heavy?166:245,start);
+  osc.frequency.exponentialRampToValueAtTime(heavy?85:145,start+.085);
+  gain.gain.setValueAtTime(.0001,start);
+  gain.gain.exponentialRampToValueAtTime(heavy?.027:.012,start+.008);
+  gain.gain.exponentialRampToValueAtTime(.0001,start+.105);
+  osc.connect(gain);gain.connect(audioCtx.destination);osc.start(start);osc.stop(start+.115);
+ }catch{}
+}
+function damageNumber(target,delta){
+ if(!target||delta<=0||!Number.isFinite(delta))return;
+ const wrap=document.createElement('span');wrap.className='polish-damage'+(target.boss||target.elite?' critical':'');
+ const offset=(((target.id||0)*19+hitTicker++*13)%41)-20;
+ wrap.style.left=(target.x+offset)+'px';wrap.style.top=(target.y-50)+'px';
+ wrap.textContent='-'+Math.round(delta).toLocaleString('ko-KR');$('effects').append(wrap);
+ setTimeout(()=>wrap.remove(),800);
+ if(target.el){target.el.classList.remove('polish-struck');void target.el.offsetWidth;target.el.classList.add('polish-struck');clearTimeout(target.hitTimer);target.hitTimer=setTimeout(()=>target.el?.classList.remove('polish-struck'),210);}
+ const emphasis=target.boss||target.elite||delta>stats(state).atk*2;
+ if(!motionReduced)cameraKick=Math.max(cameraKick,emphasis?2.8:1.1);
+ combatTone(emphasis);
+}
+function heroDamage(delta){
+ if(!Number.isFinite(delta)||delta<=0)return;
+ const overlay=$('damageFlash');if(!overlay)return;
+ overlay.classList.remove('show');void overlay.offsetWidth;overlay.classList.add('show');
+ if(!motionReduced)cameraKick=Math.max(cameraKick,Math.min(5,1.5+Math.log2(1+delta)/6));
+}
+
 function headingPose(dx,dy,fallbackRow=0,fallbackMirror=false){
  const d=Math.hypot(dx,dy);if(d<.001)return {row:fallbackRow,mirror:fallbackMirror,nx:0,ny:fallbackRow===1?-1:1,skew:0,depth:1};
  const nx=dx/d,ny=dy/d,ax=Math.abs(nx),ay=Math.abs(ny);
@@ -260,6 +296,7 @@ function updateSnapshot(data){
  if(data.disconnected){connected=false;streamController?.abort();toast(data.disconnected);showSelection();return;}
  if(!data.self)return;
  const sampleAt=performance.now()/1000,old=state,next=data.self;
+ if(connected&&old.zone===next.zone&&next.hp<old.hp)heroDamage(old.hp-next.hp);
  if(lastSelfSampleAt&&old.zone===next.zone){
   const dt=Math.max(.03,sampleAt-lastSelfSampleAt),vx=(next.x-lastSelfX)/dt,vy=(next.y-lastSelfY)/dt,mag=Math.hypot(vx,vy),cap=300,ratio=mag>cap?cap/mag:1;
   serverVelocity.x=serverVelocity.x*.45+vx*ratio*.55;serverVelocity.y=serverVelocity.y*.45+vy*ratio*.55;
@@ -280,6 +317,7 @@ function updateSnapshot(data){
   if(!entry){const el=entity('enemy'+(e.boss?' boss':''));el.querySelector('b').textContent=e.name||'숲 다람쥐';el.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();select(e.id,true);});$('enemyLayer').append(el);entry={el,art:el.querySelector('.sprite'),vx:e.x,vy:e.y,netVx:0,netVy:0,sampleAt};enemies.set(e.id,entry);}
   if(wasKnown&&previousAt&&sampleAt>previousAt+.025){const dt=sampleAt-previousAt,rvx=(e.x-previousX)/dt,rvy=(e.y-previousY)/dt,mag=Math.hypot(rvx,rvy),ratio=mag>260?260/mag:1;entry.netVx=entry.netVx*.4+rvx*ratio*.6;entry.netVy=entry.netVy*.4+rvy*ratio*.6;}
   entry.sampleAt=sampleAt;Object.assign(entry,e);
+  if(wasKnown&&wasAlive&&e.hp<entry.hp&&distance(view,e)<580)damageNumber({...e,el:entry.el},entry.hp-e.hp);
   if(wasKnown&&wasAlive&&!e.alive){spawnLootFx(e);if(e.boss)bossIntroSeen.delete(state.zone+':'+e.id);}if(wasKnown&&wasAlive===false&&e.alive&&e.boss&&bossSector)showBossIntro(e);entry.mmo=!!e.atlas;entry.el.classList.toggle('mmo-monster',entry.mmo);entry.art.style.backgroundImage=entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=entry.mmo?'400% 400%':'';entry.el.querySelector('b').textContent=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('summoned',!!e.summoned);entry.el.classList.toggle('dead',!e.alive);entry.el.querySelector('.life i').style.width=e.hp/e.max*100+'%';entry.el.querySelector('.tell').hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);entry.el.dataset.phase=String(e.phase||1);syncBossPattern(e);
  }
  for(const [id,e] of enemies)if(!mobIds.has(id)){e.el.remove();bossPatternEls.get(id)?.remove();bossPatternEls.delete(id);enemies.delete(id);if(selected===id){selected=null;targetIntent=null;}}
@@ -480,6 +518,13 @@ const QUEST_VIEWS={
 function questView(s){const oq=s.originStory||{};if(s.zone==='origin'&&oq.stage>0&&!oq.claimed){if(oq.stage===1)return ['태초의 기록 1장','성광 회랑 몬스터 '+Math.min(15,oq.kills||0)+' / 15','성광 회랑으로'];if(oq.stage===2)return ['태초의 기록 2장','창세 제단 정예 '+Math.min(3,oq.elites||0)+' / 3','창세 제단으로'];if(oq.stage===3)return ['태초의 기록 3장','태초신전 수문신을 처치하세요.','수문신 찾아가기'];if(oq.stage===4)return ['태초의 기록 4장','23:00 태초신 카이로스 레이드에 참여하세요.','레이드 준비'];if(oq.stage===5)return ['태초의 기록 완결','기록관 세라에게 돌아가 최종 보상을 받으세요.','세라에게 보고'];}const key=s.storyQuest||s.quest,view=QUEST_VIEWS[key]||QUEST_VIEWS[s.quest]||QUEST_VIEWS.available;return view(s);}
 function makeSkills(){$('skillbar').replaceChildren();JOBS[state.job].skills.forEach((s,i)=>{const b=document.createElement('button'),mp=skillMpCost(state,s);b.id='skill'+i;b.innerHTML=`<b>${s[0]}</b><small>MP ${mp}</small>`;b.type='button';b.setAttribute('aria-label',s[0]+' 스킬');b.onclick=()=>attack(i);$('skillbar').append(b);});}
 function hud(){const st=stats(state),t=now();$('playerName').textContent=state.name||'준자';$('level').textContent='Lv.'+state.level+' '+jobName(state)+(state.level>=300?' · 정복 '+(state.endgame?.mastery||0):'');$('hpText').textContent=Math.ceil(state.hp)+' / '+st.hp;$('hpBar').style.width=state.hp/st.hp*100+'%';$('mpText').textContent='MP '+Math.ceil(state.mp)+' / '+st.mp+' · 물약 '+(state.manaPotions||0);$('mpBar').style.width=Math.min(100,state.mp/st.mp*100)+'%';$('expBar').style.width=Math.min(100,state.exp/needXp(state.level)*100)+'%';$('expText').textContent='EXP '+state.exp+' / '+needXp(state.level);$('gold').textContent=state.gold.toLocaleString()+' G';$('zone').textContent=(state.zone==='surface'?(view.y>590?'준자마을 · 초원숲':'준자마을'):ZONES[state.zone].name)+' · '+(state.channel||'');$('potionLabel').textContent=state.potions+'개';$('potionBtn').disabled=!connected||state.potions<=0;
+ const readout=$('combatReadout');
+ if(readout){const foe=enemies.get(selected);const inCombat=auto||!!foe?.alive||!!state.combatTarget;readout.hidden=!inCombat;
+  if(inCombat){const activeSkill=Number(state.attackSkill??-1),skillName=JOBS[state.job]?.skills?.[activeSkill]?.[0]||'기본 공격';
+   const queue=skillQueue.snapshot(t).map(i=>JOBS[state.job]?.skills?.[i]?.[0]).filter(Boolean);
+   readout.textContent=auto?(state.mp<Math.min(...JOBS[state.job].skills.filter(s=>{const r=Number(s[5]?.rank)||0;return state.level>=s[1]&&state.rank>=r&&promotionSkillLearned(state,r)&&!['heal','partyHeal','guard','partyGuard'].includes(s[4]);}).map(s=>skillMpCost(state,s)),Infinity)?'자동사냥 · MP 회복 중':state.autoTarget!=null?'자동사냥 · '+skillName:'자동사냥 · 적 탐색 중'):queue.length?'다음 스킬 · '+queue.join(' → '):foe?.alive?'타겟 · '+foe.name:'전투 대기';
+  }
+ }
  const q=questView(state),questKey=state.storyQuest||state.quest;$('quest').dataset.quest=questKey;$('questTitle').textContent=q[0];$('questText').textContent=q[1];$('questAction').textContent=q[2];const e=enemies.get(selected);$('targetPanel').hidden=!e?.alive;if(e?.alive){$('targetName').textContent=e.name||'숲 다람쥐';$('targetRange').textContent=Math.round(distance(view,e)/24)+'m';$('targetHp').style.width=e.hp/e.max*100+'%';}
  const serverReady=systems.duel?.accepted?Math.max(systems.duel.start,systems.duel.next?.[state.id]||0):(state.nextAttack||0),actionReady=Math.max(serverReady,localActionLockUntil),actionLock=Math.max(0,actionReady-t);$('attackBtn').disabled=paused||!connected||actionLock>0;$('attackLabel').textContent=actionLock>0?'공격 대기 '+actionLock.toFixed(1)+'초':systems.duel?.accepted?'대련 공격':e?.alive?distance(state,e)>st.range?'접근 후 공격':'공격 가능':'대상 선택';$('autoBtn').setAttribute('aria-pressed',String(auto));const eligible=JOBS[state.job].skills.filter(s=>{const rank=Number(s[5]?.rank)||0;return state.level>=s[1]&&state.rank>=rank&&promotionSkillLearned(state,rank)&&!['heal','partyHeal','guard','partyGuard'].includes(s[4]);});const cheapest=eligible.length?Math.min(...eligible.map(s=>skillMpCost(state,s))):Infinity;const lowAutoMp=auto&&state.mp<cheapest;$('autoBtn').querySelector('small').textContent=auto?(lowAutoMp?'MP 회복 중':'ON · 스킬 자동'):'OFF';$('contextBtn').hidden=!nearNpc;JOBS[state.job].skills.forEach((s,i)=>{const b=$('skill'+i);if(!b)return;const rankReq=Number(s[5]?.rank)||0,learned=promotionSkillLearned(state,rankReq),locked=state.level<s[1]||state.rank<rankReq||!learned,cd=Math.max(0,(systems.duel?.accepted?(systems.duel.cooldowns[state.id]?.[i]||0):(state.cooldowns?.[i]||0))-t),mp=skillMpCost(state,s),lowMana=state.mp<mp;const queued=skillQueue.position(i,t);b.disabled=paused||!connected||locked||cd>0||lowMana;b.dataset.queued=queued?'true':'false';b.dataset.cooldown=cd>0?'active':'ready';b.style.setProperty('--cd-pct',Math.max(0,Math.min(100,cd/Math.max(.1,Number(s[2])||1)*100))+'%');b.querySelector('small').textContent=locked?(rankReq>=3&&state.rank>=rankReq&&!learned?((PROMOTION_MATERIALS[rankReq]?.name||'전직 재료')+' '+(state.promotionMaterials?.[PROMOTION_MATERIALS[rankReq]?.key]||0)+'/100'):rankReq?rankReq+'차 전직 필요':'Lv.'+s[1]):queued?'연속기 대기 '+queued:cd>0?'쿨 '+cd.toFixed(cd<10?1:0)+'초 / '+s[2]+'초':lowMana?'마나 부족 · MP '+mp:'준비 · 쿨 '+s[2]+'초';});
 }
@@ -540,7 +585,7 @@ function frame(time){
   if(clock-lastSend>=.06&&(manualMove||(!path.length&&!auto))){lastSend=clock;queueMove({type:'move',x:dx,y:dy,manual:manualMove});}
   const attacking=clock<attackUntil,hero=$('hero'),heroArt=$('heroArt');
   if(attacking){const duration=Number(hero.dataset.attackDuration)||.44,started=Number(hero.dataset.attackStarted)||attackUntil-duration;attackPose(hero,heroArt,face,flip,started,duration,state.job,Number(hero.dataset.attackSkill??-1),Number(hero.dataset.attackVariant||0),headingX,headingY);}
-  else motion(hero,heroArt,len||auto||state.navMoving?'walk':'idle',face,flip,clock,0,headingX,headingY);
+  else motion(hero,heroArt,(len||Math.hypot(serverVelocity.x,serverVelocity.y)>32)?'walk':'idle',face,flip,clock,0,headingX,headingY);
   placeEntity(hero,view.x,view.y);hero.style.zIndex=Math.round(view.y);hero.classList.toggle('attacking',attacking);hero.classList.toggle('guarded',(state.guard||0)>now());
   const perfNow=performance.now()/1000,vw=$('viewport').clientWidth/scale,vh=$('viewport').clientHeight/scale,pad=innerWidth<700?180:260,left=cam.x-pad,right=cam.x+vw+pad,top=cam.y-pad,bottom=cam.y+vh+pad;
   for(const e of enemies.values()){
@@ -571,6 +616,10 @@ function frame(time){
 }
 const invite=new URL(location.href).searchParams.get('channel');if(invite&&/^[A-Za-z0-9가-힣_-]{2,16}$/.test(invite))$('channelInput').value=invite;
 try{soundOn=localStorage.getItem('junja-adventure-sound')==='1';}catch{}$('soundBtn').setAttribute('aria-pressed',String(soundOn));$('soundBtn').querySelector('small').textContent=soundOn?'ON':'OFF';document.addEventListener('pointerdown',async()=>{if(soundOn&&!audioCtx){audioCtx=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')await audioCtx.resume();setRegionAudio(state.zone);}},{once:true});
+const utility=$('utilityNav'),utilityToggle=$('utilityToggle');
+if(utility&&utilityToggle){utilityToggle.onclick=()=>{const expanded=utility.classList.toggle('expanded');utilityToggle.textContent=expanded?'메뉴 닫기':'메뉴 +';utilityToggle.setAttribute('aria-expanded',String(expanded));};
+ utility.querySelectorAll('button:not(#utilityToggle)').forEach(b=>b.addEventListener('click',()=>{if(innerWidth<701){utility.classList.remove('expanded');utilityToggle.textContent='메뉴 +';utilityToggle.setAttribute('aria-expanded','false');}}));
+}
 if(innerWidth<600){$('quest').classList.add('collapsed');$('questToggle').textContent='+';}resize();makeSkills();requestAnimationFrame(frame);if(token)showSelection();
 window.__adventure={build:BUILD,snapshot:()=>({...state,systems:structuredClone(systems),connected,paused,auto,selected,pendingCombo:skillQueue.snapshot(now()),peers:[...peers.values()].map(({id,name,x,y,job,equipment})=>({id,name,x,y,job,equipment})),enemies:[...enemies.values()].map(({id,x,y,hp,alive,boss})=>({id,x,y,hp,alive,boss}))})};
 let partyHudEl=null;

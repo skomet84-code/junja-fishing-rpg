@@ -1347,3 +1347,34 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .skillbar button[data-cooldown='active']::after{content:'';position:absolute;left:1px;bottom:1px;width:4px;height:var(--cd-pct,0%);max-height:100%;background:linear-gradient(#b99a61,#5f4774);border-radius:4px;pointer-events:none}
 .skillbar button[data-cooldown='active'] small{color:#f5d28f!important;font-weight:800}
 #autoBtn[aria-pressed='true'] small{color:#dbf5b3;font-weight:800}
+
+/* Field feel pass 1: actual HP feedback, restrained character silhouette, compact mobile HUD. */
+#damageFlash{position:absolute;inset:0;z-index:89;pointer-events:none;opacity:0;background:radial-gradient(ellipse at 50% 56%,transparent 35%,#9c302b70 100%)}
+#damageFlash.show{animation:polishHurt .48s ease-out both}
+@keyframes polishHurt{0%{opacity:.7}100%{opacity:0}}
+.polish-damage{position:absolute;z-index:2300;pointer-events:none;font-size:21px;font-weight:900;color:#fff6d8;white-space:nowrap;letter-spacing:.3px;-webkit-text-stroke:.75px #2c1512;text-shadow:0 2px 3px #240c08,0 0 7px #fdbd61;transform:translate(-50%,0);animation:polishDamage .76s ease-out forwards}
+.polish-damage.critical{color:#ffe28b;font-size:25px;text-shadow:0 1px 4px #4a1e0c,0 0 10px #e5a346}
+@keyframes polishDamage{0%{opacity:0;transform:translate(-50%,5px) scale(.78)}18%{opacity:1;transform:translate(-50%,-15px) scale(1.12)}100%{opacity:0;transform:translate(-50%,-43px) scale(.97)}}
+.enemy.polish-struck>.sprite{animation:polishHit .2s ease-out;filter:brightness(1.25)}
+@keyframes polishHit{0%{transform:translateX(0);filter:brightness(1)}25%{transform:translateX(3px);filter:brightness(1.8)}60%{transform:translateX(-2px);filter:brightness(1.4)}100%{transform:translateX(0);filter:brightness(1)}}
+#hero.entity.hero>.gear-layers{opacity:.42}
+#hero.entity.hero[data-motion='attack']>.gear-layers{opacity:.7}
+#hero.entity.hero>.sprite{filter:brightness(1.09) contrast(1.08) drop-shadow(0 8px 4px #0008)}
+#combatReadout{position:absolute;bottom:calc(184px + env(safe-area-inset-bottom));right:12px;z-index:30;max-width:min(420px,70vw);padding:6px 11px;border:1px solid #cbb06e77;border-radius:8px;background:linear-gradient(95deg,#141a21eb,#203028ea);box-shadow:0 4px 14px #0009;font-size:11px;font-weight:750;color:#f7dfb0;pointer-events:none;text-shadow:0 1px 2px #000}
+#combatReadout[hidden]{display:none!important}
+.utility #utilityToggle{display:none}
+@media(max-width:700px){
+ .utility{z-index:34;left:6px!important;bottom:calc(8px + env(safe-area-inset-bottom))!important;width:152px;display:flex;gap:5px;flex-wrap:wrap;align-items:flex-end;max-height:40dvh;overflow:visible}
+ .utility #utilityToggle{display:block;min-width:64px;min-height:39px;border:1px solid #d3b976!important;border-radius:9px;background:linear-gradient(#67502d,#342b1c);font-size:11px;font-weight:750}
+ .utility:not(.expanded)>button:not(#utilityToggle):not(#adventureBtn){display:none!important}
+ .utility:not(.expanded)>#adventureBtn{display:block;min-width:75px;min-height:39px;font-size:11px}
+ .utility.expanded{width:min(245px,60vw);max-height:48dvh;overflow-y:auto;padding:7px;border:1px solid #aa976674;border-radius:12px;background:#111b20f2;box-shadow:0 9px 22px #000a}
+ .utility.expanded>button{flex:1 1 92px;min-height:37px;font-size:11px}
+ #combatReadout{bottom:calc(172px + env(safe-area-inset-bottom));right:5px;font-size:10px;max-width:58vw;padding:5px 7px}
+ #hint{display:none!important}
+ .skillbar button{border-radius:10px;box-shadow:0 3px 9px #0009}
+ .skillbar button b{font-size:10px;line-height:1.14;display:block}
+ .skillbar button small{font-size:9px}
+ .polish-damage{font-size:18px}.polish-damage.critical{font-size:22px}
+}
+@media(prefers-reduced-motion:reduce){#damageFlash.show,.polish-damage,.enemy.polish-struck>.sprite{animation-duration:.01ms!important}}
