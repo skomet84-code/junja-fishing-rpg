@@ -1378,3 +1378,8 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
  .polish-damage{font-size:18px}.polish-damage.critical{font-size:22px}
 }
 @media(prefers-reduced-motion:reduce){#damageFlash.show,.polish-damage,.enemy.polish-struck>.sprite{animation-duration:.01ms!important}}
+
+/* Autohunt+manual skill coexistence: show server-side prioritized queue. */
+#autoBtn[aria-pressed="true"]{box-shadow:0 0 0 2px #b9ed7799,0 5px 14px #0009}
+.skillbar button[data-queued="true"]{border-color:#f7d87b!important;background:linear-gradient(145deg,#725a26,#392b40)!important}
+.skillbar button[data-queued="true"] small{color:#ffecab!important}
