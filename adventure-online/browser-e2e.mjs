@@ -1,0 +1,77 @@
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {setTimeout as sleep} from 'node:timers/promises';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
+import {mkdir} from 'node:fs/promises';
+import {chromium} from 'playwright';
+const root=path.dirname(fileURLToPath(import.meta.url)),port=43800+Math.floor(Math.random()*1000),base='http://127.0.0.1:'+port;
+const screens=path.resolve(root,'../e2e-screenshots');
+await mkdir(screens,{recursive:true});
+const server=spawn(process.execPath,['server.mjs'],{cwd:path.resolve(root,'server/online'),env:{...process.env,TEST_MEMORY:'1',PORT:String(port),OPERATOR_USERNAMES:'admin'},stdio:['ignore','pipe','pipe']});
+let output='';server.stdout.on('data',b=>output+=String(b));server.stderr.on('data',b=>output+=String(b));
+let browser;
+try{
+ let ready=false;
+ for(let i=0;i<110;i++){try{if((await fetch(base+'/health')).ok){ready=true;break;}}catch{}if(server.exitCode!==null)throw Error('Server terminated: '+output);await sleep(120);}
+ assert.ok(ready,'Game server did not start: '+output);
+ browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ for(const viewport of [{label:'mobile',width:390,height:844},{label:'desktop',width:1280,height:800}]){
+  const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},deviceScaleFactor:1,isMobile:viewport.label==='mobile',hasTouch:viewport.label==='mobile'});
+  const page=await context.newPage(),errors=[];
+  page.on('pageerror',error=>errors.push('pageerror: '+error.message));
+  page.on('console',message=>{if(message.type()==='error')errors.push('console: '+message.text());});
+  page.on('response',response=>{if(response.status()>=400&&!response.url().endsWith('favicon.ico'))errors.push('HTTP '+response.status()+' '+response.url());});
+  try{
+   await page.route('**/api/register',async route=>{
+    const data=route.request().postDataJSON();data.legacy={level:20,gold:5000,potions:10};
+    await route.continue({postData:JSON.stringify(data)});
+   });
+   await page.goto(base,{waitUntil:'domcontentloaded'});
+   await page.locator('#username').fill(viewport.label==='mobile'?'admin':'qauser');
+   await page.locator('#password').fill('playwright-test-pass-99');
+   await page.locator('#registerBtn').click();
+   await page.locator('#selectPanel').waitFor({state:'visible',timeout:25000});
+   assert.equal(await page.locator('.character-card').count(),4,'Must show 4 character choices');
+   await page.screenshot({path:path.join(screens,viewport.label+'-selection.png')});
+   await page.locator('#joinBtn').click();
+   await page.waitForFunction(()=>window.__adventure?.snapshot()?.connected===true,{timeout:25000});
+   await page.locator('#loading').waitFor({state:'hidden',timeout:12000});
+   assert.equal(await page.locator('#skillbar button').count(),7,'Seven skills must be visible');
+   const visual=await page.evaluate(async()=>{
+    const a=document.querySelector('#heroArt'),hero=document.querySelector('#hero'),skills=[...document.querySelectorAll('#skillbar button')],grid=getComputedStyle(document.querySelector('#skillbar'));
+    const bg=getComputedStyle(a).backgroundImage;const match=bg.match(/url\(["']?([^"')]+)["']?\)/),url=match?.[1];
+    let asset={url,loaded:false,width:0,height:0};
+    if(url){const img=new Image();img.src=url;try{await img.decode();asset={url,loaded:true,width:img.naturalWidth,height:img.naturalHeight};}catch{}}
+    const bounds=hero.getBoundingClientRect();return {asset,hero:{width:bounds.width,height:bounds.height,display:getComputedStyle(hero).display,visibility:getComputedStyle(hero).visibility},grid:getComputedStyle(document.querySelector('#skillbar')).gridTemplateColumns,columns:grid.gridTemplateColumns.split(' ').filter(Boolean).length,rows:skills.map(el=>Math.round(el.getBoundingClientRect().top)),toggle:getComputedStyle(document.querySelector('#minimapToggle')).display};
+   });
+   assert.ok(visual.asset.loaded,'Hero sprite asset must decode successfully: '+JSON.stringify(visual));
+   assert.ok(visual.hero.width>40&&visual.hero.height>50&&visual.hero.visibility!=='hidden','Hero must be renderable');
+   assert.equal(visual.columns,viewport.label==='mobile'?4:7,'Runtime skill grid should match viewport: '+JSON.stringify(visual));
+   if(viewport.label==='mobile'){
+    assert.ok(new Set(visual.rows).size===2,'Seven skills must occupy two rows: '+JSON.stringify(visual.rows));
+    await page.locator('#minimapToggle').click();
+    assert.equal(await page.locator('#minimapToggle').getAttribute('aria-expanded'),'true');
+    assert.equal(await page.locator('#minimap').isVisible(),true);
+    await page.locator('#minimapToggle').click();
+    await page.locator('#utilityToggle').click();
+    assert.equal(await page.locator('#utilityToggle').getAttribute('aria-expanded'),'true');
+    assert.equal(await page.locator('#bagBtn').isVisible(),true);
+    await page.locator('#utilityToggle').click();
+   }
+   await page.screenshot({path:path.join(screens,viewport.label+'-game.png')});
+   await page.locator('#autoBtn').click();
+   await page.waitForFunction(()=>window.__adventure?.snapshot()?.auto===true,{timeout:10000});
+   await page.waitForFunction(()=>window.__adventure?.snapshot()?.cooldowns?.some(c=>c>0),{timeout:20000});
+   const before=await page.evaluate(()=>({auto:window.__adventure.snapshot().auto,cooldowns:window.__adventure.snapshot().cooldowns,job:window.__adventure.snapshot().job,level:window.__adventure.snapshot().level}));
+   assert.equal(before.auto,true);
+   await page.locator('#skill0').click();
+   await sleep(450);
+   const after=await page.evaluate(()=>({auto:window.__adventure.snapshot().auto,queued:window.__adventure.snapshot().autoSkillQueue,skill:getComputedStyle(document.querySelector('#skill0')).opacity}));
+   assert.equal(after.auto,true,'Tapping skill during autohunt cannot disable autohunt');
+   await page.screenshot({path:path.join(screens,viewport.label+'-autohunt.png')});
+   assert.deepEqual(errors,[],'No browser errors or failed assets');
+   console.log('E2E PASS '+viewport.label+' '+JSON.stringify({visual,before,after}));
+  }finally{await context.close();}
+ }
+}finally{if(browser)await browser.close();server.kill('SIGTERM');await sleep(300);if(server.exitCode===null)server.kill('SIGKILL');}
