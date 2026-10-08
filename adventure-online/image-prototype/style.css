@@ -1492,3 +1492,18 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .skillfx.beyond-eclipse>i{color:#ffb3ca}.skillfx.beyond-eternal>i{color:#ffffe9}
 @keyframes beyondBurst{0%{opacity:0;scale:.22;rotate:-24deg}22%{opacity:1;scale:.88}58%{opacity:.95;scale:1.10}100%{opacity:0;scale:1.40;rotate:17deg}}
 @keyframes beyondOrbit{to{rotate:360deg}}
+
+/* Fifth and sixth advancements read instantly from silhouettes, not only labels. */
+.entity.hero:is([data-rank="5"],[data-rank="6"])>.promotion-regalia{display:block;animation:rankFourFloat 1.5s ease-in-out infinite alternate}
+.entity.hero[data-rank="5"]>.promotion-regalia i:nth-child(1){left:-4%;top:10%;width:108%;height:43%;border-top:9px double #c69dff;border-radius:50%;filter:drop-shadow(0 0 14px #8e4afa)}
+.entity.hero[data-rank="5"]>.promotion-regalia i:nth-child(2){left:8%;top:52%;width:84%;height:44%;background:linear-gradient(180deg,#b89cff88,#42257e66,transparent);clip-path:polygon(0 0,100% 0,88% 100%,50% 67%,12% 100%)}
+.entity.hero[data-rank="5"]>.promotion-regalia i:nth-child(3){left:38%;top:-6%;width:24%;height:27%;background:linear-gradient(#f2edff,#7d61d8);clip-path:polygon(50% 0,90% 35%,65% 100%,35% 100%,10% 35%);filter:drop-shadow(0 0 9px #a996ff)}
+.entity.hero[data-rank="6"]>.promotion-regalia i:nth-child(1){left:-11%;top:3%;width:122%;height:43%;border-top:10px double #fff3bc;border-radius:48%;box-shadow:0 -8px 13px -12px #fce9a8;filter:drop-shadow(0 0 15px #fff3c7)}
+.entity.hero[data-rank="6"]>.promotion-regalia i:nth-child(2){left:-5%;top:52%;width:110%;height:53%;background:linear-gradient(180deg,#ffefba99,#65bcea88,transparent);clip-path:polygon(0 0,100% 0,86% 100%,50% 65%,14% 100%)}
+.entity.hero[data-rank="6"]>.promotion-regalia i:nth-child(3){left:33%;top:-12%;width:34%;height:33%;background:linear-gradient(#ffffff,#ffdb7e,#87c3fa);clip-path:polygon(50% 0,100% 39%,74% 100%,26% 100%,0 39%);filter:drop-shadow(0 0 13px #ffdfa0)}
+.hero[data-gear-set="rift"] .gear-layers{filter:drop-shadow(0 0 10px #a885f4)}
+.hero[data-gear-set="eclipse"] .gear-layers{filter:drop-shadow(0 0 12px #ff78ae)}
+.hero[data-gear-set="eternal"] .gear-layers{filter:drop-shadow(0 0 14px #fff0b3) drop-shadow(0 0 19px #8cdafa)}
+.hero[data-gear-set="rift"] :is(.gear-armor,.gear-cape){background:linear-gradient(130deg,#7858c1,#382253,#9e8cf6)!important}
+.hero[data-gear-set="eclipse"] :is(.gear-armor,.gear-cape){background:linear-gradient(130deg,#ff91b1,#60213e,#a02b73)!important}
+.hero[data-gear-set="eternal"] :is(.gear-armor,.gear-cape){background:linear-gradient(130deg,#ffefbb,#659fc9,#edf6ff)!important}
