@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {World} from '../engine.mjs';
+import {diffSnapshot} from '../wire.mjs';
 import {profile,JOBS,stats,skillMpCost} from '../../../image-prototype/catalog.js';
 function setup(operator=false){
  let clock=100;
@@ -88,4 +89,18 @@ test('skill can be reserved at low MP and fires after automatic MP recovery',()=
  for(let i=0;i<125;i++){f.advance(.1);if(p.cooldowns[0]>f.clock){cast=true;break;}}
  assert.ok(cast,'manual queue eventually casts after natural mana regeneration');
  assert.equal(p.auto,true);
+});
+
+// Regression for the browser-only failure: the wire protocol must see cooldown changes
+// between successive 100ms snapshots, not share a mutable server array.
+test('delta wire transmits actual cooldowns after auto-skill attack',()=>{
+ const f=setup(true),{w,p}=f;
+ const previous=w.snapshot(p);
+ w.action(p,{type:'auto',on:true});
+ f.advance(.1);
+ assert.ok(p.cooldowns.some(v=>v>f.clock),'server actually cast a skill');
+ const current=w.snapshot(p),delta=diffSnapshot(previous,current);
+ assert.deepEqual(previous.self.cooldowns,[0,0,0,0,0,0,0],'previous snapshot must remain immutable');
+ assert.ok(delta.self,'delta must report changed player state');
+ assert.ok(delta.self.cooldowns?.some(v=>v>f.clock),'delta must include cooldown array');
 });
