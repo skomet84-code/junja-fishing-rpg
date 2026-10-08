@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {createCombatQueue} from '../combat-queue.js';
+test('all seven skills support ordered combo input',()=>{const q=createCombatQueue(6,2);assert.equal(q.enqueue(4,100),true);assert.equal(q.enqueue(6,100.1),true);assert.deepEqual(q.snapshot(100.2),[4,6]);assert.equal(q.shift(100.3),4);assert.equal(q.shift(100.4),6);});
+test('no duplicated touch events, and capacity is two',()=>{const q=createCombatQueue(6,2);assert.equal(q.enqueue(1,12),true);assert.equal(q.enqueue(1,12.01),false);assert.equal(q.enqueue(2,12.02),true);assert.equal(q.enqueue(3,12.03),false);assert.equal(q.position(2,12.04),2);});
+test('stale cast requests expire and new requests can proceed',()=>{const q=createCombatQueue(6,2,3);q.enqueue(0,5);assert.equal(q.peek(8.5),null);assert.equal(q.enqueue(5,9),true);q.clear();assert.deepEqual(q.snapshot(9),[]);});

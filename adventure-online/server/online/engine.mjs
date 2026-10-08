@@ -45,7 +45,7 @@ export class World{
   if(kind==='move'){if(p.navPath.length&&!data.manual)return;if(data.manual){p.navPath=[];p.auto=false;p.autoTarget=null;p.combatTarget=null;p.combatSkill=-1;}const x=Number(data.x),y=Number(data.y);if(!Number.isFinite(x)||!Number.isFinite(y))return;p.input={x:clamp(x,-1,1),y:clamp(y,-1,1)};const d=Math.hypot(x,y);if(d>.01){p.dirX=x/d;p.dirY=y/d;}p.lastInput=now;return;}
   if(kind==='auto'){p.auto=!!data.on;p.autoTarget=null;p.combatTarget=null;p.combatSkill=-1;p.navPath=[];p.input={x:0,y:0};return;}
   if(kind==='engage'){const target=Number(data.target),skill=Number.isInteger(data.skill)?data.skill:-1,e=this.channel(p.channel,s.zone).find(e=>e.id===target&&e.alive);if(!e)return;p.auto=false;p.autoTarget=null;p.navPath=[];p.input={x:0,y:0};p.combatTarget=e.id;p.combatSkill=skill;return;}
-  if(kind==='attack'){return this.attack(p,Number.isInteger(data.skill)?data.skill:-1,data.target);}
+  if(kind==='attack'){if(data.manual===true){p.auto=false;p.autoTarget=null;p.combatTarget=null;p.combatSkill=-1;}return this.attack(p,Number.isInteger(data.skill)?data.skill:-1,data.target);}
   if(kind==='home'){s.zone='surface';s.x=768;s.y=350;const st=stats(s);s.hp=st.hp;s.mp=st.mp;p.input={x:0,y:0};p.navPath=[];p.auto=false;p.autoTarget=null;p.combatTarget=null;p.combatSkill=-1;this.dirty(p);return;}
   if(kind==='potion'){const st=stats(s);if(s.potions>0&&s.hp<st.hp){s.potions--;s.hp=Math.min(st.hp,s.hp+st.hp*.5);p.nextHpPotion=now+1;this.dirty(p);}return;}
   if(kind==='manaPotion'){const st=stats(s);if(s.manaPotions>0&&s.mp<st.mp){s.manaPotions--;s.mp=Math.min(st.mp,s.mp+st.mp*.45);p.nextMpPotion=now+1;this.dirty(p);}return;}

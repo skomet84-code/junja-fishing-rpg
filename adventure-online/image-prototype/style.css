@@ -1330,3 +1330,14 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
  .doll-actor.production-active>.production-sprite{width:174px!important;height:194px!important;bottom:-27px!important}
  .doll-actor.production-active[data-rank='4']>.production-sprite{width:185px!important;height:205px!important;bottom:-31px!important}
 }
+
+/* Stable protagonist silhouette and independent mobile skill queue indicators. */
+#hero.entity.hero{width:132px;height:154px}
+.entity.hero>.sprite{filter:brightness(1.1) contrast(1.08) saturate(1.1)}
+#hero>.sprite-a,#hero>.sprite-b{visibility:visible;pointer-events:none}
+.entity.hero>.gear-layers{opacity:.65}
+.entity.hero[data-motion="attack"]>.gear-layers{opacity:.82}
+.skillbar button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.skillbar button[data-queued="true"]{outline:2px solid #efd484;outline-offset:1px;box-shadow:0 0 11px #ffc97877;background:linear-gradient(135deg,#514126,#30243b)}
+.skillbar button[data-queued="true"] small{color:#ffe3a0}
+@media(max-width:600px){#hero.entity.hero{width:126px;height:147px}}
