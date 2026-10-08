@@ -73,7 +73,7 @@ export const EXTRA_ITEMS={
  raidcrown:{name:'신화 · 신격의 왕관',slot:'head',rarity:'mythic',atk:420,def:390,hp:4200,tier:7,level:400,raid:true},
  raidboots:{name:'신화 · 신격의 차원장화',slot:'boots',rarity:'mythic',atk:220,def:360,hp:4800,speed:.18,tier:7,level:400,raid:true},
  raidring:{name:'신화 · 신격심장 반지',slot:'ring',rarity:'mythic',atk:680,def:210,hp:3600,speed:.19,tier:7,level:400,raid:true},
- raidear:{name:'신화 · 신격의 귀걸이',slot:'ear',rarity:'mythic',atk:440,def:330,hp:4300,tier:7,level:400,raid:true},,
+ raidear:{name:'신화 · 신격의 귀걸이',slot:'ear',rarity:'mythic',atk:440,def:330,hp:4300,tier:7,level:400,raid:true},
  riftblade:{name:'초월 · 균열의 파천검',slot:'weapon',rarity:'mythic',atk:2800,def:130,hp:1650,tier:8,level:500,speed:0.22},
  riftarmor:{name:'초월 · 균열의 불멸갑',slot:'armor',rarity:'mythic',atk:476,def:1080,hp:16500,tier:8,level:500},
  riftcape:{name:'초월 · 균열의 차원망토',slot:'cape',rarity:'mythic',atk:1036,def:432,hp:7095,tier:8,level:500},
