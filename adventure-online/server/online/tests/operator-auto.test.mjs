@@ -51,3 +51,41 @@ test('automatic hunting starts moving toward enemies even from dungeon entrance'
  assert.ok(p.state.y>before.y+30||Math.abs(p.state.x-before.x)>30,'auto should leave entrance to chase a valid mob');
  assert.ok(p.autoTarget!=null,'auto target should be assigned at entrance');
 });
+
+for(const operator of [false,true]){
+ test('pressing a skill while auto hunting queues its cast but keeps the hunting mode, operator='+operator,()=>{
+  const f=setup(operator),{w,p,target}=f;
+  w.action(p,{type:'auto',on:true});f.advance(.1);
+  assert.ok(p.nextAttack>f.clock,'first automatic spell occupies this cast window');
+  assert.equal(p.cooldowns[0],0);
+  w.action(p,{type:'attack',skill:0,target:target.id,manual:true,keepAuto:true});
+  assert.equal(p.auto,true,'skill input must not switch off automatic hunting');
+  assert.deepEqual(p.autoSkillQueue,[0]);
+  assert.deepEqual(w.snapshot(p).self.autoSkillQueue,[0],'pending manual skill must be visible to client');
+  let cast=false;
+  for(let i=0;i<35;i++){f.advance(.1);if(p.cooldowns[0]>f.clock){cast=true;break;}}
+  assert.ok(cast,'manual priority spell must fire at next available server attack window');
+  assert.deepEqual(p.autoSkillQueue,[],'queued skill disappears only after its actual cast');
+  assert.equal(p.auto,true,'automatic hunting must continue after manual priority cast');
+ });
+}
+test('auto skill reservation supports two different spells, ignores repeats, and clears when auto is disabled',()=>{
+ const f=setup(true),{w,p,target}=f;
+ w.action(p,{type:'auto',on:true});f.advance(.1);
+ for(const i of [0,0,1,2])w.action(p,{type:'attack',skill:i,manual:true,keepAuto:true,target:target.id});
+ assert.deepEqual(p.autoSkillQueue,[0,1],'queue limited to two unique skills');
+ w.action(p,{type:'autoTarget',target:target.id});
+ assert.equal(p.auto,true);assert.equal(p.autoTarget,target.id);
+ w.action(p,{type:'auto',on:false});
+ assert.equal(p.auto,false);assert.deepEqual(p.autoSkillQueue,[]);
+});
+test('skill can be reserved at low MP and fires after automatic MP recovery',()=>{
+ const f=setup(false),{w,p,target}=f;
+ p.state.mp=0;w.action(p,{type:'auto',on:true});
+ w.action(p,{type:'attack',skill:0,manual:true,keepAuto:true,target:target.id});
+ assert.deepEqual(p.autoSkillQueue,[0]);
+ let cast=false;
+ for(let i=0;i<125;i++){f.advance(.1);if(p.cooldowns[0]>f.clock){cast=true;break;}}
+ assert.ok(cast,'manual queue eventually casts after natural mana regeneration');
+ assert.equal(p.auto,true);
+});
