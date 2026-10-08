@@ -1,12 +1,12 @@
-import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-quality2';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,CONQUEST_CAP,conquestNeed,conquestTitle,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-quality2';
+import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-verified3';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,CONQUEST_CAP,conquestNeed,conquestTitle,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-verified3';
 import {mergeSnapshot} from './network.js';
-import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-quality2';
+import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-verified3';
 import {API_URL} from './config.js';
-import {createCombatQueue} from './combat-queue.js?v=20261008-quality2';
+import {createCombatQueue} from './combat-queue.js?v=20261008-verified3';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
-const endgameStyle=document.createElement('style');endgameStyle.textContent=".skillbar{display:grid!important;grid-template-columns:repeat(7,54px);gap:4px;max-width:calc(100vw - 16px)}@media(max-width:600px){.skillbar{grid-template-columns:repeat(7,46px);gap:3px}.skillbar button{width:46px!important;min-height:48px!important;padding:3px!important;font-size:8px!important}}#world[data-zone=void]:after{background:radial-gradient(ellipse at 50% 70%,transparent 22%,#160b2670 72%,#06030bcc 100%)!important}#world[data-zone=origin]:after{background:radial-gradient(ellipse at 50% 70%,transparent 25%,#473a1360 72%,#100c04bb 100%)!important}";document.head.append(endgameStyle);
+const endgameStyle=document.createElement('style');endgameStyle.textContent="#world[data-zone=void]:after{background:radial-gradient(ellipse at 50% 70%,transparent 22%,#160b2670 72%,#06030bcc 100%)!important}#world[data-zone=origin]:after{background:radial-gradient(ellipse at 50% 70%,transparent 25%,#473a1360 72%,#100c04bb 100%)!important}";document.head.append(endgameStyle);
 let wireSnapshot=null;
 let token='',connectionKey='',legacy=null,roster=[],selectedSlot=0,state=profile(),view={x:768,y:355},connected=false,paused=false,serverNow=0,receivedAt=0,last=0,clock=0,lastSend=0,moveSending=false,pendingMove=null,streamController=null,streamGeneration=0,lastSelfSampleAt=0,lastSelfX=768,lastSelfY=355,serverVelocity={x:0,y:0};
 const skillQueue=createCombatQueue(6,2,3);
