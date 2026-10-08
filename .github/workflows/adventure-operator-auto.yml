@@ -14,4 +14,5 @@ jobs:
         with:
           node-version: 22
       - run: npm install --prefix adventure-online/server/online --omit=dev
-      - run: node --test adventure-online/server/online/tests/operator-auto.test.mjs
+      - run: node --check adventure-online/image-prototype/app.js && node --check adventure-online/server/online/server.mjs && node --check adventure-online/server/online/engine.mjs
+      - run: node --test adventure-online/server/online/tests/operator-auto.test.mjs adventure-online/server/online/tests/assets.test.mjs adventure-online/server/online/tests/combo.test.mjs adventure-online/image-prototype/tests/combat-queue.test.mjs
