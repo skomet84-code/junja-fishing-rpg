@@ -41,3 +41,13 @@ test('automatic MP recovery eventually resumes skills without administrator exce
  for(let i=0;i<85;i++){f.advance(.1);if(p.attackSkill>=0&&p.cooldowns[p.attackSkill]>f.clock){cast=true;break;}}
  assert.ok(cast,'autohunt should cast after mana regeneration');
 });
+
+test('automatic hunting starts moving toward enemies even from dungeon entrance',()=>{
+ let now=100;const w=new World({now:()=>now,random:()=>.999});
+ const p=w.add('spawn-auto','spawn-auto',profile({job:'rogue',level:351,rank:3,zone:'void',x:768,y:350}),'입구테스트');
+ const before={x:p.state.x,y:p.state.y};p.state.mp=stats(p.state).mp;
+ w.action(p,{type:'auto',on:true});assert.equal(p.auto,true);
+ for(let i=0;i<30;i++){now+=.1;w.tick(.1);}
+ assert.ok(p.state.y>before.y+30||Math.abs(p.state.x-before.x)>30,'auto should leave entrance to chase a valid mob');
+ assert.ok(p.autoTarget!=null,'auto target should be assigned at entrance');
+});
