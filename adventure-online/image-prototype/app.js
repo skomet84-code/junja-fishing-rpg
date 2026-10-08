@@ -539,18 +539,26 @@ function skillEffect(job,skill,target,origin=view){
   case 'warrior:4': warriorTechnique(4,target,origin);break;
   case 'warrior:5': warriorTechnique(5,target,origin);break;
   case 'warrior:6': warriorTechnique(6,target,origin);break;
+  case 'warrior:7': warriorTechnique(6,target,origin);fxNode('beyond-rift',t,1550,'<i></i><i></i><i></i>');break;
+  case 'warrior:8': warriorTechnique(6,target,origin);fxNode('beyond-eternal',t,1900,'<i></i><i></i><i></i><i></i>');break;
   case 'rogue:0': fxNode('rogue flurry',t,720,'<i></i><i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'rogue'),110);break;
   case 'rogue:1': fxLine('rogue drain',t,o,850);fxNode('rogue blood',t,760,'<i></i>');if(target)setTimeout(()=>impact(target,'rogue'),120);break;
   case 'rogue:2': fxLine('rogue shadowdash',o,t,520);fxNode('rogue shadowhit',t,580,'<i></i><i></i>');if(target)setTimeout(()=>impact(target,'rogue'),90);break;
   case 'rogue:3': fxNode('rogue moon',t,900,'<i></i>');if(target)setTimeout(()=>impact(target,'rogue'),210);break;case 'rogue:4': fxNode('rogue flurry',t,850,'<i></i><i></i><i></i><i></i>');fxNode('rogue shadowhit',t,780,'<i></i><i></i>');if(target)setTimeout(()=>impact(target,'rogue'),120);break;case 'rogue:5': fxLine('rogue shadowdash',o,t,620);fxNode('rogue moon',t,1000,'<i></i>');if(target)setTimeout(()=>impact(target,'rogue'),170);break;case 'rogue:6': fxNode('ascension rogue',t,1500,'<i></i><i></i><i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'rogue'),210);break;
+  case 'rogue:7': fxLine('rogue shadowdash',o,t,550);fxNode('beyond-rift',t,1450,'<i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'rogue'),150);break;
+  case 'rogue:8': fxNode('beyond-eclipse',t,1750,'<i></i><i></i><i></i><i></i>');fxNode('rogue flurry',t,950,'<i></i><i></i><i></i><i></i>');break;
   case 'mage:0': fxProjectile('mage fireball',o,target,330);break;
   case 'mage:1': fxNode('mage frost',t,950,'<i></i><i></i><i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'mage'),230);break;
   case 'mage:2': fxNode('mage thunderstorm',t,1100,'<i></i><i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'mage'),300);break;
   case 'mage:3': fxNode('mage judgment',t,1250,'<i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'mage'),360);break;case 'mage:4': fxNode('mage thunderstorm',t,1200,'<i></i><i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'mage'),280);break;case 'mage:5': fxNode('mage frost',t,1050,'<i></i><i></i><i></i><i></i><i></i>');fxNode('mage judgment',t,1350,'<i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'mage'),330);break;case 'mage:6': fxNode('ascension mage',t,1700,'<i></i><i></i><i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'mage'),420);break;
+  case 'mage:7': fxNode('beyond-rift',t,1700,'<i></i><i></i><i></i>');fxNode('mage thunderstorm',t,1300,'<i></i><i></i><i></i><i></i>');break;
+  case 'mage:8': fxNode('beyond-eternal',t,1950,'<i></i><i></i><i></i><i></i>');fxNode('mage judgment',t,1450,'<i></i><i></i><i></i>');break;
   case 'healer:0': fxProjectile('healer holybolt',o,target,370);break;
   case 'healer:1': fxNode('healer breath',o,1050,'<i></i><i></i><i></i><i></i><i></i>');break;
   case 'healer:2': fxNode('healer barrier',o,1250,'<i></i><i></i>');break;
   case 'healer:3': fxNode('healer lotus',o,1350,'<i></i><i></i><i></i><i></i><i></i><i></i>');break;case 'healer:4': fxNode('healer barrier',o,1450,'<i></i><i></i>');break;case 'healer:5': fxNode('healer breath',o,1250,'<i></i><i></i><i></i><i></i><i></i>');fxNode('healer lotus',o,1450,'<i></i><i></i><i></i><i></i><i></i><i></i>');break;case 'healer:6': fxNode('ascension healer',o,1750,'<i></i><i></i><i></i><i></i><i></i>');break;
+  case 'healer:7': fxNode('beyond-rift',o,1600,'<i></i><i></i><i></i>');fxNode('healer lotus',o,1400,'<i></i><i></i><i></i><i></i><i></i>');break;
+  case 'healer:8': fxNode('beyond-eternal',o,1900,'<i></i><i></i><i></i><i></i>');fxNode('healer barrier',o,1600,'<i></i><i></i>');break;
   default: fxNode(job+' generic',target||o,650);
  }
 }
