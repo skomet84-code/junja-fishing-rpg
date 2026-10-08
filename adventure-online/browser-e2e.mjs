@@ -61,6 +61,7 @@ try{
     await page.locator('#utilityToggle').click();
    }
    await page.screenshot({path:path.join(screens,viewport.label+'-game.png')});
+   await page.evaluate(()=>{window.__warriorFxObserved=false;const effects=document.querySelector('#effects');window.__warriorFxObserver=new MutationObserver(changes=>{for(const c of changes)for(const el of c.addedNodes){if(el?.nodeType===1&&(el.classList?.contains('warrior-technique')||el.querySelector?.('.warrior-technique')))window.__warriorFxObserved=true;}});window.__warriorFxObserver.observe(effects,{childList:true});});
    await page.locator('#autoBtn').click();
    await page.waitForFunction(()=>window.__adventure?.snapshot()?.auto===true,{timeout:10000});
    try{
@@ -73,6 +74,7 @@ try{
     console.error('AUTO-HUNT_DIAGNOSTICS '+JSON.stringify({viewport:viewport.label,diag,errors,serverLog:output.slice(-4000)}));
     throw error;
    }
+   await page.waitForFunction(()=>window.__warriorFxObserved===true,null,{timeout:10000});
    const before=await page.evaluate(()=>({auto:window.__adventure.snapshot().auto,cooldowns:window.__adventure.snapshot().cooldowns,job:window.__adventure.snapshot().job,level:window.__adventure.snapshot().level}));
    assert.equal(before.auto,true);
    await page.locator('#skill0').click();

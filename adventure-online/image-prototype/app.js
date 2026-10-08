@@ -1,9 +1,9 @@
-import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-verified3';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,CONQUEST_CAP,conquestNeed,conquestTitle,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-verified3';
+import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-warriorfeel1';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,CONQUEST_CAP,conquestNeed,conquestTitle,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-warriorfeel1';
 import {mergeSnapshot} from './network.js';
-import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-verified3';
+import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-warriorfeel1';
 import {API_URL} from './config.js';
-import {createCombatQueue} from './combat-queue.js?v=20261008-verified3';
+import {createCombatQueue} from './combat-queue.js?v=20261008-warriorfeel1';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 const endgameStyle=document.createElement('style');endgameStyle.textContent="#world[data-zone=void]:after{background:radial-gradient(ellipse at 50% 70%,transparent 22%,#160b2670 72%,#06030bcc 100%)!important}#world[data-zone=origin]:after{background:radial-gradient(ellipse at 50% 70%,transparent 25%,#473a1360 72%,#100c04bb 100%)!important}";document.head.append(endgameStyle);
@@ -193,6 +193,10 @@ function damageNumber(target,delta){
  setTimeout(()=>wrap.remove(),800);
  if(target.el){target.el.classList.remove('polish-struck');void target.el.offsetWidth;target.el.classList.add('polish-struck');clearTimeout(target.hitTimer);target.hitTimer=setTimeout(()=>target.el?.classList.remove('polish-struck'),210);}
  const emphasis=target.boss||target.elite||delta>stats(state).atk*2;
+ if(state.job==='warrior'&&target.el){
+  const crit=document.createElement('span');crit.className='warrior-hit-confirm';crit.style.left=target.x+'px';crit.style.top=(target.y-37)+'px';
+  crit.innerHTML='<i></i><i></i><i></i><i></i>';$('effects').append(crit);setTimeout(()=>crit.remove(),430);
+ }
  if(!motionReduced)cameraKick=Math.max(cameraKick,emphasis?2.8:1.1);
  combatTone(emphasis);
 }
@@ -253,12 +257,12 @@ const MOTION={
 function motion(el,art,mode,row,mirror,time,phase=0,dx=0,dy=0){
  const pose=applyHeading(el,dx,dy,row,mirror),cfg=MOTION[mode]||MOTION.idle,keys=cfg.keys;
  const pos=((time*cfg.speed+phase)%keys.length+keys.length)%keys.length,idx=Math.floor(pos),mix=pos-idx;
- if(el.dataset.motionSheet==='1'){const fps=mode==='walk'?18:mode==='attack'?16:7,frame=Math.floor((((time*fps)+(phase*3))%12+12)%12);motionSprite(art,frame,mode,pose.row,pose.mirror);}
+ if(el.dataset.motionSheet==='1'){const fps=mode==='walk'?(el.dataset.job==='warrior'?14:18):mode==='attack'?16:7,frame=Math.floor((((time*fps)+(phase*3))%12+12)%12);motionSprite(art,frame,mode,pose.row,pose.mirror);}
  else blendSprite(art,keys[idx],keys[(idx+1)%keys.length],mix,pose.row,3,pose.mirror);
- el.dataset.motion=mode;
+ el.dataset.motion=mode;if(el.dataset.job==='warrior')el.dataset.warriorPhase=mode;
  const stride=mode==='walk'?Math.sin((pos/keys.length)*Math.PI*2):Math.sin(time*Math.PI*1.4+phase);
  const foot=Math.abs(Math.sin((pos/keys.length)*Math.PI*4)),job=el.dataset.job||'warrior',agile=job==='rogue',heavy=job==='warrior';
- const bobScale=heavy?.72:agile?1.08:1,leanScale=heavy?.58:agile?1.35:1,coatScale=heavy?.42:agile?1.4:.8;
+ const bobScale=heavy?.62:agile?1.08:1,leanScale=heavy?.42:agile?1.35:1,coatScale=heavy?.30:agile?1.4:.8;
  el.style.setProperty('--bob',mode==='walk'?(-.8-foot*2.3*bobScale)+'px':(-Math.max(0,stride)*.65)+'px');
  el.style.setProperty('--lean',mode==='walk'?(stride*1.35*leanScale)+'deg':(stride*.25)+'deg');
  el.style.setProperty('--squash',mode==='walk'?(1-foot*(heavy?.012:.02)):(1+stride*.005));
@@ -267,9 +271,16 @@ function motion(el,art,mode,row,mirror,time,phase=0,dx=0,dy=0){
 }
 function attackPose(el,art,row,mirror,started,duration=.44,job='warrior',skill=-1,variant=0,dx=0,dy=0){
  const pose=applyHeading(el,dx,dy,row,mirror),p=Math.max(0,Math.min(1,(clock-started)/duration));
+ const warrior=job==='warrior';
+ if(warrior){el.dataset.warriorPhase=p<.24?'windup':p<.64?'strike':'recover';el.dataset.warriorSkill=String(skill);}
+
  const cast=job==='mage'||job==='healer',rogue=job==='rogue',keys=cast?[0,1,3,1,0]:rogue?[0,1,3,2,3,0]:[0,1,3,3,2,0];
  const z=p*(keys.length-1),i=Math.min(keys.length-2,Math.floor(z)),mix=z-i;
- if(el.dataset.motionSheet==='1')motionSprite(art,Math.min(11,Math.floor(p*12)),'attack',pose.row,pose.mirror);
+ if(el.dataset.motionSheet==='1'){
+  // A brief readable wind-up, fast impact frames, and longer recovery.
+  const sequence=warrior?(p<.25?p/.25*3:p<.66?3+(p-.25)/.41*7:10+(p-.66)/.34*1):p*11;
+  motionSprite(art,Math.min(11,Math.floor(sequence)),'attack',pose.row,pose.mirror);
+ }
  else blendSprite(art,keys[i],keys[i+1],mix,pose.row,3,pose.mirror);
  let lean=0,bob=0,weapon=0,power=0,lunge=0;
  if(cast){
@@ -467,6 +478,32 @@ function impact(target,job='warrior'){
  if(!target)return;const el=document.createElement('div');el.className='combat-impact '+job;el.style.left=target.x+'px';el.style.top=(target.y-34)+'px';$('effects').append(el);
  target.el?.classList.add('contact-hit');setTimeout(()=>target.el?.classList.remove('contact-hit'),130);setTimeout(()=>el.remove(),420);
 }
+// Warrior visual actions reuse the existing 12-frame motion spritesheet.
+// Visual timing follows accepted server casts; only HP deltas produce hit numbers.
+function warriorTechnique(skill,target,origin=view){
+ if(!connected||state.zone===undefined)return;
+ const isGuard=skill===1,wide=[0,3,5,6].includes(skill),heavy=[2,4,6].includes(skill),air=skill===5||skill===6;
+ const dx=(target?.x??origin.x+(headingX||0)*85)-origin.x,dy=(target?.y??origin.y+(headingY||1)*85)-origin.y;
+ const d=Math.hypot(dx,dy)||1,nx=dx/d,ny=dy/d,angle=Math.atan2(dy,dx)*180/Math.PI;
+ const spot=isGuard?{x:origin.x,y:origin.y-46}:wide?{x:origin.x+nx*48,y:origin.y+ny*38-44}:{x:origin.x+nx*Math.min(92,d*.55),y:origin.y+ny*Math.min(75,d*.42)-45};
+ const fx=document.createElement('span');
+ fx.className='warrior-technique'+(isGuard?' guard':wide?' wide':heavy?' heavy':' light')+(air?' ascended':'');
+ fx.dataset.skill=String(skill);fx.style.left=spot.x+'px';fx.style.top=spot.y+'px';
+ fx.style.setProperty('--strike-dir',angle+'deg');fx.style.setProperty('--sword-side',skill>=0&&skill%2?-1:1);
+ fx.innerHTML='<i class="blade"></i><i class="blade-highlight"></i><i class="strike-core"></i><i class="shock-ring"></i><i class="strike-particles"></i>';
+ $('effects').append(fx);
+ const duration=isGuard?820:heavy?660:wide?600:490;
+ setTimeout(()=>fx.remove(),duration);
+ if(target&&!isGuard){
+  const zoneAtStart=state.zone,targetId=target.id;
+  setTimeout(()=>{
+   if(!connected||state.zone!==zoneAtStart)return;
+   const enemy=enemies.get(targetId);
+   if(enemy?.alive&&enemy.hp<=enemy.max)impact(enemy,'warrior');
+  },heavy?220:wide?175:125);
+ }
+}
+
 function combatContact(job,skill,target,origin=view){
  if(!target)return;
  if(job==='mage'||job==='healer'){
@@ -474,6 +511,7 @@ function combatContact(job,skill,target,origin=view){
   const dx=target.x-origin.x,dy=(target.y-32)-(origin.y-55),anim=el.animate([{transform:'translate(-50%,-50%) scale(.7)',opacity:.7},{transform:`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(1.15)`,opacity:1}],{duration:job==='mage'?250:290,easing:'cubic-bezier(.2,.75,.25,1)',fill:'forwards'});
   anim.onfinish=()=>{el.remove();impact(target,job);};return;
  }
+ if(job==='warrior'){warriorTechnique(skill,target,origin);return;}
  setTimeout(()=>impact(target,job),job==='rogue'?105:165);
 }
 function fxNode(cls,pos,duration=900,html=''){
@@ -494,10 +532,13 @@ function fxLine(cls,origin,target,duration=650){
 function skillEffect(job,skill,target,origin=view){
  const key=job+':'+skill,o={x:origin.x,y:origin.y-20},t=target?{x:target.x,y:target.y-28}:o;
  switch(key){
-  case 'warrior:0': fxNode('warrior spin',o,650,'<i></i><i></i>');if(target)setTimeout(()=>impact(target,'warrior'),190);break;
-  case 'warrior:1': fxNode('warrior fortress',o,1000,'<i></i>');break;
-  case 'warrior:2': fxNode('warrior smash',t,700,'<i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'warrior'),120);break;
-  case 'warrior:3': fxNode('warrior storm',o,1000,'<i></i><i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'warrior'),260);break;case 'warrior:4': fxNode('warrior smash',t,850,'<i></i><i></i><i></i>');fxNode('warrior storm',t,900,'<i></i><i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'warrior'),180);break;case 'warrior:5': fxNode('ascension warrior',o,1250,'<i></i><i></i><i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'warrior'),230);break;case 'warrior:6': fxNode('ascension warrior',t,1600,'<i></i><i></i><i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'warrior'),300);break;
+  case 'warrior:0': warriorTechnique(0,target,origin);break;
+  case 'warrior:1': warriorTechnique(1,target,origin);break;
+  case 'warrior:2': warriorTechnique(2,target,origin);break;
+  case 'warrior:3': warriorTechnique(3,target,origin);break;
+  case 'warrior:4': warriorTechnique(4,target,origin);break;
+  case 'warrior:5': warriorTechnique(5,target,origin);break;
+  case 'warrior:6': warriorTechnique(6,target,origin);break;
   case 'rogue:0': fxNode('rogue flurry',t,720,'<i></i><i></i><i></i><i></i>');if(target)setTimeout(()=>impact(target,'rogue'),110);break;
   case 'rogue:1': fxLine('rogue drain',t,o,850);fxNode('rogue blood',t,760,'<i></i>');if(target)setTimeout(()=>impact(target,'rogue'),120);break;
   case 'rogue:2': fxLine('rogue shadowdash',o,t,520);fxNode('rogue shadowhit',t,580,'<i></i><i></i>');if(target)setTimeout(()=>impact(target,'rogue'),90);break;
