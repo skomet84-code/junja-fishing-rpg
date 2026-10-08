@@ -37,7 +37,7 @@ try{
    await page.locator('#joinBtn').click();
    await page.waitForFunction(()=>window.__adventure?.snapshot()?.connected===true,{timeout:25000});
    await page.locator('#loading').waitFor({state:'hidden',timeout:12000});
-   assert.equal(await page.locator('#skillbar button').count(),7,'Seven skills must be visible');
+   assert.equal(await page.locator('#skillbar button').count(),9,'Nine skills must be visible');
    const visual=await page.evaluate(async()=>{
     const a=document.querySelector('#heroArt'),hero=document.querySelector('#hero'),skills=[...document.querySelectorAll('#skillbar button')],grid=getComputedStyle(document.querySelector('#skillbar'));
     const bg=getComputedStyle(a).backgroundImage;const match=bg.match(/url\(["']?([^"')]+)["']?\)/),url=match?.[1];
@@ -47,10 +47,10 @@ try{
    });
    assert.ok(visual.asset.loaded,'Hero sprite asset must decode successfully: '+JSON.stringify(visual));
    assert.ok(visual.hero.width>40&&visual.hero.height>50&&visual.hero.visibility!=='hidden','Hero must be renderable');
-   if(viewport.label==='mobile')assert.equal(visual.columns,4,'Runtime mobile skill grid should use four columns: '+JSON.stringify(visual));
+   if(viewport.label==='mobile')assert.equal(visual.columns,5,'Runtime mobile skill grid should use five columns: '+JSON.stringify(visual));
    else assert.ok(visual.columns>=1,'Desktop skill layout should have a valid computed style: '+JSON.stringify(visual));
    if(viewport.label==='mobile'){
-    assert.ok(new Set(visual.rows).size===2,'Seven skills must occupy two rows: '+JSON.stringify(visual.rows));
+    assert.ok(new Set(visual.rows).size===2,'Nine skills must occupy two rows: '+JSON.stringify(visual.rows));
     await page.locator('#minimapToggle').click();
     assert.equal(await page.locator('#minimapToggle').getAttribute('aria-expanded'),'true');
     assert.equal(await page.locator('#minimap').isVisible(),true);
