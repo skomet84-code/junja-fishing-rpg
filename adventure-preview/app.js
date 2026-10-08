@@ -1,9 +1,9 @@
-import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-auto-skills-together1';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,CONQUEST_CAP,conquestNeed,conquestTitle,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-auto-skills-together1';
+import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261008-quality2';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,CONQUEST_CAP,conquestNeed,conquestTitle,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261008-quality2';
 import {mergeSnapshot} from './network.js';
-import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-auto-skills-together1';
+import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261008-quality2';
 import {API_URL} from './config.js';
-import {createCombatQueue} from './combat-queue.js?v=20261008-auto-skills-together1';
+import {createCombatQueue} from './combat-queue.js?v=20261008-quality2';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 const endgameStyle=document.createElement('style');endgameStyle.textContent=".skillbar{display:grid!important;grid-template-columns:repeat(7,54px);gap:4px;max-width:calc(100vw - 16px)}@media(max-width:600px){.skillbar{grid-template-columns:repeat(7,46px);gap:3px}.skillbar button{width:46px!important;min-height:48px!important;padding:3px!important;font-size:8px!important}}#world[data-zone=void]:after{background:radial-gradient(ellipse at 50% 70%,transparent 22%,#160b2670 72%,#06030bcc 100%)!important}#world[data-zone=origin]:after{background:radial-gradient(ellipse at 50% 70%,transparent 25%,#473a1360 72%,#100c04bb 100%)!important}";document.head.append(endgameStyle);
@@ -69,6 +69,20 @@ function syncZoneDecor(zone){
   const list=zone==='void'?VOID_NPCS:ORIGIN_NPCS;for(const npc of list){const b=document.createElement('button');b.className='regional-npc '+zone;b.style.left=npc.x+'px';b.style.top=npc.y+'px';b.innerHTML='<span class="regional-npc-art" style="--npc-slot:'+npc.slot+'"></span><b>'+npc.name+'</b><small>'+npc.desc+'</small>';b.onclick=e=>{e.stopPropagation();regionalNpcWindow(npc.id);};$('world').append(b);zoneNpcEls.push(b);}
  }
 }
+// Purely visual progression feedback; saved level and promotion rules stay server-owned.
+function showLevelAchievement(fromLevel,toLevel){
+ if(!Number.isFinite(fromLevel)||!Number.isFinite(toLevel)||toLevel<=fromLevel)return;
+ const milestone=[400,300,200,100].find(l=>fromLevel<l&&toLevel>=l);
+ const title=milestone===400?'태초의 경지에 도달했습니다':milestone===300?'정복자의 길이 열렸습니다':milestone===200?'새로운 힘이 깨어났습니다':milestone===100?'첫 번째 전직의 문이 열렸습니다':'성장의 힘이 깨어납니다';
+ const label=milestone?'MILESTONE · LV.'+milestone:'LEVEL UP';
+ document.querySelector('.level-achievement')?.remove();
+ const flash=document.createElement('div');flash.className='level-achievement'+(milestone?' major':'');
+ flash.setAttribute('role','status');flash.innerHTML='<small>'+label+'</small><b>Lv.'+toLevel+'</b><span>'+title+'</span>';
+ $('game').append(flash);
+ const hero=$('hero');hero.classList.remove('level-surging');void hero.offsetWidth;hero.classList.add('level-surging');
+ setTimeout(()=>{flash.remove();hero.classList.remove('level-surging');},milestone?2300:1450);
+}
+
 function showZoneArrival(zone){
  const z=ZONES[zone];if(!z)return;const old=document.querySelector('.zone-arrival');if(old)old.remove();
  const el=document.createElement('div');el.className='zone-arrival';el.innerHTML='<small>AREA ENTERED</small><b>'+esc(z.name)+'</b><span>권장 Lv.'+z.level+'</span>';$('game').append(el);setTimeout(()=>el.classList.add('show'),20);setTimeout(()=>el.remove(),1900);
@@ -91,8 +105,8 @@ function spawnLootFx(e){
  el.innerHTML='<i></i><i></i><i></i><i></i><i></i><b>'+label+'</b>';$('effects').append(el);setTimeout(()=>el.remove(),1450);
 }
 function renderMinimap(){
- const c=$('minimap');if(!c)return;const ctx=c.getContext('2d'),w=c.width,h=c.height,sx=w/W,sy=h/H,z=ZONES[state.zone]||{};
- const palettes={surface:['#173a26','#6aa45d'],grove:['#0b2117','#315f37'],cave:['#10182a','#527fa9'],ruins:['#2c1816','#9a5638'],abyss:['#12091c','#6b3a8d'],celestial:['#202943','#d1bd78']},p=palettes[state.zone]||palettes.surface;
+ const c=$('minimap');if(!c||(innerWidth<=700&&!$('minimapWrap').classList.contains('open')))return;const ctx=c.getContext('2d'),w=c.width,h=c.height,sx=w/W,sy=h/H,z=ZONES[state.zone]||{};
+ const palettes={surface:['#173a26','#6aa45d'],grove:['#0b2117','#315f37'],cave:['#10182a','#527fa9'],ruins:['#2c1816','#9a5638'],abyss:['#12091c','#6b3a8d'],celestial:['#202943','#d1bd78'],void:['#180d29','#9851cd'],origin:['#1c2c39','#efd99b']},p=palettes[state.zone]||palettes.surface;
  ctx.clearRect(0,0,w,h);ctx.fillStyle=p[0];ctx.fillRect(0,0,w,h);
  ctx.fillStyle=p[1]+'55';ctx.fillRect(0,Math.round(610*sy),w,Math.round(400*sy));ctx.fillRect(0,Math.round(1150*sy),w,Math.round(365*sy));ctx.fillRect(0,Math.round(1630*sy),w,h-Math.round(1630*sy));
  ctx.strokeStyle='#ffffff22';ctx.lineWidth=1;for(const y of [610,1010,1150,1515,1630]){ctx.beginPath();ctx.moveTo(0,y*sy);ctx.lineTo(w,y*sy);ctx.stroke();}
@@ -295,7 +309,7 @@ function updateSnapshot(data){
  data=mergeSnapshot(wireSnapshot,data);if(!data)return;wireSnapshot=data;
  if(data.disconnected){connected=false;streamController?.abort();toast(data.disconnected);showSelection();return;}
  if(!data.self)return;
- const sampleAt=performance.now()/1000,old=state,next=data.self;
+ const sampleAt=performance.now()/1000,old=state,next=data.self,wasConnected=connected;
  if(connected&&old.zone===next.zone&&next.hp<old.hp)heroDamage(old.hp-next.hp);
  if(lastSelfSampleAt&&old.zone===next.zone){
   const dt=Math.max(.03,sampleAt-lastSelfSampleAt),vx=(next.x-lastSelfX)/dt,vy=(next.y-lastSelfY)/dt,mag=Math.hypot(vx,vy),cap=300,ratio=mag>cap?cap/mag:1;
@@ -311,7 +325,7 @@ function updateSnapshot(data){
  const me=data.players.find(p=>p.id===state.id);
  if(me){face=me.face;flip=me.flip;if(Number.isFinite(me.dirX)&&Number.isFinite(me.dirY)){headingX=me.dirX;headingY=me.dirY;}if(me.attacking){const key=[me.attackSkill??-1,me.attackTarget??'',state.nextAttack||0].join(':');if(key!==lastServerAttackKey){lastServerAttackKey=key;const hero=$('hero'),skill=me.attackSkill??-1,target=fxTarget(me.attackTarget),duration=combatAnimDuration(skill);attackUntil=clock+duration;hero.dataset.attackStarted=String(clock);hero.dataset.attackDuration=String(duration);hero.dataset.attackSkill=String(skill);hero.dataset.attackVariant=String(attackSerial++%3);if(!lastLocalFx||lastLocalFx.skill!==skill||lastLocalFx.until<now()){if(skill>=0)skillEffect(state.job,skill,target,view);else if(target)combatContact(state.job,-1,target,view);}lastLocalFx=null;}}else lastServerAttackKey='';}
  if(old.job!==state.job){skillQueue.clear();remoteSkillPending=null;lastLocalFx=null;}
- if(old.job!==state.job||old.rank!==state.rank||$('skillbar').childElementCount!==JOBS[state.job].skills.length)makeSkills();if((old.rank||0)<(state.rank||0))showPromotion(state.rank,state.job);actorArt($('heroArt'),state);decorate($('hero'),state);$('hero').querySelector('.entity-name').textContent=state.name+' · '+jobName(state);const portrait=document.querySelector('.portrait'),productionPortrait=EXPERIMENTAL_RANK_ART&&state.job==='rogue'&&Number(state.rank||0)>=3,portraitSrc=productionPortrait?productionSpriteSheet('rogue',state.rank):`./assets/${JOBS[state.job].art}.png`;portrait.style.backgroundImage=`url('${portraitSrc}?v=${BUILD}')`;portrait.style.backgroundSize=productionPortrait?'cover':'400% 300%';portrait.style.backgroundPosition=productionPortrait?'50% 12%':'0 0';portrait.dataset.job=state.job;portrait.dataset.rank=String(state.rank||0);portrait.classList.toggle('production-portrait',productionPortrait);
+ if(old.job!==state.job||old.rank!==state.rank||$('skillbar').childElementCount!==JOBS[state.job].skills.length)makeSkills();if(wasConnected&&(old.rank||0)<(state.rank||0))showPromotion(state.rank,state.job);if(wasConnected&&old.level<state.level&&(old.rank||0)===(state.rank||0))showLevelAchievement(old.level,state.level);actorArt($('heroArt'),state);decorate($('hero'),state);$('hero').querySelector('.entity-name').textContent=state.name+' · '+jobName(state);const portrait=document.querySelector('.portrait'),productionPortrait=EXPERIMENTAL_RANK_ART&&state.job==='rogue'&&Number(state.rank||0)>=3,portraitSrc=productionPortrait?productionSpriteSheet('rogue',state.rank):`./assets/${JOBS[state.job].art}.png`;portrait.style.backgroundImage=`url('${portraitSrc}?v=${BUILD}')`;portrait.style.backgroundSize=productionPortrait?'cover':'400% 300%';portrait.style.backgroundPosition=productionPortrait?'50% 12%':'0 0';portrait.dataset.job=state.job;portrait.dataset.rank=String(state.rank||0);portrait.classList.toggle('production-portrait',productionPortrait);
  const mobIds=new Set();for(const e of data.enemies){
   mobIds.add(e.id);let entry=enemies.get(e.id),wasKnown=!!entry,wasAlive=entry?.alive,previousHp=entry?.hp,previousX=entry?.x,previousY=entry?.y,previousAt=entry?.sampleAt;
   if(!entry){const el=entity('enemy'+(e.boss?' boss':''));el.querySelector('b').textContent=e.name||'숲 다람쥐';el.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();select(e.id,true);});$('enemyLayer').append(el);entry={el,art:el.querySelector('.sprite'),vx:e.x,vy:e.y,netVx:0,netVy:0,sampleAt};enemies.set(e.id,entry);}
@@ -526,7 +540,7 @@ const QUEST_VIEWS={
  storyDone:s=>['메인 스토리 1장 완료','천룡의 유적을 정복했습니다. 정예·네임드·일일 임무에 도전하세요.','완료']
 };
 function questView(s){const oq=s.originStory||{};if(s.zone==='origin'&&oq.stage>0&&!oq.claimed){if(oq.stage===1)return ['태초의 기록 1장','성광 회랑 몬스터 '+Math.min(15,oq.kills||0)+' / 15','성광 회랑으로'];if(oq.stage===2)return ['태초의 기록 2장','창세 제단 정예 '+Math.min(3,oq.elites||0)+' / 3','창세 제단으로'];if(oq.stage===3)return ['태초의 기록 3장','태초신전 수문신을 처치하세요.','수문신 찾아가기'];if(oq.stage===4)return ['태초의 기록 4장','23:00 태초신 카이로스 레이드에 참여하세요.','레이드 준비'];if(oq.stage===5)return ['태초의 기록 완결','기록관 세라에게 돌아가 최종 보상을 받으세요.','세라에게 보고'];}const key=s.storyQuest||s.quest,view=QUEST_VIEWS[key]||QUEST_VIEWS[s.quest]||QUEST_VIEWS.available;return view(s);}
-function makeSkills(){$('skillbar').replaceChildren();JOBS[state.job].skills.forEach((s,i)=>{const b=document.createElement('button'),mp=skillMpCost(state,s);b.id='skill'+i;b.innerHTML=`<b>${s[0]}</b><small>MP ${mp}</small>`;b.type='button';b.setAttribute('aria-label',s[0]+' 스킬');b.onclick=()=>attack(i);$('skillbar').append(b);});}
+function makeSkills(){$('skillbar').replaceChildren();JOBS[state.job].skills.forEach((s,i)=>{const b=document.createElement('button'),mp=skillMpCost(state,s);b.id='skill'+i;b.dataset.kind=s[4]||'hit';b.dataset.slot=String(i+1);b.innerHTML=`<b>${s[0]}</b><small>MP ${mp}</small>`;b.type='button';b.setAttribute('aria-label',s[0]+' 스킬');b.onclick=()=>attack(i);$('skillbar').append(b);});}
 function hud(){const st=stats(state),t=now();$('playerName').textContent=state.name||'준자';$('level').textContent='Lv.'+state.level+' '+jobName(state)+(state.level>=300?' · 정복 '+(state.endgame?.mastery||0):'');$('hpText').textContent=Math.ceil(state.hp)+' / '+st.hp;$('hpBar').style.width=state.hp/st.hp*100+'%';$('mpText').textContent='MP '+Math.ceil(state.mp)+' / '+st.mp+' · 물약 '+(state.manaPotions||0);$('mpBar').style.width=Math.min(100,state.mp/st.mp*100)+'%';$('expBar').style.width=Math.min(100,state.exp/needXp(state.level)*100)+'%';$('expText').textContent='EXP '+state.exp+' / '+needXp(state.level);$('gold').textContent=state.gold.toLocaleString()+' G';$('zone').textContent=(state.zone==='surface'?(view.y>590?'준자마을 · 초원숲':'준자마을'):ZONES[state.zone].name)+' · '+(state.channel||'');$('potionLabel').textContent=state.potions+'개';$('potionBtn').disabled=!connected||state.potions<=0;
  const readout=$('combatReadout');
  if(readout){const foe=enemies.get(selected);const inCombat=auto||!!foe?.alive||!!state.combatTarget;readout.hidden=!inCombat;
@@ -626,6 +640,16 @@ function frame(time){
 }
 const invite=new URL(location.href).searchParams.get('channel');if(invite&&/^[A-Za-z0-9가-힣_-]{2,16}$/.test(invite))$('channelInput').value=invite;
 try{soundOn=localStorage.getItem('junja-adventure-sound')==='1';}catch{}$('soundBtn').setAttribute('aria-pressed',String(soundOn));$('soundBtn').querySelector('small').textContent=soundOn?'ON':'OFF';document.addEventListener('pointerdown',async()=>{if(soundOn&&!audioCtx){audioCtx=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')await audioCtx.resume();setRegionAudio(state.zone);}},{once:true});
+const minimapWrap=$('minimapWrap'),minimapToggle=$('minimapToggle');
+if(minimapWrap&&minimapToggle){
+ minimapToggle.onclick=()=>{
+  const opened=minimapWrap.classList.toggle('open');
+  minimapToggle.setAttribute('aria-expanded',String(opened));
+  minimapToggle.setAttribute('aria-label',opened?'필드 미니맵 접기':'필드 미니맵 펼치기');
+  minimapToggle.textContent=opened?'지도 −':'지도 +';
+  if(opened)renderMinimap();
+ };
+}
 const utility=$('utilityNav'),utilityToggle=$('utilityToggle');
 if(utility&&utilityToggle){utilityToggle.onclick=()=>{const expanded=utility.classList.toggle('expanded');utilityToggle.textContent=expanded?'메뉴 닫기':'메뉴 +';utilityToggle.setAttribute('aria-expanded',String(expanded));};
  utility.querySelectorAll('button:not(#utilityToggle)').forEach(b=>b.addEventListener('click',()=>{if(innerWidth<701){utility.classList.remove('expanded');utilityToggle.textContent='메뉴 +';utilityToggle.setAttribute('aria-expanded','false');}}));

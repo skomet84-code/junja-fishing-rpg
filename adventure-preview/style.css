@@ -1383,3 +1383,51 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 #autoBtn[aria-pressed="true"]{box-shadow:0 0 0 2px #b9ed7799,0 5px 14px #0009}
 .skillbar button[data-queued="true"]{border-color:#f7d87b!important;background:linear-gradient(145deg,#725a26,#392b40)!important}
 .skillbar button[data-queued="true"] small{color:#ffecab!important}
+
+
+/* Phase 2 — readable, responsive battle controls and a real foldable field map. */
+#minimapWrap{display:block;pointer-events:none}
+#minimapToggle{display:none}
+.skillbar button{position:relative;overflow:hidden}
+.skillbar button[data-kind="area"]{border-color:#ba8de0;background:linear-gradient(#463b65,#212840)}
+.skillbar button[data-kind="heal"],.skillbar button[data-kind="partyHeal"]{border-color:#76cfae;background:linear-gradient(#2b6556,#183932)}
+.skillbar button[data-kind="guard"],.skillbar button[data-kind="partyGuard"]{border-color:#e0c47c;background:linear-gradient(#625032,#332c27)}
+.skillbar button[data-kind="hit"],.skillbar button[data-kind="drain"]{border-color:#d8a17f}
+.skillbar button:before{content:attr(data-slot);position:absolute;top:1px;left:3px;color:#f3d4a4aa;font-size:9px;font-weight:800;line-height:1}
+/* Each region gets its own diffuse ambient light, without replacing or covering character art. */
+#world[data-zone]::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;background:var(--zone-ambient);opacity:.65;mix-blend-mode:screen;animation:regionBreath 9s ease-in-out infinite alternate}
+#world[data-zone="surface"]{--zone-ambient:radial-gradient(ellipse 440px 560px at 19% 16%,#fff19b50,transparent 75%),radial-gradient(ellipse 520px 720px at 78% 52%,#8ac87324,transparent 75%)}
+#world[data-zone="grove"]{--zone-ambient:radial-gradient(ellipse 460px 650px at 22% 33%,#81c75b32,transparent 72%),radial-gradient(ellipse 590px 680px at 80% 72%,#20b48c35,transparent 78%)}
+#world[data-zone="cave"]{--zone-ambient:radial-gradient(ellipse 430px 640px at 15% 42%,#44c6ff53,transparent 68%),radial-gradient(ellipse 460px 710px at 85% 65%,#6667de3a,transparent 78%)}
+#world[data-zone="ruins"]{--zone-ambient:radial-gradient(ellipse 440px 700px at 25% 27%,#f6ae5940,transparent 72%),radial-gradient(ellipse 550px 680px at 77% 76%,#c03f402d,transparent 70%)}
+#world[data-zone="abyss"]{--zone-ambient:radial-gradient(ellipse 590px 840px at 20% 44%,#974cda4f,transparent 75%),radial-gradient(ellipse 500px 660px at 81% 70%,#8a2a8e42,transparent 75%)}
+#world[data-zone="celestial"]{--zone-ambient:radial-gradient(ellipse 560px 850px at 25% 24%,#fff2ae68,transparent 67%),radial-gradient(ellipse 450px 740px at 80% 71%,#93bffd50,transparent 76%)}
+#world[data-zone="void"]{--zone-ambient:radial-gradient(ellipse 600px 800px at 24% 38%,#b44ceb58,transparent 70%),radial-gradient(ellipse 490px 880px at 76% 72%,#822ccd46,transparent 75%)}
+#world[data-zone="origin"]{--zone-ambient:radial-gradient(ellipse 690px 800px at 50% 20%,#fff4ce7a,transparent 73%),radial-gradient(ellipse 510px 780px at 77% 75%,#64c5e459,transparent 70%)}
+@keyframes regionBreath{from{opacity:.50}to{opacity:.76}}
+.enemy .life i{transition:width .18s ease-out}
+.level-achievement{position:absolute;left:50%;top:31%;transform:translate(-50%,-50%);z-index:3000;text-align:center;pointer-events:none;min-width:230px;padding:12px 28px;border-top:1px solid #edca8c88;border-bottom:1px solid #edca8c88;background:linear-gradient(90deg,transparent,#1e362bcc 25%,#233c2edb 50%,#1e362bcc 75%,transparent);animation:levelReveal 1.5s ease-out forwards;text-shadow:0 2px 6px #080a0a}
+.level-achievement small{display:block;color:#e9d09c;letter-spacing:3px;font-size:10px}
+.level-achievement b{display:block;font-size:33px;letter-spacing:1px;color:#fff1ba;line-height:1.2}
+.level-achievement span{display:block;color:#d8eddb;font-size:12px}
+.level-achievement.major{background:linear-gradient(90deg,transparent,#332044ea 22%,#4d315cea 50%,#332044ea 78%,transparent);border-color:#e8c47b}
+.level-achievement.major b{font-size:42px;color:#fff2c0;text-shadow:0 0 15px #ab74e4}
+.entity.hero.level-surging>.sprite{filter:brightness(1.4) contrast(1.1) drop-shadow(0 0 16px #e6b75d)}
+@keyframes levelReveal{0%{opacity:0;transform:translate(-50%,-36%) scale(.78)}18%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}70%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-65%) scale(.99)}}
+@media(max-width:700px){
+ #minimapWrap{right:7px;top:calc(196px + env(safe-area-inset-top));width:82px;padding:4px;border-radius:10px;z-index:26;box-shadow:0 4px 10px #0008;pointer-events:auto;transition:width .16s ease-out}
+ #minimapToggle{display:block;width:100%;min-height:34px;border:0;border-radius:7px;font-size:11px;font-weight:750;padding:5px;background:linear-gradient(#4a5b55,#22332f);color:#f6e6bb}
+ #minimapWrap:not(.open)>:not(#minimapToggle){display:none!important}
+ #minimapWrap.open{width:190px;padding:6px}
+ #minimapWrap.open #minimapToggle{margin-bottom:6px}
+ #minimapWrap.open #minimap{width:176px;height:112px}
+ .skillbar{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;width:min(300px,calc(100vw - 12px))!important;right:6px!important;bottom:calc(108px + env(safe-area-inset-bottom))!important;gap:4px!important}
+ .skillbar button{width:100%!important;min-width:0!important;min-height:43px!important;max-height:48px;padding:4px 2px!important;font-size:9px!important;border-radius:8px;line-height:1.1}
+ .skillbar button b{display:block;font-size:10px!important;overflow-wrap:anywhere}
+ .skillbar button small{font-size:8px!important;margin-top:3px}
+ #combatReadout{bottom:calc(214px + env(safe-area-inset-bottom));right:6px;max-width:min(280px,70vw)}
+ .level-achievement{top:32%;min-width:200px;padding:10px 18px}
+ .level-achievement.major b{font-size:34px}
+}
+@media(max-width:360px){.skillbar{width:min(276px,calc(100vw - 12px))!important}.skillbar button b{font-size:9px!important}}
+@media(prefers-reduced-motion:reduce){#world[data-zone]::before{animation:none!important}.level-achievement{animation-duration:.01ms!important}}
