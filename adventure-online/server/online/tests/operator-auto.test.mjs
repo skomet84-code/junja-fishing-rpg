@@ -17,7 +17,7 @@ function setup(operator=false){
 for(const operator of [false,true]){
  test('automatic cast + independent authoritative cooldown, operator='+operator,()=>{
   const f=setup(operator),{w,p,target}=f;
-  assert.equal(JOBS[p.state.job].skills.length,7);
+  assert.equal(JOBS[p.state.job].skills.length,9);
   w.action(p,{type:'auto',on:true});assert.equal(p.auto,true);
   f.advance(.1);
   assert.ok(p.attackSkill>=0,'auto must use learned offensive skill, not only basic');
@@ -100,7 +100,7 @@ test('delta wire transmits actual cooldowns after auto-skill attack',()=>{
  f.advance(.1);
  assert.ok(p.cooldowns.some(v=>v>f.clock),'server actually cast a skill');
  const current=w.snapshot(p),delta=diffSnapshot(previous,current);
- assert.deepEqual(previous.self.cooldowns,[0,0,0,0,0,0,0],'previous snapshot must remain immutable');
+ assert.deepEqual(previous.self.cooldowns,Array(9).fill(0),'previous snapshot must remain immutable');
  assert.ok(delta.self,'delta must report changed player state');
  assert.ok(delta.self.cooldowns?.some(v=>v>f.clock),'delta must include cooldown array');
 });

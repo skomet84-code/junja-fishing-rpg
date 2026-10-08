@@ -1470,3 +1470,40 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 @keyframes warriorParticles{0%,20%{opacity:0;transform:scaleX(.4)}40%{opacity:1}100%{opacity:0;transform:scaleX(1.6) translateY(-24px)}}
 @keyframes warriorImpact{0%{opacity:0;scale:.3}35%{opacity:1;scale:1.1}100%{opacity:0;scale:1.7}}
 @media(prefers-reduced-motion:reduce){.warrior-technique,.warrior-hit-confirm{animation-duration:.01ms!important}.warrior-technique i,.warrior-hit-confirm i{animation-duration:.01ms!important}}
+
+/* Ascension V: existing world artwork gets distinct post-4th-job atmospheres. */
+#world[data-zone="rift"]{background-color:#191025;background-blend-mode:multiply;--zone-ambient:radial-gradient(ellipse 620px 730px at 28% 40%,#ac49e56e,transparent 72%),radial-gradient(ellipse 600px 720px at 78% 70%,#4a99e75b,transparent 72%)}
+#world[data-zone="eclipse"]{background-color:#260d1d;background-blend-mode:multiply;--zone-ambient:radial-gradient(ellipse 580px 760px at 25% 50%,#bf284761,transparent 75%),radial-gradient(ellipse 660px 800px at 82% 28%,#682b8663,transparent 75%)}
+#world[data-zone="sanctum"]{background-color:#283142;background-blend-mode:screen,multiply;--zone-ambient:radial-gradient(ellipse 690px 760px at 48% 24%,#90c7ff6b,transparent 72%),radial-gradient(ellipse 680px 740px at 80% 76%,#ffe6a04b,transparent 74%)}
+#world:is([data-zone="rift"],[data-zone="eclipse"],[data-zone="sanctum"]) .hunt-sector{border-color:#e1baff77;background:#261c39db;box-shadow:0 0 22px #ba78e53f}
+#world[data-zone="eclipse"] .hunt-sector{border-color:#ff888c8c;background:#391924da}
+#world[data-zone="sanctum"] .hunt-sector{border-color:#c5e8ff8c;background:#1e3041da}
+#world:is([data-zone="rift"],[data-zone="eclipse"],[data-zone="sanctum"]) .world-portal{filter:drop-shadow(0 0 8px #a8e2ff99)}
+#skillbar{max-width:min(640px,calc(100vw - 18px));flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:600px){#skillbar{grid-template-columns:repeat(5,minmax(0,1fr))!important;width:min(315px,calc(100vw - 12px))!important;max-width:min(315px,calc(100vw - 12px))!important;gap:3px!important}#skillbar button{min-height:44px!important;max-height:50px!important;padding:4px 1px!important}#skillbar button b{font-size:9px!important}}
+
+/* Distinct late-job effects rather than reusing the fourth-job generic glow. */
+.skillfx.beyond-rift,.skillfx.beyond-eclipse,.skillfx.beyond-eternal{position:absolute;width:300px;height:300px;border:5px solid #b499ff;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;background:radial-gradient(circle,#c099ff66 0,#6a2cb633 36%,transparent 70%);box-shadow:0 0 46px #9e55ff88,inset 0 0 65px #ad82fa88;animation:beyondBurst 1.6s ease-out forwards;z-index:2100}
+.skillfx.beyond-eclipse{width:345px;height:345px;border-color:#ff719c;background:radial-gradient(circle,#ff557c66 0,#71103744 40%,transparent 72%);box-shadow:0 0 55px #ed448daa,inset 0 0 72px #ff709966}
+.skillfx.beyond-eternal{width:400px;height:400px;border-color:#ffefb0;background:radial-gradient(circle,#fff4be88 0,#63b7f344 42%,transparent 72%);box-shadow:0 0 68px #e7d2a4bb,inset 0 0 75px #afffff99;animation:beyondBurst 1.9s ease-out forwards}
+.skillfx:is(.beyond-rift,.beyond-eclipse,.beyond-eternal)>i{position:absolute;inset:14%;border-radius:50%;border:3px dashed currentColor;color:#e1ccff;animation:beyondOrbit 2.1s linear infinite}
+.skillfx:is(.beyond-rift,.beyond-eclipse,.beyond-eternal)>i:nth-child(2){inset:27%;border-style:solid;opacity:.7;animation-direction:reverse;animation-duration:1.2s}
+.skillfx:is(.beyond-rift,.beyond-eclipse,.beyond-eternal)>i:nth-child(3){inset:5%;border-width:1px;opacity:.8;animation-duration:2.8s}
+.skillfx.beyond-eclipse>i{color:#ffb3ca}.skillfx.beyond-eternal>i{color:#ffffe9}
+@keyframes beyondBurst{0%{opacity:0;scale:.22;rotate:-24deg}22%{opacity:1;scale:.88}58%{opacity:.95;scale:1.10}100%{opacity:0;scale:1.40;rotate:17deg}}
+@keyframes beyondOrbit{to{rotate:360deg}}
+
+/* Fifth and sixth advancements read instantly from silhouettes, not only labels. */
+.entity.hero:is([data-rank="5"],[data-rank="6"])>.promotion-regalia{display:block;animation:rankFourFloat 1.5s ease-in-out infinite alternate}
+.entity.hero[data-rank="5"]>.promotion-regalia i:nth-child(1){left:-4%;top:10%;width:108%;height:43%;border-top:9px double #c69dff;border-radius:50%;filter:drop-shadow(0 0 14px #8e4afa)}
+.entity.hero[data-rank="5"]>.promotion-regalia i:nth-child(2){left:8%;top:52%;width:84%;height:44%;background:linear-gradient(180deg,#b89cff88,#42257e66,transparent);clip-path:polygon(0 0,100% 0,88% 100%,50% 67%,12% 100%)}
+.entity.hero[data-rank="5"]>.promotion-regalia i:nth-child(3){left:38%;top:-6%;width:24%;height:27%;background:linear-gradient(#f2edff,#7d61d8);clip-path:polygon(50% 0,90% 35%,65% 100%,35% 100%,10% 35%);filter:drop-shadow(0 0 9px #a996ff)}
+.entity.hero[data-rank="6"]>.promotion-regalia i:nth-child(1){left:-11%;top:3%;width:122%;height:43%;border-top:10px double #fff3bc;border-radius:48%;box-shadow:0 -8px 13px -12px #fce9a8;filter:drop-shadow(0 0 15px #fff3c7)}
+.entity.hero[data-rank="6"]>.promotion-regalia i:nth-child(2){left:-5%;top:52%;width:110%;height:53%;background:linear-gradient(180deg,#ffefba99,#65bcea88,transparent);clip-path:polygon(0 0,100% 0,86% 100%,50% 65%,14% 100%)}
+.entity.hero[data-rank="6"]>.promotion-regalia i:nth-child(3){left:33%;top:-12%;width:34%;height:33%;background:linear-gradient(#ffffff,#ffdb7e,#87c3fa);clip-path:polygon(50% 0,100% 39%,74% 100%,26% 100%,0 39%);filter:drop-shadow(0 0 13px #ffdfa0)}
+.hero[data-gear-set="rift"] .gear-layers{filter:drop-shadow(0 0 10px #a885f4)}
+.hero[data-gear-set="eclipse"] .gear-layers{filter:drop-shadow(0 0 12px #ff78ae)}
+.hero[data-gear-set="eternal"] .gear-layers{filter:drop-shadow(0 0 14px #fff0b3) drop-shadow(0 0 19px #8cdafa)}
+.hero[data-gear-set="rift"] :is(.gear-armor,.gear-cape){background:linear-gradient(130deg,#7858c1,#382253,#9e8cf6)!important}
+.hero[data-gear-set="eclipse"] :is(.gear-armor,.gear-cape){background:linear-gradient(130deg,#ff91b1,#60213e,#a02b73)!important}
+.hero[data-gear-set="eternal"] :is(.gear-armor,.gear-cape){background:linear-gradient(130deg,#ffefbb,#659fc9,#edf6ff)!important}
