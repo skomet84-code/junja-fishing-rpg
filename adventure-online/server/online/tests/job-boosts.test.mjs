@@ -62,6 +62,8 @@ test('live merchant purchase and 30-minute XP potion are validated on server',()
  assert.ok(p.state.bag.includes(classWeapon('ironblade','mage')));
  w.action(p,{type:'buy',item:classWeapon('ironblade','rogue'),qty:1});
  assert.equal(p.state.bag.includes(classWeapon('ironblade','rogue')),false);
+ w.action(p,{type:'buy',item:'ironblade',qty:1});
+ assert.equal(p.state.bag.includes('ironblade'),false,'legacy warrior swords must not appear in mage shop');
  w.action(p,{type:'craft',recipe:classWeapon('crystalblade','mage')});
  assert.ok(p.state.bag.includes(classWeapon('crystalblade','mage')));
  const before=w.players.get(p.id).state.bag.length;
