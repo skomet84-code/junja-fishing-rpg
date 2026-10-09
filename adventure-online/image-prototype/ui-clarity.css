@@ -1,0 +1,72 @@
+/* Junja Adventure UI clarity pass, Oct 2026.
+   High contrast without increasing GPU blending, and smaller touch-friendly HUD. */
+#game #toast:not(.combat-toast),
+#game #hint,
+#game #combatReadout,
+#game #chatLog p,
+#game .resource,
+#game .speech-bubble{
+  color:#fffbe6!important;
+  background:rgba(15,43,34,.95)!important;
+  border:1px solid #e5d29c!important;
+  text-shadow:0 1px 2px #0b2018!important;
+  box-shadow:0 2px 5px #12291c66!important;
+  opacity:1;
+}
+#game #toast:not(.show){opacity:0!important}
+#game #hint{font-weight:700!important;max-width:min(270px,76vw)!important;line-height:1.35!important}
+#game .resource{color:#fffbe6!important;font-weight:800!important;min-height:38px}
+#game .resource.depleted{opacity:.8!important;background:#30443beb!important;color:#f1e5bd!important}
+#game #combatReadout{color:#fff8d6!important;font-weight:750!important}
+#game .entity-name{color:#fff4d0!important;text-shadow:0 1px 2px #10241c!important}
+#game .enemy .entity-name{background:rgba(15,44,33,.94)!important;color:#fff3ca!important;border:1px solid rgba(252,219,137,.75)!important}
+#game .world-portal b,#game .world-portal small{color:#fff7d9!important;text-shadow:0 1px 2px #15261c!important}
+#game .item-card small,#game .recipe small,#game .shop-grid small{color:inherit;opacity:.92}
+#game .illustrated-monster>.sprite{
+  background-repeat:no-repeat!important;
+  background-position:center bottom!important;
+  background-size:contain!important;
+  image-rendering:auto!important;
+  filter:drop-shadow(0 3px 3px rgba(17,31,23,.42));
+}
+#game .illustrated-monster.elite>.sprite{filter:drop-shadow(0 0 5px rgba(241,171,102,.76))}
+#game .illustrated-monster.named>.sprite{filter:drop-shadow(0 0 7px rgba(231,185,255,.8))}
+#game .illustrated-monster.boss>.sprite{filter:drop-shadow(0 0 8px rgba(255,222,137,.7))}
+
+/* Avatar stays smaller without altering combat range, collision or server state. */
+#hero.entity.hero{width:104px!important;height:121px!important}
+
+@media(max-width:900px){
+  #hero.entity.hero{width:98px!important;height:114px!important}
+
+  /* Existing nine skills, but less field occlusion. */
+  #skillbar{
+    width:min(330px,calc(100vw - 22px))!important;
+    max-width:min(330px,calc(100vw - 22px))!important;
+    right:9px!important;
+    bottom:calc(118px + env(safe-area-inset-bottom,0px))!important;
+    gap:4px!important;
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  }
+  #skillbar button{
+    width:100%!important;min-width:0!important;
+    height:45px!important;min-height:45px!important;max-height:45px!important;
+    padding:9px 2px 2px!important;border-radius:10px!important;
+    background:rgba(30,65,55,.95)!important;
+  }
+  #skillbar button b{font-size:9px!important;line-height:1.16!important}
+  #skillbar button small{font-size:8px!important;line-height:1.12!important}
+  #game .illustrated-monster>.sprite{filter:none!important}
+  #game .resource{font-size:11px!important;min-height:39px;max-width:154px;white-space:normal}
+  #game #toast:not(.combat-toast){max-width:min(168px,43vw)!important;font-weight:750}
+}
+@media(max-width:389px){
+  #hero.entity.hero{width:90px!important;height:105px!important}
+  #skillbar{width:min(308px,calc(100vw - 18px))!important;max-width:min(308px,calc(100vw - 18px))!important;gap:3px!important}
+  #skillbar button{height:43px!important;min-height:43px!important;max-height:43px!important}
+  #skillbar button b{font-size:8.5px!important}
+}
+@media(max-width:900px) and (max-height:590px){
+  #skillbar{bottom:calc(102px + env(safe-area-inset-bottom,0px))!important}
+  #skillbar button{height:38px!important;min-height:38px!important;max-height:38px!important}
+}
