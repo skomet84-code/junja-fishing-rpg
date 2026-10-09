@@ -4,6 +4,7 @@ on:
     branches:
       - feat/adventure-visual-phase2-20261009
       - junja-adventure-preview
+      - railway-recovery
     paths:
       - adventure-online/image-prototype/index.html
       - adventure-online/image-prototype/visual-phase2.css
