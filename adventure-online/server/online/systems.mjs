@@ -1,6 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {distance} from '../../image-prototype/core.js';
-import {ITEMS,profile,stats,gainXp,promotionSkillLearned,basicAttackDelay,skillCastDelay,skillMpCost} from '../../image-prototype/catalog.js';
+import {ITEMS,profile,stats,gainXp,RARE_POOL,LEGENDARY_POOL,MYTHIC_POOL,RIFT_POOL,ECLIPSE_POOL,ETERNAL_POOL,promotionSkillLearned,basicAttackDelay,skillCastDelay,skillMpCost} from '../../image-prototype/catalog.js';
 import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,koreaDay,NAMED,bossWindow} from '../../image-prototype/mmo-data.js';
 export const NODES=[
  {id:'wood1',material:'wood',x:390,y:780,zone:'surface',cooldown:60},{id:'wood2',material:'wood',x:1110,y:925,zone:'surface',cooldown:60},{id:'stone1',material:'stone',x:410,y:1320,zone:'surface',cooldown:90},{id:'ore1',material:'ore',x:1120,y:1740,zone:'surface',cooldown:120},
