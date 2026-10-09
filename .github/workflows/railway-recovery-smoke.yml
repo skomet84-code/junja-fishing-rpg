@@ -4,6 +4,7 @@ on:
     branches: [railway-recovery]
     paths:
       - scripts/railway-live-smoke.mjs
+      - scripts/railway-admin-smoke.mjs
       - .github/workflows/railway-recovery-smoke.yml
   workflow_dispatch:
 jobs:
@@ -17,3 +18,5 @@ jobs:
           node-version: '22'
       - name: Verify live Railway Adventure and Land signup, login and multiplayer
         run: node scripts/railway-live-smoke.mjs
+      - name: Confirm admin setup pages and reserved username protection
+        run: node scripts/railway-admin-smoke.mjs
