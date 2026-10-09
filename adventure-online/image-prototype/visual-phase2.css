@@ -46,8 +46,8 @@ header .zone #saveStatus{color:#5d8472!important}
 #minimapToggle{color:#325c4c!important;background:linear-gradient(#fffdf1,#e6efd9)!important;border-radius:11px!important;font-weight:800!important}
 #minimapWrap>b,#minimapLabel{color:#46705d!important}
 #minimapWrap.open{box-shadow:0 8px 25px #214a4088!important}
-/* Player identity: slightly stronger illustrated silhouette without changing hitbox coordinates. */
-#hero.entity.hero{width:134px;height:155px;transform-origin:50% 100%}
+/* Player identity: smaller illustrated silhouette (~16-19% below former phase 2 sizes); world movement, server hitboxes, attack ranges stay unchanged. */
+#hero.entity.hero{width:112px;height:130px;transform-origin:50% 100%}
 #hero>.entity-name{
  top:-24px!important;z-index:8;padding:4px 11px!important;
  background:linear-gradient(110deg,rgba(26,63,54,.96),rgba(48,86,64,.94))!important;
@@ -161,7 +161,7 @@ header .zone #saveStatus{color:#5d8472!important}
  .actions{z-index:31;right:9px!important;bottom:calc(13px + env(safe-area-inset-bottom,0px))!important;gap:7px}
  .actions #potionBtn,.actions #autoBtn{width:57px!important;height:57px!important;font-size:11px!important}
  .actions #attackBtn{width:79px!important;height:79px!important;font-size:18px!important}
- #hero.entity.hero{width:134px!important;height:155px!important}
+ #hero.entity.hero{width:110px!important;height:127px!important}
  #hero>.entity-name{font-size:10px!important;max-width:225px;text-overflow:ellipsis;overflow:hidden}
  #targetPanel{top:calc(166px + env(safe-area-inset-top,0px));bottom:auto;right:8px;width:157px}
  #combatReadout{bottom:calc(257px + env(safe-area-inset-bottom,0px))!important;right:8px;max-width:55vw!important}
@@ -182,7 +182,7 @@ header .zone #saveStatus{color:#5d8472!important}
  .actions{gap:4px;right:6px!important}
  .actions #potionBtn,.actions #autoBtn{width:48px!important;height:52px!important;font-size:10px!important}
  .actions #attackBtn{width:68px!important;height:70px!important;font-size:16px!important}
- #hero.entity.hero{width:130px!important;height:151px!important}
+ #hero.entity.hero{width:106px!important;height:123px!important}
 }
 @media(max-width:900px) and (max-height:590px){
  #quest{top:105px}
