@@ -40,11 +40,16 @@ export class World{
   }return this.channels.get(key);
  }
 
- add(id,name,raw,channel='준자마을',slot=0){if(this.players.size>=WORLD_CAP&&!this.players.has(id))throw Error('현재 접속 인원이 가득 찼습니다.');if([...this.players.values()].filter(p=>p.channel===channel&&p.id!==id).length>=CHANNEL_CAP)throw Error('채널 정원은 48명입니다. 다른 채널을 선택하세요.');const p={id,name,state:profile(raw),channel,slot,input:{x:0,y:0},navPath:[],auto:false,autoTarget:null,autoSkillQueue:[],combatTarget:null,combatSkill:-1,face:0,flip:false,dirX:0,dirY:1,attackSkill:-1,attackTarget:null,attackUntil:0,nextAttack:0,cooldowns:Array(9).fill(0),guard:0,guardFactor:.4,lastInput:0,lastChat:0,nextHpPotion:0,nextMpPotion:0};if(distance(p.state,{x:768,y:355})<30){const others=[...this.players.values()].filter(q=>q.channel===channel);const points=[[0,0],[90,0],[-90,0],[0,65],[90,65],[-90,65],[180,0],[-180,0],[180,65],[-180,65]];const free=points.map(([dx,dy])=>({x:768+dx,y:355+dy})).find(pos=>others.every(q=>distance(q.state,pos)>65));if(free)Object.assign(p.state,free);}this.channel(channel,p.state.zone);this.players.set(id,p);return p;}
+ add(id,name,raw,channel='준자마을',slot=0){if(this.players.size>=WORLD_CAP&&!this.players.has(id))throw Error('현재 접속 인원이 가득 찼습니다.');if([...this.players.values()].filter(p=>p.channel===channel&&p.id!==id).length>=CHANNEL_CAP)throw Error('채널 정원은 48명입니다. 다른 채널을 선택하세요.');const p={id,name,state:profile(raw),channel,slot,input:{x:0,y:0},navPath:[],auto:false,autoTarget:null,autoSkillQueue:[],combatTarget:null,combatSkill:-1,face:0,flip:false,dirX:0,dirY:1,attackSkill:-1,attackTarget:null,attackUntil:0,nextAttack:0,cooldowns:Array(9).fill(0),guard:0,guardFactor:.4,lastInput:0,chaseRoute:[],chaseId:null,chaseZone:null,chaseGoal:null,chaseAt:0,chaseSample:null,chaseBlockedUntil:0,lastChat:0,nextHpPotion:0,nextMpPotion:0};if(distance(p.state,{x:768,y:355})<30){const others=[...this.players.values()].filter(q=>q.channel===channel);const points=[[0,0],[90,0],[-90,0],[0,65],[90,65],[-90,65],[180,0],[-180,0],[180,65],[-180,65]];const free=points.map(([dx,dy])=>({x:768+dx,y:355+dy})).find(pos=>others.every(q=>distance(q.state,pos)>65));if(free)Object.assign(p.state,free);}this.channel(channel,p.state.zone);this.players.set(id,p);return p;}
  dirty(p){this.onDirty(p);}
  event(p,text,kind='info',meta=null){this.events.push({id:randomUUID(),channel:p.channel,to:p.id,text,kind,...(meta&&typeof meta==='object'?meta:{})});if(this.events.length>100)this.events.shift();}
  action(p,data){const now=this.now(),s=p.state,kind=data.type;const mmo=mmoAction(this,p,data);if(mmo)return mmo;if(socialId(this,p)&&['potion','manaPotion','attack','home','auto'].includes(kind)){if(kind==='attack'&&[...this.duels.values()].some(t=>t.accepted&&t.players.includes(p.id)))return mmoAction(this,p,{type:'duelAttack',skill:data.skill??-1});if(kind==='home')removeSocial(this,p);else return;}
-  if(kind==='navigate'){const x=Number(data.x),y=Number(data.y);if(!Number.isFinite(x)||!Number.isFinite(y))return;p.navPath=pathfind(s,{x,y});p.input={x:0,y:0};p.auto=false;p.autoTarget=null;p.autoSkillQueue=[];p.combatTarget=null;p.combatSkill=-1;return;}
+  if(kind==='navigate'){const x=Number(data.x),y=Number(data.y);if(!Number.isFinite(x)||!Number.isFinite(y))return;
+   const route=pathfind(s,{x,y});p.navPath=route;p.input={x:0,y:0};p.auto=false;p.autoTarget=null;p.autoSkillQueue=[];p.combatTarget=null;p.combatSkill=-1;
+   p.chaseRoute=[];p.chaseId=null;
+   if(!route.length){this.event(p,'선택한 지점으로 가는 길이 없습니다. 길이 있는 바닥을 눌러주세요.');return {navigating:false};}
+   return {navigating:true};
+  }
   if(kind==='move'){if(p.navPath.length&&!data.manual)return;if(data.manual){p.navPath=[];p.auto=false;p.autoTarget=null;p.autoSkillQueue=[];p.combatTarget=null;p.combatSkill=-1;}const x=Number(data.x),y=Number(data.y);if(!Number.isFinite(x)||!Number.isFinite(y))return;p.input={x:clamp(x,-1,1),y:clamp(y,-1,1)};const d=Math.hypot(x,y);if(d>.01){p.dirX=x/d;p.dirY=y/d;}p.lastInput=now;return;}
   if(kind==='auto'){p.auto=!!data.on;p.autoTarget=null;p.autoSkillQueue=[];p.combatTarget=null;p.combatSkill=-1;p.navPath=[];p.input={x:0,y:0};return;}
   if(kind==='autoTarget'){if(!p.auto)return;const target=Number(data.target),e=this.channel(p.channel,s.zone).find(m=>m.id===target&&m.alive);if(e&&distance(s,e)<1000)p.autoTarget=e.id;return;}
@@ -96,6 +101,21 @@ export class World{
   if(kind==='job'){if(s.zone!=='surface')return;if(distance(s,{x:580,y:330})>145)return;if(s.level<10||!Object.hasOwn(JOBS,data.job)||s.job===data.job)return;if(s.gold<500){this.event(p,'직업 변경에는 500 G가 필요합니다.');return;}s.gold-=500;s.job=data.job;if(ITEMS[s.equipment.weapon]?.job&&ITEMS[s.equipment.weapon].job!==s.job){s.equipment.weapon=s.bag.find(id=>ITEMS[id]?.slot==='weapon'&&(!ITEMS[id].job||ITEMS[id].job===s.job)&&s.level>=(ITEMS[id].level||1))||'training';}p.cooldowns=Array(9).fill(now+5);const changed=stats(s);s.hp=Math.min(s.hp,changed.hp);s.mp=Math.min(s.mp,changed.mp);this.dirty(p);this.event(p,JOBS[s.job].name+' 직업으로 변경했습니다. 성장과 장비는 유지됩니다.');return;}
   if(kind==='chat'){if(now-p.lastChat<1)return;const quick=Number(data.quick);if(!Number.isInteger(quick)||quick<0||quick>=QUICK_CHATS.length)return;const phrase=QUICK_CHATS[quick];p.lastChat=now;this.events.push({id:randomUUID(),channel:p.channel,from:p.id,name:p.name,phrase,text:p.name+': '+phrase,kind:'chat'});if(this.events.length>100)this.events.shift();}
  }
+ chase(p,e,now){
+   const s=p.state,d=distance(s,e),st=stats(s),goalChanged=!p.chaseGoal||distance(p.chaseGoal,e)>55;
+   if(d<=st.range*.82){p.chaseRoute=[];return {x:0,y:0};}
+   const noProgress=p.chaseSample&&now-p.chaseSample.at>.9&&distance(s,p.chaseSample)<5;
+   if(noProgress){p.chaseRoute=[];p.chaseSample={x:s.x,y:s.y,at:now};}
+   const stale=p.chaseId!==e.id||p.chaseZone!==s.zone||goalChanged||!p.chaseRoute?.length||now-(p.chaseAt||0)>2.4;
+   if(stale&&now>=(p.chaseBlockedUntil||0)){
+    p.chaseRoute=pathfind(s,e);p.chaseId=e.id;p.chaseZone=s.zone;p.chaseGoal={x:e.x,y:e.y};p.chaseAt=now;
+    if(!p.chaseRoute.length){p.chaseBlockedUntil=now+1.5;return {x:0,y:0};}
+   }
+   if(!p.chaseSample||now-p.chaseSample.at>.9)p.chaseSample={x:s.x,y:s.y,at:now};
+   const route=p.chaseRoute||[];
+   while(route.length&&distance(s,route[0])<Math.max(24,250*.1))route.shift();
+   const target=route[0];return target?{x:target.x-s.x,y:target.y-s.y}:{x:0,y:0};
+  }
  autoSkill(p,now){
   const s=p.state,job=JOBS[s.job],st=stats(s),usable=i=>{const skill=job.skills[i],rankReq=Number(skill?.[5]?.rank)||0;return !!skill&&s.level>=skill[1]&&s.rank>=rankReq&&promotionSkillLearned(s,rankReq)&&now>=p.cooldowns[i]&&s.mp>=skillMpCost(s,skill);},order=[...job.skills.keys()].reverse();
   if(s.hp<st.hp*.62){for(const i of order)if(usable(i)&&['heal','partyHeal'].includes(job.skills[i][4]))return i;}
@@ -173,8 +193,8 @@ export class World{
   }e.tags.clear();}
  tick(dt=.1){const now=this.now();tickSystems(this);for(const p of this.players.values()){if(p.exchangeBusy)continue;
   let {x:dx,y:dy}=p.input;const s=p.state,st=stats(s);s.mp=Math.min(st.mp,Math.max(0,Number(s.mp)||0)+st.mp*(p.auto?.025:.004)*dt);if(!socialId(this,p)&&s.autoHpPct&&s.potions>0&&now>=p.nextHpPotion&&s.hp/st.hp*100<=s.autoHpPct){s.potions--;s.hp=Math.min(st.hp,s.hp+st.hp*.5);p.nextHpPotion=now+1.25;this.dirty(p);}if(!socialId(this,p)&&s.autoMpPct&&s.manaPotions>0&&now>=p.nextMpPotion&&s.mp/st.mp*100<=s.autoMpPct){s.manaPotions--;s.mp=Math.min(st.mp,s.mp+st.mp*.45);p.nextMpPotion=now+1.25;this.dirty(p);}if(now-p.lastInput>.6)dx=dy=0;
-  if(p.navPath.length&&!p.auto){const point=p.navPath[0],d=distance(s,point);if(d<=250*dt){s.x=point.x;s.y=point.y;p.navPath.shift();dx=dy=0;}else{dx=point.x-s.x;dy=point.y-s.y;}}
-  if(p.combatTarget!=null&&!p.auto){const e=this.channel(p.channel,p.state.zone).find(e=>e.id===p.combatTarget&&e.alive);if(!e){p.combatTarget=null;p.combatSkill=-1;}else if(distance(s,e)<=st.range*.9){if(now>=p.nextAttack){const skill=p.combatSkill;p.combatSkill=-1;this.attack(p,skill,e.id);}dx=dy=0;}else if(distance(s,e)<1100){const point=pathfind(s,e)[0]||e;dx=point.x-s.x;dy=point.y-s.y;}else{p.combatTarget=null;p.combatSkill=-1;}}
+  if(p.navPath.length&&!p.auto){const point=p.navPath[0],d=distance(s,point);if(d<=Math.max(7,250*dt)){s.x=point.x;s.y=point.y;p.navPath.shift();dx=dy=0;}else{dx=point.x-s.x;dy=point.y-s.y;}}
+  if(p.combatTarget!=null&&!p.auto){const e=this.channel(p.channel,p.state.zone).find(e=>e.id===p.combatTarget&&e.alive);if(!e){p.combatTarget=null;p.combatSkill=-1;}else if(distance(s,e)<=st.range*.9){if(now>=p.nextAttack){const skill=p.combatSkill;p.combatSkill=-1;this.attack(p,skill,e.id);}dx=dy=0;}else if(distance(s,e)<1100){const direction=this.chase(p,e,now);dx=direction.x;dy=direction.y;}else{p.combatTarget=null;p.combatSkill=-1;}}
   if(p.auto){const mobs=this.channel(p.channel,p.state.zone),safe=e=>{const gap=e.level-s.level;if(e.summoned)return true;if(e.named)return gap<=10;if(e.boss)return gap<=6;if(e.elite)return gap<=3;return gap<=5;},candidates=mobs.filter(e=>e.alive&&safe(e)),current=candidates.find(e=>e.id===p.autoTarget&&distance(e,s)<950),score=e=>distance(e,s)-(e.named?110:e.boss?80:e.elite?20:0),e=current||candidates.sort((a,b)=>score(a)-score(b))[0];p.autoTarget=e?.id??null;if(e){if(distance(s,e)<=st.range*.86){
     let manual=p.autoSkillQueue?.[0];
     if(manual!=null){const ability=JOBS[s.job].skills[manual],rank=Number(ability?.[5]?.rank)||0;
@@ -185,7 +205,7 @@ export class World{
     this.attack(p,skill,e.id);
     if(ready&&p.cooldowns[skill]>before)p.autoSkillQueue.shift();
     dx=dy=0;
-   }else{const point=pathfind(s,e)[0]||e;dx=point.x-s.x;dy=point.y-s.y;}}}
+   }else{const direction=this.chase(p,e,now);dx=direction.x;dy=direction.y;}}}
   if(now>=p.attackUntil){const d=Math.hypot(dx,dy);if(d>.01){const nx=dx/d,ny=dy/d,x=s.x+nx*250*dt,y=s.y+ny*250*dt;if(walkable(x,s.y))s.x=x;if(walkable(s.x,y))s.y=y;p.dirX=nx;p.dirY=ny;p.face=Math.abs(dx)>Math.abs(dy)?2:dy<0?1:0;p.flip=p.face===2&&dx<0;}}
  }
  for(const [key,mobs] of this.channels){const [channel,zone]=key.split('|');const players=[...this.players.values()].filter(p=>p.channel===channel&&p.state.zone===zone&&!p.exchangeBusy);if(!players.length){continue;}for(const e of mobs){if(e.named){const config=NAMED.find(b=>b.id===e.named),window=bossWindow(config,now);if(!window.active){e.alive=false;e.tags.clear();e.tellAt=0;for(const add of mobs)if(add.summoned&&add.summonOwner===e.id){add.alive=false;add.hp=add.max;add.summonOwner=null;add.tags.clear();}continue;}if(e.window!==window.key){e.window=window.key;e.alive=true;e.hp=e.max;e.x=e.homeX;e.y=e.homeY;e.tags.clear();e.phase=1;e.pattern='';e.patternAt=0;e.patternNext=now+4;e.patternSerial=0;}e.respawn=window.next;}if(!e.alive){if(!e.named&&!e.summoned&&now>=e.respawn){e.alive=true;e.hp=e.max;e.x=e.homeX;e.y=e.homeY;e.slow=0;e.stun=0;e.phase=1;e.pattern='';e.patternAt=0;e.patternNext=now+4;e.patternSerial=0;}continue;}if((e.stun||0)>now)continue;const p=players.filter(p=>p.state.y>590&&canAggro(p,e)&&distance(p.state,e)<(e.named?420:e.boss?300:e.elite?185:165)).sort((a,b)=>distance(a.state,e)-distance(b.state,e))[0];const d=p?distance(p.state,e):Infinity;

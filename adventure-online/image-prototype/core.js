@@ -18,25 +18,63 @@ export function walkable(x,y){
 export function project(x,y){
  return WALK_AREAS.map(([l,t,r,b])=>({x:clamp(x,l,r),y:clamp(y,t,b)})).sort((a,b)=>distance(a,{x,y})-distance(b,{x,y}))[0];
 }
+// True only when the entire walking segment stays on legal ground.
+export function clearPath(a,b,step=CELL/3){
+ if(!a||!b||!walkable(a.x,a.y)||!walkable(b.x,b.y))return false;
+ const length=distance(a,b),segments=Math.max(1,Math.ceil(length/step));
+ for(let i=1;i<segments;i++){const k=i/segments;if(!walkable(a.x+(b.x-a.x)*k,a.y+(b.y-a.y)*k))return false;}
+ return true;
+}
 export function pathfind(start,end){
- end=project(end.x,end.y); start=project(start.x,start.y);
- const cols=W/CELL, key=(x,y)=>y*cols+x;
- const cell=p=>({x:Math.floor(p.x/CELL),y:Math.floor(p.y/CELL)});
- const nearest=p=>{const c=cell(p);if(walkable(c.x*CELL+CELL/2,c.y*CELL+CELL/2))return c;return [[0,1],[0,-1],[1,0],[-1,0]].map(([dx,dy])=>({x:c.x+dx,y:c.y+dy})).find(n=>walkable(n.x*CELL+CELL/2,n.y*CELL+CELL/2))||c;};
- const s=nearest(start),e=nearest(end); const open=[s],seen=new Set([key(s.x,s.y)]),parent=new Map();
- let found=null;
- for(let i=0;i<open.length;i++){
-  const n=open[i];if(n.x===e.x&&n.y===e.y){found=n;break;}
-  for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
-   const p={x:n.x+dx,y:n.y+dy},k=key(p.x,p.y);
-   if(seen.has(k)||!walkable(p.x*CELL+CELL/2,p.y*CELL+CELL/2))continue;
-   seen.add(k);parent.set(k,n);open.push(p);
+ if(!start||!end||!Number.isFinite(start.x)||!Number.isFinite(start.y)||!Number.isFinite(end.x)||!Number.isFinite(end.y))return [];
+ const from=project(start.x,start.y),dest=project(end.x,end.y);
+ if(distance(from,dest)<8)return [dest];
+ if(clearPath(from,dest))return [dest];
+ const cols=W/CELL,rows=H/CELL,key=(x,y)=>y*cols+x;
+ const gridPoint=(x,y)=>({x:x*CELL+CELL/2,y:y*CELL+CELL/2});
+ const nearest=p=>{
+  let best=null,dist=Infinity;
+  const cx=Math.floor(p.x/CELL),cy=Math.floor(p.y/CELL);
+  for(let radius=0;radius<=5;radius++){
+   for(let y=Math.max(0,cy-radius);y<=Math.min(rows-1,cy+radius);y++)
+    for(let x=Math.max(0,cx-radius);x<=Math.min(cols-1,cx+radius);x++){
+     if(Math.max(Math.abs(x-cx),Math.abs(y-cy))!==radius)continue;
+     const pos=gridPoint(x,y),d=distance(pos,p);
+     if(walkable(pos.x,pos.y)&&d<dist){best={x,y};dist=d;}
+    }
+   if(best)return best;
+  }
+  return best;
+ };
+ const origin=nearest(from),goal=nearest(dest);if(!origin||!goal)return [];
+ const queue=[origin],visited=new Set([key(origin.x,origin.y)]),parent=new Map(),directions=[[1,0],[-1,0],[0,1],[0,-1]];
+ let found=false;
+ for(let i=0;i<queue.length;i++){
+  const n=queue[i],id=key(n.x,n.y);
+  if(n.x===goal.x&&n.y===goal.y){found=true;break;}
+  for(const [dx,dy] of directions){
+   const x=n.x+dx,y=n.y+dy,k=key(x,y),pos=gridPoint(x,y);
+   if(x<0||y<0||x>=cols||y>=rows||visited.has(k)||!walkable(pos.x,pos.y))continue;
+   visited.add(k);parent.set(k,id);queue.push({x,y});
   }
  }
  if(!found)return [];
- const result=[end];let n=found;
- while(n.x!==s.x||n.y!==s.y){result.push({x:n.x*CELL+CELL/2,y:n.y*CELL+CELL/2});n=parent.get(key(n.x,n.y));}
- return result.reverse();
+ const raw=[];let cursor=key(goal.x,goal.y),first=key(origin.x,origin.y);
+ while(cursor!==first){
+  raw.push(gridPoint(cursor%cols,Math.floor(cursor/cols)));
+  cursor=parent.get(cursor);if(cursor===undefined)return [];
+ }
+ raw.reverse();raw.push(dest);
+ const route=[],current={...from};
+ for(let i=0;i<raw.length;){
+  let furthest=i;
+  for(let k=raw.length-1;k>=i;k--)if(clearPath(current,raw[k])){furthest=k;break;}
+  const target=raw[furthest];
+  if(!clearPath(current,target))return [];
+  if(distance(current,target)>5)route.push(target);
+  current.x=target.x;current.y=target.y;i=furthest+1;
+ }
+ return route.length?route:[dest];
 }
 export const QUEST_STATES=[
  'available','active','ready','complete','bossActive','bossReady',

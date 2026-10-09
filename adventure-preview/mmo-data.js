@@ -195,6 +195,25 @@ export const ASCENSION_CHAPTERS={
  rift:{name:'7장 · 찢어진 하늘',zone:'rift',level:480,rank:4,kills:18,elites:3,boss:'균열 수문장',rewardGold:5000000,rewardMaterial:30,material:'riftCore',story:'태초신의 죽음과 함께 열린 하늘의 균열. 균열 군주 벨리온이 봉인된 차원을 침범한다.'},
  eclipse:{name:'8장 · 월식의 맹세',zone:'eclipse',level:590,rank:5,kills:24,elites:4,boss:'월식 집행자',rewardGold:12000000,rewardMaterial:40,material:'eclipseSigil',story:'균열 너머에서 달을 삼킨 월식황제 녹티스가 깨어났다. 사라진 천룡의 유산을 되찾아야 한다.'}
 };
+
+/** Quest-panel text and teleport waypoint for the next 5th/6th ascension.
+ * Pure so the menu and world navigator cannot disagree about the objective. */
+export function ascensionGuide(player,chapterId){
+ const next=PROMOTIONS[Math.max(0,Math.floor(Number(player.rank)||0))];
+ const id=chapterId||(next?.story)||null;
+ const chapter=id&&Object.hasOwn(ASCENSION_CHAPTERS,id)?ASCENSION_CHAPTERS[id]:null;
+ if(!chapter)return null;
+ const quest=player.ascensionStories?.[id]||{stage:0,claimed:false};
+ const stage=quest.claimed?5:Math.max(0,Math.min(4,Number(quest.stage)||0)),number=id==='eclipse'?6:5;
+ const head=number+'차 전직 · '+chapter.name;
+ if(stage===5)return {id,chapter,stage,zone:'surface',x:580,y:355,action:'promote',title:head,text:'서사 완료! Lv.'+PROMOTIONS[number-1].level+' 이상 · 보스 '+PROMOTIONS[number-1].bosses+'회 충족 후 준자마을 촌장 앞에서 '+number+'차 전직',button:'촌장에게 이동'};
+ if(stage===0)return {id,chapter,stage,zone:id,x:768,y:830,action:'start',title:head,text:chapter.name+' 시작 · '+ZONES[id].name+'에서 시련 시작 버튼을 눌러 일반 몬스터부터 토벌',button:'시련 장소로 이동 · 시작'};
+ if(stage===1)return {id,chapter,stage,zone:id,x:680,y:915,action:'hunt',title:head,text:'일반 몬스터 처치 '+Math.min(chapter.kills,Number(quest.kills)||0)+'/'+chapter.kills+' · 지도 앞쪽 사냥터에서 일반 몬스터를 처치',button:'일반 몬스터 사냥터로'};
+ if(stage===2)return {id,chapter,stage,zone:id,x:1080,y:1350,action:'elite',title:head,text:'정예 몬스터 처치 '+Math.min(chapter.elites,Number(quest.elites)||0)+'/'+chapter.elites+' · 뒤쪽 정예 구역으로 이동해 정예 몬스터를 처치',button:'정예 사냥터로'};
+ if(stage===3)return {id,chapter,stage,zone:id,x:760,y:1745,action:'boss',title:head,text:chapter.boss+' 토벌 · 지도 아래 보스 지역에서 '+chapter.boss+'을 처치 (다시 나타날 때까지 기다려야 할 수 있음)',button:'지역 보스에게 이동'};
+ return {id,chapter,stage,zone:id,x:768,y:830,action:'claim',title:head,text:'지역 보스 처치 완료! 시련 완료 보상을 수령해야 '+number+'차 전직 조건에 반영됩니다.',button:'서사 보상 수령'};
+}
+
 export const DAILY_TASKS={hunt:{name:'숲의 토벌',goal:20,gold:600,xp:600},gather:{name:'재료 수집',goal:12,gold:400,xp:400},dungeon:{name:'던전 토벌',goal:5,gold:1200,xp:1600}};
 export function koreaDay(seconds){return new Date((seconds+9*3600)*1000).toISOString().slice(0,10);}
 export function bossWindow(b,seconds){const shifted=seconds+9*3600,day=Math.floor(shifted/86400),hour=(shifted-day*86400)/3600;const active=b.hours.find(h=>hour>=h&&hour<h+1);const next=b.hours.find(h=>h>hour);return {active:active!==undefined,key:day+':'+(active??''),end:active===undefined?0:(day*86400+active*3600-9*3600+3600),next:(day*86400+(next??b.hours[0]+24)*3600-9*3600)};}
