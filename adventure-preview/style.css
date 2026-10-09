@@ -1526,3 +1526,46 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .entity.hero>.sprite{image-rendering:auto}
 #hero>.entity-name{top:-23px;z-index:8;padding:2px 5px;border-radius:5px;background:#101b1bc9;font-size:11px}
 @media(max-width:600px){#hero>.entity-name{font-size:10px;top:-21px}}
+
+/* Actual-zone scenery pass: all elements are presentation-only. */
+#zoneDecor .region-terrain{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;opacity:.8;--road:#9d9c8e}
+#world[data-zone=surface] .region-terrain{opacity:.13;--road:#ddc28e}
+#world[data-zone=grove] .region-terrain{opacity:.6;--road:#709377;background:radial-gradient(ellipse at 7% 40%,#0a241cd9,transparent 60%),radial-gradient(ellipse at 95% 70%,#14361fdb,transparent 63%),repeating-radial-gradient(circle at 30% 26%,transparent 0 55px,#16381c88 58px 63px,transparent 68px 148px)}
+#world[data-zone=cave] .region-terrain{opacity:.95;--road:#638cad;background:radial-gradient(ellipse at 11% 52%,#2a8fba66,transparent 65%),radial-gradient(ellipse at 89% 34%,#3e65b377,transparent 66%),repeating-linear-gradient(110deg,transparent 0 113px,#b0d7f013 115px 120px,transparent 124px 243px),linear-gradient(125deg,#141b2a,#23344a 40%,#101a30)}
+#world[data-zone=ruins] .region-terrain{opacity:.93;--road:#ae7463;background:radial-gradient(ellipse at 8% 25%,#a9523077,transparent 65%),repeating-linear-gradient(90deg,transparent 0 151px,#d6b38d24 153px 158px,transparent 160px 311px),repeating-linear-gradient(0deg,transparent 0 109px,#a66c5333 111px 114px,transparent 116px 226px),linear-gradient(#3c2926,#5b3630,#2c1b24)}
+#world:is([data-zone=abyss],[data-zone=void],[data-zone=rift]) .region-terrain{opacity:.95;--road:#685b9b;background:radial-gradient(ellipse at 7% 45%,#853fbd59,transparent 68%),radial-gradient(ellipse at 94% 78%,#5946a480,transparent 74%),repeating-linear-gradient(135deg,transparent 0 123px,#a880e920 127px 132px,transparent 134px 254px),linear-gradient(125deg,#171222,#2c1b3c,#121326)}
+#world:is([data-zone=celestial],[data-zone=origin],[data-zone=sanctum]) .region-terrain{opacity:.94;--road:#c3bcb5;background:radial-gradient(ellipse at 50% 24%,#ffe4a566,transparent 78%),repeating-linear-gradient(90deg,transparent 0 173px,#dbebf026 175px 181px,transparent 184px 350px),repeating-linear-gradient(0deg,transparent 0 142px,#f5f6ef1e 144px 149px,transparent 153px 295px),linear-gradient(135deg,#33435e,#5e7390,#2b344e)}
+#world[data-zone=eclipse] .region-terrain{opacity:.94;--road:#b78ca0;background:radial-gradient(ellipse at 30% 24%,#cf4a7377,transparent 66%),repeating-linear-gradient(115deg,transparent 0 110px,#ed8ea624 114px 119px,transparent 123px 237px),linear-gradient(#271321,#562b3d,#261b30)}
+.region-terrain .region-walk{position:absolute;pointer-events:none;border:2px solid #fdfdf221;border-radius:25px 38px 30px 37px;opacity:.42;background:radial-gradient(ellipse at center,#fffffd2b,transparent 82%),linear-gradient(115deg,#10102133,var(--road),#080c1530);box-shadow:inset 0 0 32px #0712205e}
+.map-landmark{position:absolute;display:block;width:160px;height:178px;transform:translate(-50%,-100%) scale(1.3);transform-origin:50% 100%;pointer-events:none;filter:drop-shadow(0 9px 8px #0009)}
+.map-landmark::before,.map-landmark::after{content:'';display:block;position:absolute}
+.map-landmark.tree::before{left:42%;top:25%;width:16%;height:75%;background:linear-gradient(90deg,#382719,#8f6344,#36231a)}
+.map-landmark.tree::after{left:3%;top:0;width:94%;height:71%;border-radius:48%;background:radial-gradient(ellipse at 30% 25%,#668f4b,#325a38 58%,#192c27);box-shadow:inset -15px -14px 18px #092015b5}
+.map-landmark.crystal::before{left:25%;top:0;width:50%;height:100%;background:linear-gradient(110deg,#28527b,#a3e7fc 38%,#285a96 61%,#182b55);clip-path:polygon(50% 0,94% 31%,77% 100%,23% 100%,6% 31%);filter:drop-shadow(0 0 14px #78d6ff)}
+.map-landmark.crystal::after{left:1%;top:49%;width:98%;height:51%;background:linear-gradient(90deg,#16314e,#80caef,#2e5489);clip-path:polygon(0 44%,34% 0,49% 100%,67% 11%,100% 55%,90% 100%,10% 100%)}
+.map-landmark.arch::before{left:5%;top:3%;width:90%;height:97%;background:linear-gradient(110deg,#2b2223,#b78662 45%,#402b29);clip-path:polygon(0 17%,20% 0,80% 0,100% 17%,84% 100%,68% 100%,65% 34%,35% 34%,32% 100%,16% 100%)}
+.map-landmark.arch::after{left:18%;top:5%;width:64%;height:25%;border:9px solid #a47154;border-bottom:0;border-radius:48% 48% 0 0}
+.map-landmark.pillar::before{left:30%;top:10%;width:40%;height:90%;background:linear-gradient(90deg,#28324b,#d2d4d0 40%,#616e82 72%,#1d2a40);clip-path:polygon(0 3%,100% 3%,85% 90%,100% 100%,0 100%,15% 90%);box-shadow:0 0 10px #a4d2e655}
+.map-landmark.pillar::after{left:18%;top:0;width:64%;height:20%;background:linear-gradient(#dedac7,#647389);clip-path:polygon(8% 10%,92% 10%,100% 100%,0 100%)}
+.map-landmark.spire::before{left:25%;top:4%;width:50%;height:96%;background:linear-gradient(90deg,#090b19,#8e61ac 43%,#171023 75%);clip-path:polygon(50% 0,96% 28%,84% 100%,16% 100%,4% 28%)}
+.map-landmark.spire::after{left:40%;top:24%;width:20%;height:45%;background:linear-gradient(#e3a9ff,#752db5,#220e3b);clip-path:polygon(50% 0,100% 40%,70% 100%,30% 100%,0 40%);filter:drop-shadow(0 0 13px #ae65ee)}
+.map-landmark.altar::before{left:3%;bottom:0;width:94%;height:57%;border-radius:50% 50% 14% 14%;border:5px solid #b5d4e3;background:linear-gradient(145deg,#23405f,#8baec7,#2c4767);box-shadow:0 0 20px #95d8e366}
+.map-landmark.altar::after{left:36%;top:2%;width:28%;height:75%;background:linear-gradient(#fff4c1,#8abecb,#375274);clip-path:polygon(50% 0,93% 30%,81% 100%,19% 100%,7% 30%);filter:drop-shadow(0 0 14px #ffefbb)}
+#world[data-zone] .hunt-sector{min-width:100px;max-width:158px;padding:5px 8px;white-space:normal;line-height:1.25;text-align:center}
+#world[data-zone] .hunt-sector b{font-size:11px}
+#world[data-zone] .hunt-sector small{font-size:9px}
+.region-route{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:310px;overflow-y:auto;padding:4px}
+.region-node{min-height:60px;min-width:0;display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #566d67;border-left:3px solid #8aa8a6;border-radius:11px;background:#132922;opacity:.85}
+.region-node.current{background:#374732;border-color:#f6d380;opacity:1}
+.region-node.adjacent{border-color:#89b5ab;opacity:1}
+.region-node.locked{opacity:.55}
+.region-num{color:#e6cb85;font-size:15px;font-weight:800;min-width:21px}
+.region-node>span:last-child{display:flex;flex-direction:column;gap:3px;min-width:0}
+.region-node b{color:#f9ecc9;font-size:11px;line-height:1.25}
+.region-node small{color:#afc6b8;font-size:10px;line-height:1.25}
+.region-node[data-zone=cave]{border-left-color:#75c4ef}
+.region-node[data-zone=ruins]{border-left-color:#e58c70}
+.region-node[data-zone=abyss],.region-node[data-zone=rift],.region-node[data-zone=void]{border-left-color:#be7af5}
+.region-node[data-zone=origin],.region-node[data-zone=celestial],.region-node[data-zone=sanctum]{border-left-color:#efdb97}
+.region-node[data-zone=eclipse]{border-left-color:#f58aa9}
+@media(max-width:600px){.region-route{max-height:260px;gap:6px}.region-node{padding:6px;min-height:54px}.region-node b{font-size:10px}.region-node small{font-size:9px}.region-num{font-size:12px;min-width:15px}}

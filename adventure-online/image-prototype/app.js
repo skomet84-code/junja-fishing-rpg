@@ -43,6 +43,33 @@ const ZONE_DECOR_TYPES={
  void:['rift','obelisk','voidstone','abyss-mist'],
  origin:['sky-pillar','altar','cloudstone','rune']
 };
+
+const MAP_TERRACES=[[440,220,650,270],[680,440,200,210],[260,610,1010,400],[615,970,310,220],[300,1150,935,365],[610,1475,320,195],[250,1630,1030,310]];
+const MAP_SECTORS={
+ surface:[['마을 외곽','초보 임무'],['초원길','다람쥐 · 채집'],['숲의 관문','다음 지역']],
+ grove:[['고목 수림','깊은숲 초입'],['버섯 습지','정예 · 숲의 영혼'],['태고의 뿌리','수호수']],
+ cave:[['수정 갱도','수정 채집'],['푸른 지하호수','지하 동굴'],['동굴의 심장','지역 보스']],
+ ruins:[['붉은 성문','무너진 성벽'],['불꽃 제단','고대 유적'],['왕좌의 잔해','폐허 수호자']],
+ abyss:[['망각의 문','심연 입구'],['공허 계단','그림자 정예'],['심연의 심장','그림자 군왕']],
+ celestial:[['천룡의 관문','공중 유적'],['별빛 회랑','천룡 수호자'],['천룡의 제단','일일 레이드']],
+ void:[['무너진 외성','성채 입구'],['균열 회랑','공허의 인장'],['공허 왕좌','3페이즈 레이드']],
+ origin:[['성광 회랑','신전 입구'],['창세 제단','태초의 성흔'],['태초의 신좌','카이로스']],
+ rift:[['찢어진 하늘','균열의 초입'],['부유 파편','정예 · 전직 재료'],['파멸 경계','벨리온']],
+ eclipse:[['월식 성벽','어둠의 요새'],['붉은 달의 정원','월식 정예'],['월식 왕좌','녹티스']],
+ sanctum:[['영겁 회랑','성역 입구'],['천공 제단','고대 수호자'],['영겁의 신좌','에테르']]
+};
+const MAP_LANDMARKS={
+ grove:[['tree',210,930],['tree',1300,1370],['tree',310,1790]],
+ cave:[['crystal',245,930],['crystal',1310,1360],['crystal',320,1780]],
+ ruins:[['arch',240,950],['pillar',1280,1370],['arch',310,1770]],
+ abyss:[['spire',240,950],['spire',1280,1340],['spire',300,1770]],
+ celestial:[['altar',230,945],['pillar',1290,1360],['altar',310,1770]],
+ void:[['spire',240,945],['pillar',1290,1360]],
+ origin:[['altar',240,945],['pillar',1290,1360]],
+ rift:[['spire',230,930],['crystal',1310,1360],['spire',310,1770]],
+ eclipse:[['arch',230,945],['pillar',1300,1350],['arch',310,1770]],
+ sanctum:[['altar',230,945],['pillar',1300,1350],['altar',310,1770]]
+};
 function originStoryProgress(){const q=state.originStory||{stage:0,kills:0,elites:0,boss:0,claimed:false};const rows=[
  ['1장 · 성광 회랑 정화',q.stage>1?'완료':q.stage===1?Math.min(15,q.kills)+'/15':'잠김'],
  ['2장 · 창세 제단 정예',q.stage>2?'완료':q.stage===2?Math.min(3,q.elites)+'/3':'잠김'],
@@ -60,9 +87,14 @@ function regionalNpcWindow(id){const npc=[...VOID_NPCS,...ORIGIN_NPCS].find(n=>n
 function syncZoneDecor(zone){
  const layer=$('zoneDecor');if(!layer||layer.dataset.zone===zone)return;layer.dataset.zone=zone;layer.replaceChildren();zoneNpcEls.forEach(el=>el.remove());zoneNpcEls=[];
  const types=ZONE_DECOR_TYPES[zone]||ZONE_DECOR_TYPES.surface,spots=zone==='void'?VOID_DECOR_SPOTS:zone==='origin'?ORIGIN_DECOR_SPOTS:DECOR_SPOTS;
+ const terrain=document.createElement('div');terrain.className='region-terrain';terrain.setAttribute('aria-hidden','true');
+ MAP_TERRACES.forEach(([x,y,w,h])=>{const walk=document.createElement('i');walk.className='region-walk';Object.assign(walk.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px'});terrain.append(walk);});layer.append(terrain);
+
  spots.forEach(([x,y,scale],i)=>{const el=document.createElement('i');el.className='zone-decor '+types[i%types.length];el.style.left=x+'px';el.style.top=y+'px';el.style.setProperty('--decor-scale',scale);el.style.zIndex=String(Math.round(y-80));layer.append(el);});
- const labels=zone==='void'?[[768,655,'무너진 외성','Lv.300+ · 진입 전투'],[768,1160,'균열 회랑','정예 · 공허의 인장'],[768,1660,'공허 왕좌','3페이즈 지역보스 · 레이드']]:zone==='origin'?[[768,655,'성광 회랑','Lv.400+ · 신전 진입'],[768,1160,'창세 제단','정예 · 태초의 성흔'],[768,1660,'태초의 신좌','3페이즈 수문신 · 카이로스']]:[[768,655,'초입 사냥터','일반 몬스터'],[768,1165,'깊은 사냥터','정예 몬스터'],[768,1665,'보스 구역','지역 보스 · 포탈']];
- labels.forEach(([x,y,title,sub],i)=>{const el=document.createElement('div');el.className='hunt-sector sector-'+(i+1);el.style.left=x+'px';el.style.top=y+'px';el.innerHTML='<b>'+title+'</b><small>'+sub+'</small>';layer.append(el);});
+
+ const labels=MAP_SECTORS[zone]||MAP_SECTORS.surface;
+ labels.forEach(([title,sub],i)=>{const el=document.createElement('div');el.className='hunt-sector sector-'+(i+1);el.style.left=[455,1080,445][i]+'px';el.style.top=[655,1165,1665][i]+'px';el.innerHTML='<b>'+esc(title)+'</b><small>'+esc(sub)+'</small>';layer.append(el);});
+ for(const [type,x,y] of MAP_LANDMARKS[zone]||[]){const el=document.createElement('i');el.className='map-landmark '+type;el.style.left=x+'px';el.style.top=y+'px';el.style.zIndex=String(y-125);layer.append(el);}
  if(zone==='void'||zone==='origin'){
   const landmarks=zone==='void'?[['void-gate',768,610],['void-tower left',325,1040],['void-tower right',1210,1040],['void-chain',768,1410],['void-throne',768,1775]]:[['origin-gate',768,610],['origin-pillar left',325,1040],['origin-pillar right',1210,1040],['origin-altar',768,1410],['origin-throne',768,1775]];
   for(const [cls,x,y] of landmarks){const el=document.createElement('i');el.className=(zone==='void'?'void-landmark ':'origin-landmark ')+cls;el.style.left=x+'px';el.style.top=y+'px';layer.append(el);}
@@ -106,9 +138,9 @@ function spawnLootFx(e){
 }
 function renderMinimap(){
  const c=$('minimap');if(!c||(innerWidth<=700&&!$('minimapWrap').classList.contains('open')))return;const ctx=c.getContext('2d'),w=c.width,h=c.height,sx=w/W,sy=h/H,z=ZONES[state.zone]||{};
- const palettes={surface:['#173a26','#6aa45d'],grove:['#0b2117','#315f37'],cave:['#10182a','#527fa9'],ruins:['#2c1816','#9a5638'],abyss:['#12091c','#6b3a8d'],celestial:['#202943','#d1bd78'],void:['#180d29','#9851cd'],origin:['#1c2c39','#efd99b']},p=palettes[state.zone]||palettes.surface;
+ const palettes={surface:['#173a26','#6aa45d'],grove:['#0b2117','#315f37'],cave:['#10182a','#527fa9'],ruins:['#2c1816','#9a5638'],abyss:['#12091c','#6b3a8d'],celestial:['#202943','#d1bd78'],void:['#180d29','#9851cd'],origin:['#1c2c39','#efd99b'],rift:['#1b1233','#ab7fe6'],eclipse:['#28131d','#c76b85'],sanctum:['#20304b','#e9d4a6']},p=palettes[state.zone]||palettes.surface;
  ctx.clearRect(0,0,w,h);ctx.fillStyle=p[0];ctx.fillRect(0,0,w,h);
- ctx.fillStyle=p[1]+'55';ctx.fillRect(0,Math.round(610*sy),w,Math.round(400*sy));ctx.fillRect(0,Math.round(1150*sy),w,Math.round(365*sy));ctx.fillRect(0,Math.round(1630*sy),w,h-Math.round(1630*sy));
+ ctx.fillStyle=p[1]+'80';for(const [x,y,rw,rh] of MAP_TERRACES){ctx.fillRect(Math.round(x*sx),Math.round(y*sy),Math.max(2,Math.round(rw*sx)),Math.max(2,Math.round(rh*sy)));}ctx.strokeStyle='#ffffff55';ctx.lineWidth=1;ctx.strokeRect(Math.max(0,cam.x*sx),Math.max(0,cam.y*sy),Math.min(w,$('viewport').clientWidth/scale*sx),Math.min(h,$('viewport').clientHeight/scale*sy));
  ctx.strokeStyle='#ffffff22';ctx.lineWidth=1;for(const y of [610,1010,1150,1515,1630]){ctx.beginPath();ctx.moveTo(0,y*sy);ctx.lineTo(w,y*sy);ctx.stroke();}
  for(const ptl of TRAVEL_PORTALS[state.zone]||[]){ctx.fillStyle=state.level>=ZONES[ptl.to].level?'#ffe68b':'#6e7773';ctx.beginPath();ctx.arc(ptl.x*sx,ptl.y*sy,4,0,Math.PI*2);ctx.fill();}
  for(const e of enemies.values()){if(!e.alive)continue;ctx.fillStyle=e.named?'#ff80ff':e.boss?'#ffb24f':e.elite?'#ff765f':'#dbe4c8';ctx.fillRect(e.x*sx-1.5,e.y*sy-1.5,e.boss?4:3,e.boss?4:3);}
@@ -720,9 +752,9 @@ function syncMMO(){
  const ids=new Set();for(const n of systems.nodes){ids.add(n.id);let el=resourceEls.get(n.id);if(!el){el=document.createElement('button');el.className='resource';el.dataset.node=n.id;el.onclick=e=>{e.stopPropagation();const n=el.node;if(n.readyAt>now()){toast('재생까지 '+Math.ceil(n.readyAt-now())+'초');return;}if(distance(state,n)>100){gatherIntent=n.id;go(n.x,n.y);toast(MATERIALS[n.material]+' 채집 지점으로 이동');}else command({type:'gather',node:n.id});};$('resourceLayer').append(el);resourceEls.set(n.id,el);}el.node=n;el.style.left=n.x+'px';el.style.top=n.y+'px';el.style.zIndex=Math.round(n.y);el.classList.toggle('depleted',n.readyAt>now());el.textContent=({wood:'🌳',stone:'🪨',ore:'⛏',crystal:'💎'})[n.material]+' '+MATERIALS[n.material]+(n.readyAt>now()?' · '+Math.ceil(n.readyAt-now())+'초':' · 채집');}for(const [id,el] of resourceEls)if(!ids.has(id)){el.remove();resourceEls.delete(id);}syncPartyHud();const active=systems.trade||systems.duel||systems.partyInvite;$('socialAlert').hidden=!active;$('socialAlert').textContent=systems.partyInvite?'파티 초대 확인':systems.trade?'거래 요청·진행 확인':systems.duel?'PVP 대련 확인':'';const d=systems.duel;$('duelHud').hidden=!d?.accepted;if(d?.accepted){const other=d.players.find(id=>id!==state.id);$('duelHud').textContent=(now()<d.start?'대련 시작 '+Math.ceil(d.start-now())+'초':'대련 중')+' · 나 '+d.health[state.id]+' / 상대 '+d.health[other];}if(mmoPanel==='trade')renderTradeSummary();if(mmoPanel==='duel')renderDuelSummary();}
 function adventureWindow(){
  const mats=Object.entries(MATERIALS).map(([k,n])=>n+' '+state.materials[k]).join(' · '),portals=TRAVEL_PORTALS[state.zone]||[];
- const route=Object.entries(ZONES).map(([id,z])=>'<p class="route-row '+(id===state.zone?'current':'')+'"><b>'+esc(z.name)+'</b> · 권장 Lv.'+z.level+(id===state.zone?' · <strong>현재 지역</strong>':'')+'</p>').join('');
+ const route=Object.entries(ZONES).map(([id,z],i)=>{const current=id===state.zone,adjacent=portals.some(p=>p.to===id),locked=state.level<z.level,tag=current?'● 현재 위치':adjacent?(locked?'🔒 레벨 부족':'↗ 이동 가능'):'탐험 지역';return '<div class="region-node '+(current?'current ':adjacent?'adjacent ':'')+(locked?'locked':'')+'" data-zone="'+id+'"><span class="region-num">'+String(i+1).padStart(2,'0')+'</span><span><b>'+esc(z.name)+'</b><small>Lv.'+z.level+' · '+tag+'</small></span></div>';}).join('');
  const travelActions=portals.map(p=>{const z=ZONES[p.to],locked=state.level<z.level,direction=p.y>1200?'다음 지역':'이전 지역';return [(locked?'🔒 ':'⚡ ')+p.label+' · '+direction+(locked?' · Lv.'+z.level+' 필요':' · 즉시 이동'),()=>{if(locked){toast('Lv.'+z.level+'부터 '+p.label+' 이동 가능');return;}travelIntent=null;path=[];startWarp(p.label);command({type:'travel',zone:p.to});toast(p.label+' 순간이동');}];});
- modal('지도 · 지역 이동',`<p><b>${ZONES[state.zone]?.name||state.zone}</b>에서 이동할 지역을 바로 선택하세요.</p><p>지역 버튼 또는 필드 포탈을 누르면 <b>걸어가지 않고 즉시 순간이동</b>합니다.</p><p>Lv.${state.level} / ${LEVEL_CAP} · ${jobName(state)}</p><p>${mats}</p><div class="world-route">${route}</div>`,[...travelActions,['5~6차 전직 시나리오',ascensionWindow],['고레벨 장비 트리',ascensionGearWindow],...(state.level>=300?[['🔥 300+ 정복 콘텐츠',conquestWindow]]:[]),['일일 임무',dailyWindow],['제작',craftWindow],['네임드 등장 시간',bossWindowUI]]);
+ modal('지도 · 지역 이동',`<p><b>${ZONES[state.zone]?.name||state.zone}</b>에서 이동할 지역을 바로 선택하세요.</p><p>지역 버튼 또는 필드 포탈을 누르면 <b>걸어가지 않고 즉시 순간이동</b>합니다.</p><p>Lv.${state.level} / ${LEVEL_CAP} · ${jobName(state)}</p><p>${mats}</p><div class="world-route region-route" aria-label="지역 탐험 지도">${route}</div>`,[...travelActions,['5~6차 전직 시나리오',ascensionWindow],['고레벨 장비 트리',ascensionGearWindow],...(state.level>=300?[['🔥 300+ 정복 콘텐츠',conquestWindow]]:[]),['일일 임무',dailyWindow],['제작',craftWindow],['네임드 등장 시간',bossWindowUI]]);
 }
 function ascensionWindow(){const chapter=ASCENSION_CHAPTERS[state.zone],q=chapter?state.ascensionStories?.[state.zone]:null;const rows=Object.entries(ASCENSION_CHAPTERS).map(([id,c])=>{const st=state.ascensionStories?.[id]||{},label=st.claimed?'완료':st.stage===4?'보상 수령 가능':st.stage===3?'지역 보스 토벌':st.stage===2?'정예 '+Math.min(c.elites,st.elites||0)+'/'+c.elites:st.stage===1?'일반 '+Math.min(c.kills,st.kills||0)+'/'+c.kills:'미시작';return '<div class="promotion-trial '+(st.claimed?'done':id===state.zone?'current':'')+'"><b>'+esc(c.name)+' · Lv.'+c.level+'</b><span>'+esc(ZONES[id].name)+' · '+label+'</span><p>'+esc(c.story)+'</p></div>';}).join('');const actions=[];if(chapter&&!q?.claimed){actions.push([q?.stage===4?'★ '+chapter.name+' 보상 수령':q?.stage?'시련 현황 확인':'★ '+chapter.name+' 시작',async()=>{await command({type:'ascensionStory',chapter:state.zone});setTimeout(ascensionWindow,180);}]);}actions.push(['직업 · 전직',jobWindow],['지역 이동',adventureWindow],['장비 트리',ascensionGearWindow]);modal('5~6차 전직 · 신규 서사','<p>4차 이후 천계가 붕괴되며 균열과 월식의 새로운 장이 열립니다. 지역에 들어가 서사를 시작하고 <b>일반 토벌 → 정예 토벌 → 수문장 처치 → 보상 수령</b>까지 마쳐야 다음 전직이 열립니다.</p><div class="promotion-trials">'+rows+'</div><p>5차: Lv.500 + 보스 45회 + 균열 서사 완료 · 6차: Lv.650 + 보스 70회 + 월식 서사 완료. 전직 후 전용 스킬은 재료를 모아 촌장에서 전수받습니다.</p>',actions);}
 function ascensionGearWindow(){const tiers=[['균열',500,'rift','하늘의 균열'],['월식',600,'eclipse','월식의 요새'],['영겁',700,'eternal','영겁의 성역']];const rows=tiers.map(([name,level,prefix,where])=>{const ids=['blade','armor','cape','crown','boots','ring','ear'].map(k=>prefix+k).filter(k=>ITEMS[k]);return '<div class="promotion-trial"><b>초월 · '+name+' 세트 · Lv.'+level+'</b><span>획득: '+where+' 정예·수문장·일일 레이드 · 3 / 5 / 7세트 보너스</span><p>'+ids.map(id=>esc(ITEMS[id].name)).join(' · ')+'</p></div>';}).join('');modal('고레벨 장비 트리','<p><b>신격 → 균열 → 월식 → 영겁</b> 순으로 성장합니다. 새로운 장비는 각 지역의 정예·지역 보스 확률 보상과 일일 네임드 레이드에서 획득합니다. 무기는 재료를 모아 제작도 가능합니다. 장착 시 기존 강화 수치와 장비 보유 기록은 유지됩니다.</p><div class="promotion-trials">'+rows+'</div>',[['제작 공방',craftWindow],['5~6차 서사',ascensionWindow],['레이드 일정',bossWindowUI]]);}
