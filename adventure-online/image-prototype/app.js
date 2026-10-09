@@ -4,6 +4,7 @@ import {mergeSnapshot} from './network.js';
 import {BOOSTS,WEAPON_FAMILIES,MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,ASCENSION_CHAPTERS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS,ascensionGuide,currentAscensionLabel} from './mmo-data.js?v=20261009-dynrankfix1';
 import {API_URL} from './config.js';
 import {createCombatQueue} from './combat-queue.js?v=20261009-primordial-motion1';
+import {monsterIllustration} from './monster-art.js?v=20261010-monster1';
 import {predictServerPosition,reconcileVisualPosition,advanceFootsteps} from './movement-feel.js?v=20261010-motion1';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
@@ -346,7 +347,7 @@ function updateSnapshot(data){
   if(wasKnown&&previousAt&&sampleAt>previousAt+.025){const dt=sampleAt-previousAt,rvx=(e.x-previousX)/dt,rvy=(e.y-previousY)/dt,mag=Math.hypot(rvx,rvy),ratio=mag>260?260/mag:1;entry.netVx=entry.netVx*.4+rvx*ratio*.6;entry.netVy=entry.netVy*.4+rvy*ratio*.6;}
   entry.sampleAt=sampleAt;Object.assign(entry,e);
   if(wasKnown&&wasAlive&&e.hp<previousHp&&distance(view,e)<580)damageNumber(entry,previousHp-e.hp);
-  if(wasKnown&&wasAlive&&!e.alive){spawnLootFx(e);if(e.boss)bossIntroSeen.delete(state.zone+':'+e.id);}if(wasKnown&&wasAlive===false&&e.alive&&e.boss&&bossSector)showBossIntro(e);entry.mmo=!!e.atlas;entry.el.classList.toggle('mmo-monster',entry.mmo);entry.art.style.backgroundImage=entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=entry.mmo?'400% 400%':'';entry.el.querySelector('b').textContent=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('summoned',!!e.summoned);entry.el.classList.toggle('dead',!e.alive);entry.el.querySelector('.life i').style.width=e.hp/e.max*100+'%';entry.el.querySelector('.tell').hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);entry.el.dataset.phase=String(e.phase||1);entry.el.dataset.variant=String(e.variant??((e.skin||0)%5));entry.el.dataset.zone=state.zone;syncBossPattern(e);
+  if(wasKnown&&wasAlive&&!e.alive){spawnLootFx(e);if(e.boss)bossIntroSeen.delete(state.zone+':'+e.id);}if(wasKnown&&wasAlive===false&&e.alive&&e.boss&&bossSector)showBossIntro(e);entry.mmo=!!e.atlas;entry.el.classList.toggle('mmo-monster',entry.mmo);const artwork=monsterIllustration(e.name),artKey=artwork||('atlas:'+entry.mmo);entry.illustrated=!!artwork;if(entry.renderArtKey!==artKey){entry.renderArtKey=artKey;entry.el.classList.toggle('illustrated-monster',!!artwork);entry.el.dataset.artFamily=artwork||'';entry.art.style.backgroundImage=artwork?"url('./assets/monster-"+artwork+".svg?v=20261010-monster1')":entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=artwork?'contain':entry.mmo?'400% 400%':'';entry.art.style.backgroundPosition=artwork?'center bottom':'';entry.art.style.backgroundRepeat=artwork?'no-repeat':'';entry.renderSpriteKey='';}entry.el.querySelector('b').textContent=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('summoned',!!e.summoned);entry.el.classList.toggle('dead',!e.alive);entry.el.querySelector('.life i').style.width=e.hp/e.max*100+'%';entry.el.querySelector('.tell').hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);entry.el.dataset.phase=String(e.phase||1);entry.el.dataset.variant=String(e.variant??((e.skin||0)%5));entry.el.dataset.zone=state.zone;syncBossPattern(e);
  }
  for(const [id,e] of enemies)if(!mobIds.has(id)){e.el.remove();bossPatternEls.get(id)?.remove();bossPatternEls.delete(id);enemies.delete(id);if(selected===id){selected=null;targetIntent=null;}}
  const peerIds=new Set();for(const p of data.players){
@@ -707,8 +708,8 @@ function frame(time){
    if(!onScreen){e.vx=tx;e.vy=ty;if(e.renderVisible!==false){e.el.style.visibility='hidden';e.renderVisible=false;}continue;}
    if(e.renderVisible===false){e.el.style.visibility='';e.renderVisible=true;}
    const f=1-Math.exp(-19*dt);e.vx+=(tx-e.vx)*f;e.vy+=(ty-e.vy)*f;placeEntity(e.el,e.vx,e.vy);e.el.style.zIndex=Math.round(e.vy);
-   const col=e.tellAt?3:1+Math.floor(clock*8)%2,row=e.mmo?({stoneking:0,shadowking:1,dragon:2}[e.named]??e.skin??3):(e.boss?1:0),rows=e.mmo?4:2,key=col+'|'+row+'|'+rows;
-   if(e.renderSpriteKey!==key){sprite(e.art,col,row,rows);e.renderSpriteKey=key;}
+   if(!e.illustrated){const col=e.tellAt?3:1+Math.floor(clock*8)%2,row=e.mmo?({stoneking:0,shadowking:1,dragon:2}[e.named]??e.skin??3):(e.boss?1:0),rows=e.mmo?4:2,key=col+'|'+row+'|'+rows;
+   if(e.renderSpriteKey!==key){sprite(e.art,col,row,rows);e.renderSpriteKey=key;}}
   }
   for(const p of peers.values()){
    const age=Math.min(.12,Math.max(0,perfNow-(p.sampleAt||perfNow))),tx=p.x+(p.netVx||0)*age,ty=p.y+(p.netVy||0)*age,onScreen=tx>=left&&tx<=right&&ty>=top&&ty<=bottom;
