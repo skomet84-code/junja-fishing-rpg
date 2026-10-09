@@ -64,6 +64,6 @@ test('new raid bosses grant region-appropriate mythical equipment to valid parti
  assert.ok(e);e.alive=true;e.window='test-slot';e.tags.set(p.id,{damage:500,at:now,support:false});
  const before=p.state.bag.length;w.kill(e,p.channel);
  assert.equal(p.state.bag.length,before+1);
- assert.ok(ETERNAL_POOL.includes(p.state.bag.at(-1)));
+ assert.ok(ETERNAL_POOL.some(id=>p.state.bag.at(-1)===id+'_mage'), 'mage must receive the appropriate eternal-class weapon variant');
  assert.ok(p.state.bossClaims.includes('eternalLord:test-slot'));
 });
