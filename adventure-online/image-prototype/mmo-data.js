@@ -1,10 +1,16 @@
-export const LEVEL_CAP=750,CHANNEL_CAP=48,WORLD_CAP=192;
-export const PROMOTIONS=[{level:100,name:'1차 전직',bosses:1},{level:200,name:'2차 전직',bosses:5},{level:300,name:'3차 전직',bosses:15},{level:400,name:'4차 전직',bosses:30},{level:500,name:'5차 전직',bosses:45,story:'rift'},{level:650,name:'6차 전직',bosses:70,story:'eclipse'}];
+export const LEVEL_CAP=1500,CHANNEL_CAP=48,WORLD_CAP=192;
+export const PROMOTIONS=[{level:100,name:'1차 전직',bosses:1,gold:500},{level:200,name:'2차 전직',bosses:5,gold:3000},{level:300,name:'3차 전직',bosses:15,gold:30000},{level:400,name:'4차 전직',bosses:30,gold:300000},{level:500,name:'5차 전직',bosses:45,story:'rift',gold:3000000},{level:650,name:'6차 전직',bosses:70,story:'eclipse',gold:9000000},{level:750,name:'7차 전직',bosses:90,story:'astral',gold:20000000},{level:900,name:'8차 전직',bosses:120,story:'zenith',gold:35000000},{level:1050,name:'9차 전직',bosses:160,story:'chaos',gold:60000000},{level:1200,name:'10차 전직',bosses:210,story:'eon',gold:90000000},{level:1350,name:'11차 전직',bosses:270,story:'genesis',gold:140000000},{level:1500,name:'12차 창세신',bosses:340,story:'creation',gold:220000000,primordial:true}];
 export const PROMOTION_MATERIALS={
  3:{key:'voidSeal',name:'공허의 인장',need:100,zone:'void',source:'공허 성채 정예 · 공허성의 파괴자 · 공허제 아르카논'},
  4:{key:'originMark',name:'태초의 성흔',need:100,zone:'origin',source:'태초의 신전 정예 · 태초신전 수문신 · 태초신 카이로스'},
  5:{key:'riftCore',name:'균열의 핵',need:120,zone:'rift',source:'하늘 균열 정예 · 균열 수문장 · 균열 군주'},
- 6:{key:'eclipseSigil',name:'월식의 문장',need:150,zone:'eclipse',source:'월식 요새 정예 · 월식 집행자 · 월식황제'}
+ 6:{key:'eclipseSigil',name:'월식의 문장',need:150,zone:'eclipse',source:'월식 요새 정예 · 월식 집행자 · 월식황제'},
+ 7:{key:'astralEssence',name:'성운의 정수',need:80,zone:'astral',source:'astral 정예 · 수문장 · 레이드'},
+ 8:{key:'zenithSigil',name:'초월의 문장',need:100,zone:'zenith',source:'zenith 정예 · 수문장 · 레이드'},
+ 9:{key:'chaosFragment',name:'혼돈의 파편',need:120,zone:'chaos',source:'chaos 정예 · 수문장 · 레이드'},
+ 10:{key:'eonClock',name:'영겁의 톱니',need:140,zone:'eon',source:'eon 정예 · 수문장 · 레이드'},
+ 11:{key:'genesisSpark',name:'태초의 불꽃',need:160,zone:'genesis',source:'genesis 정예 · 수문장 · 레이드'},
+ 12:{key:'creationCore',name:'창세의 핵',need:180,zone:'creation',source:'creation 정예 · 수문장 · 레이드'}
 };
 export const MATERIALS={wood:'나무',stone:'돌',ore:'철광석',crystal:'던전 수정',stardust:'별빛 파편'};
 export const QUICK_CHATS=['안녕하세요!','같이 사냥해요!','보스 잡으러 가요!','잠깐만요!','도와주세요!','고마워요!','축하해요!','ㅋㅋㅋㅋ','좋아요!','마을에서 만나요!'];
@@ -104,6 +110,14 @@ export const EXTRA_ITEMS={
  eternalear:{name:'초월 · 영겁의 천명의 귀걸이',slot:'ear',rarity:'mythic',atk:1375,def:714,hp:9800,tier:10,level:700}
 };
 
+/* Six bounded post-750 equipment tiers; old item identifiers remain unchanged. */
+export const ENDGAME_TIERS=[{"id":"astral","name":"별계","level":750,"tier":12,"atk":8500,"def":3800,"hp":48000},{"id":"zenith","name":"천극","level":900,"tier":13,"atk":10600,"def":4750,"hp":60000},{"id":"chaos","name":"혼돈","level":1050,"tier":14,"atk":13100,"def":5900,"hp":75000},{"id":"eon","name":"영겁초월","level":1200,"tier":15,"atk":16100,"def":7200,"hp":93000},{"id":"genesis","name":"개벽","level":1350,"tier":16,"atk":19700,"def":8900,"hp":113000},{"id":"creation","name":"창세","level":1500,"tier":17,"atk":24000,"def":10800,"hp":137000}];
+for(const t of ENDGAME_TIERS){
+ for(const [suffix,slot,label,a,d,h] of [['blade','weapon','창세검',1,.06,.02],['armor','armor','갑주',.12,.64,.49],['cape','cape','망토',.38,.27,.16],['crown','head','관',.25,.24,.11],['boots','boots','장화',.14,.23,.18],['ring','ring','반지',.37,.13,.10],['ear','ear','귀걸이',.27,.21,.13]]){
+  EXTRA_ITEMS[t.id+suffix]={name:'초월 · '+t.name+'의 '+label,slot,rarity:'mythic',tier:t.tier,level:t.level,atk:Math.round(t.atk*a),def:Math.round(t.def*d),hp:Math.round(t.hp*h),...(slot==='weapon'?{speed:.25}:{})};
+ }
+}
+
 /* Shared live weapon families: legacy sword IDs remain unchanged for existing characters. */
 export const WEAPON_FAMILIES=Object.freeze({
  ...Object.fromEntries(Object.entries(EXTRA_ITEMS).filter(([id,item])=>id.endsWith('blade')&&item.slot==='weapon')),
@@ -123,6 +137,7 @@ export const CLASS_WEAPON_ITEMS=Object.fromEntries(Object.entries(WEAPON_FAMILIE
   return [classWeapon(baseId,job),item];
  })
 ));
+export const ASCENSION_GEAR_POOLS=Object.fromEntries(ENDGAME_TIERS.map(t=>[t.id,['blade','armor','cape','crown','boots','ring','ear'].map(k=>t.id+k)]));
 export const BOOSTS=Object.freeze({
  growthBoost:{name:'성장의 축복',field:'growth',price:80000,duration:1800,xpMultiplier:1.2,description:'30분 경험치 +20%'},
  battleBoost:{name:'전투 각성',field:'battle',price:120000,duration:1200,attackMultiplier:1.12,speedMultiplier:1.05,description:'20분 공격력 +12% · 속도 +5%'},
@@ -145,6 +160,7 @@ export const RECIPES={
  riftblade:{name:'초월 · 균열의 파천검',materials:{ore:400,crystal:180,stardust:70},gold:5000000,level:500,item:'riftblade'},
  eclipseblade:{name:'초월 · 월식의 파천검',materials:{ore:1000,crystal:500,stardust:200},gold:15000000,level:600,item:'eclipseblade'},
  eternalblade:{name:'초월 · 영겁의 파천검',materials:{ore:2000,crystal:1200,stardust:480},gold:40000000,level:700,item:'eternalblade'},
+ ...Object.fromEntries(ENDGAME_TIERS.map((t,i)=>[t.id+'blade',{name:'초월 · '+t.name+'의 창세검',materials:{ore:2400+i*400,crystal:1300+i*300,stardust:500+i*160},gold:50000000+i*35000000,level:t.level,item:t.id+'blade'}])),
 };
 for(const [id,recipe] of Object.entries(RECIPES)){
  if(!recipe.item||!Object.hasOwn(WEAPON_FAMILIES,recipe.item))continue;
@@ -166,7 +182,13 @@ export const ZONES={
  origin:{name:'태초의 신전',level:400,theme:'celestial'},
  rift:{name:'하늘의 균열',level:460,theme:'abyss'},
  eclipse:{name:'월식의 요새',level:560,theme:'ruins'},
- sanctum:{name:'영겁의 성역',level:650,theme:'celestial'}
+ sanctum:{name:'영겁의 성역',level:650,theme:'celestial'},
+ astral:{name:'별계의 관문',level:730,theme:'celestial'},
+ zenith:{name:'천극의 성채',level:880,theme:'abyss'},
+ chaos:{name:'혼돈의 심연',level:1030,theme:'ruins'},
+ eon:{name:'시간의 회랑',level:1180,theme:'celestial'},
+ genesis:{name:'개벽의 성소',level:1330,theme:'deepforest'},
+ creation:{name:'창세의 제단',level:1480,theme:'celestial'}
 };
 export const TRAVEL_PORTALS={
  surface:[{to:'grove',x:768,y:1870,label:'깊은 다람쥐숲'}],
@@ -179,7 +201,13 @@ export const TRAVEL_PORTALS={
  origin:[{to:'void',x:768,y:705,label:'공허 성채'},{to:'rift',x:768,y:1870,label:'하늘의 균열'}],
  rift:[{to:'origin',x:768,y:705,label:'태초의 신전'},{to:'eclipse',x:768,y:1870,label:'월식의 요새'}],
  eclipse:[{to:'rift',x:768,y:705,label:'하늘의 균열'},{to:'sanctum',x:768,y:1870,label:'영겁의 성역'}],
- sanctum:[{to:'eclipse',x:768,y:705,label:'월식의 요새'}]
+ sanctum:[{to:'eclipse',x:768,y:705,label:'월식의 요새'},{to:'astral',x:768,y:1870,label:'별계의 관문'}],
+ astral:[{to:'sanctum',x:768,y:705,label:'이전 지역'},{to:'zenith',x:768,y:1870,label:'다음 지역'}],
+ zenith:[{to:'astral',x:768,y:705,label:'이전 지역'},{to:'chaos',x:768,y:1870,label:'다음 지역'}],
+ chaos:[{to:'zenith',x:768,y:705,label:'이전 지역'},{to:'eon',x:768,y:1870,label:'다음 지역'}],
+ eon:[{to:'chaos',x:768,y:705,label:'이전 지역'},{to:'genesis',x:768,y:1870,label:'다음 지역'}],
+ genesis:[{to:'eon',x:768,y:705,label:'이전 지역'},{to:'creation',x:768,y:1870,label:'다음 지역'}],
+ creation:[{to:'genesis',x:768,y:705,label:'이전 지역'}]
 };
 export const NAMED=[
  {id:'stoneking',name:'바위 군주',hours:[8,18],zone:'grove',level:35,hp:18000,damage:75,x:1085,y:1710},
@@ -190,10 +218,22 @@ export const NAMED=[
  {id:'riftLord',name:'균열 군주 · 벨리온',hours:[20],zone:'rift',level:555,hp:28000000,damage:4900,x:1060,y:1720,raid:true,minParty:2,dropTier:'ascension'},
  {id:'eclipseLord',name:'월식황제 · 녹티스',hours:[21],zone:'eclipse',level:660,hp:48000000,damage:7000,x:1060,y:1720,raid:true,minParty:2,dropTier:'ascension'},
  {id:'eternalLord',name:'영겁신 · 에테르',hours:[22],zone:'sanctum',level:750,hp:75000000,damage:10200,x:1060,y:1720,raid:true,minParty:2,dropTier:'ascension'},
+ {id:'astralLord',name:'성운의 감시자 · 오르비스',hours:[19],zone:'astral',level:810,hp:105000000,damage:12000,x:1060,y:1720,raid:true,minParty:2,dropTier:'ascension'},
+ {id:'zenithLord',name:'천극의 군주 · 제논',hours:[20],zone:'zenith',level:960,hp:165000000,damage:16000,x:1060,y:1720,raid:true,minParty:2,dropTier:'ascension'},
+ {id:'chaosLord',name:'혼돈신 · 녹스',hours:[21],zone:'chaos',level:1110,hp:245000000,damage:21500,x:1060,y:1720,raid:true,minParty:2,dropTier:'ascension'},
+ {id:'eonLord',name:'시간의 신 · 크로노스',hours:[22],zone:'eon',level:1260,hp:355000000,damage:28500,x:1060,y:1720,raid:true,minParty:2,dropTier:'ascension'},
+ {id:'genesisLord',name:'개벽신 · 이그니스',hours:[23],zone:'genesis',level:1410,hp:500000000,damage:37000,x:1060,y:1720,raid:true,minParty:2,dropTier:'ascension'},
+ {id:'creationLord',name:'창세신 · 아르케',hours:[20],zone:'creation',level:1500,hp:710000000,damage:48000,x:1060,y:1720,raid:true,minParty:2,dropTier:'ascension'},
 ];
 export const ASCENSION_CHAPTERS={
  rift:{name:'7장 · 찢어진 하늘',zone:'rift',level:480,rank:4,kills:18,elites:3,boss:'균열 수문장',rewardGold:5000000,rewardMaterial:30,material:'riftCore',story:'태초신의 죽음과 함께 열린 하늘의 균열. 균열 군주 벨리온이 봉인된 차원을 침범한다.'},
- eclipse:{name:'8장 · 월식의 맹세',zone:'eclipse',level:590,rank:5,kills:24,elites:4,boss:'월식 집행자',rewardGold:12000000,rewardMaterial:40,material:'eclipseSigil',story:'균열 너머에서 달을 삼킨 월식황제 녹티스가 깨어났다. 사라진 천룡의 유산을 되찾아야 한다.'}
+ eclipse:{name:'8장 · 월식의 맹세',zone:'eclipse',level:590,rank:5,kills:24,elites:4,boss:'월식 집행자',rewardGold:12000000,rewardMaterial:40,material:'eclipseSigil',story:'균열 너머에서 달을 삼킨 월식황제 녹티스가 깨어났다. 사라진 천룡의 유산을 되찾아야 한다.'},
+ astral:{name:'9장 · 별계의 관문',zone:'astral',level:730,rank:6,kills:16,elites:3,boss:'성운의 수문장',rewardGold:5000000,rewardMaterial:24,material:'astralEssence',story:'별계의 문을 통과한다.'},
+ zenith:{name:'10장 · 천극의 맹세',zone:'zenith',level:880,rank:7,kills:17,elites:3,boss:'천극 집행관',rewardGold:8000000,rewardMaterial:30,material:'zenithSigil',story:'천극의 봉인을 푼다.'},
+ chaos:{name:'11장 · 혼돈의 심판',zone:'chaos',level:1030,rank:8,kills:18,elites:4,boss:'혼돈 파괴자',rewardGold:12000000,rewardMaterial:36,material:'chaosFragment',story:'혼돈의 신역을 회복한다.'},
+ eon:{name:'12장 · 영겁의 회랑',zone:'eon',level:1180,rank:9,kills:19,elites:4,boss:'시간 감시자',rewardGold:17000000,rewardMaterial:42,material:'eonClock',story:'시간의 수호자에게 도전한다.'},
+ genesis:{name:'13장 · 개벽의 불꽃',zone:'genesis',level:1330,rank:10,kills:20,elites:4,boss:'개벽의 수호신',rewardGold:23000000,rewardMaterial:48,material:'genesisSpark',story:'태초의 불꽃을 되찾는다.'},
+ creation:{name:'14장 · 창세신의 시험',zone:'creation',level:1480,rank:11,kills:22,elites:4,boss:'창세의 심판자',rewardGold:32000000,rewardMaterial:54,material:'creationCore',story:'창세의 법칙을 수호한다.'}
 };
 
 /** Quest-panel text and teleport waypoint for the next 5th/6th ascension.
@@ -204,7 +244,7 @@ export function ascensionGuide(player,chapterId){
  const chapter=id&&Object.hasOwn(ASCENSION_CHAPTERS,id)?ASCENSION_CHAPTERS[id]:null;
  if(!chapter)return null;
  const quest=player.ascensionStories?.[id]||{stage:0,claimed:false};
- const stage=quest.claimed?5:Math.max(0,Math.min(4,Number(quest.stage)||0)),number=id==='eclipse'?6:5;
+ const stage=quest.claimed?5:Math.max(0,Math.min(4,Number(quest.stage)||0)),number=PROMOTIONS.findIndex(p=>p.story===id)+1;
  const head=number+'차 전직 · '+chapter.name;
  if(stage===5)return {id,chapter,stage,zone:'surface',x:580,y:355,action:'promote',title:head,text:'서사 완료! Lv.'+PROMOTIONS[number-1].level+' 이상 · 보스 '+PROMOTIONS[number-1].bosses+'회 충족 후 준자마을 촌장 앞에서 '+number+'차 전직',button:'촌장에게 이동'};
  if(stage===0)return {id,chapter,stage,zone:id,x:768,y:830,action:'start',title:head,text:chapter.name+' 시작 · '+ZONES[id].name+'에서 시련 시작 버튼을 눌러 일반 몬스터부터 토벌',button:'시련 장소로 이동 · 시작'};
@@ -217,5 +257,5 @@ export function ascensionGuide(player,chapterId){
 export const DAILY_TASKS={hunt:{name:'숲의 토벌',goal:20,gold:600,xp:600},gather:{name:'재료 수집',goal:12,gold:400,xp:400},dungeon:{name:'던전 토벌',goal:5,gold:1200,xp:1600}};
 export function koreaDay(seconds){return new Date((seconds+9*3600)*1000).toISOString().slice(0,10);}
 export function bossWindow(b,seconds){const shifted=seconds+9*3600,day=Math.floor(shifted/86400),hour=(shifted-day*86400)/3600;const active=b.hours.find(h=>hour>=h&&hour<h+1);const next=b.hours.find(h=>h>hour);return {active:active!==undefined,key:day+':'+(active??''),end:active===undefined?0:(day*86400+active*3600-9*3600+3600),next:(day*86400+(next??b.hours[0]+24)*3600-9*3600)};}
-export const MMO_XP=level=>{const base=level<50?60+(level-1)*40:Math.round(2000+Math.pow(level-49,1.35)*100),mult=level>=700?12:level>=650?10:level>=600?8:level>=500?7:level>=450?6.5:level>=400?5:level>=350?3.8:level>=300?3:1;return Math.round(base*mult);};
+export const MMO_XP=level=>{const n=Math.max(1,Math.floor(Number(level)||1)),base=n<50?60+(n-1)*40:Math.round(2000+Math.pow(n-49,1.35)*100),mult=n>=700?12:n>=650?10:n>=600?8:n>=500?7:n>=450?6.5:n>=400?5:n>=350?3.8:n>=300?3:1;return Math.round(base*mult*(n>=750?Math.pow(1+(n-750)/1100,1.8):1));};
 export const MMO_HP=level=>100+(level-1)*14;

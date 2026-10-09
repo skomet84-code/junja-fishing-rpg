@@ -5,9 +5,9 @@ import {profile,JOBS,ITEMS,stats,RIFT_POOL,ECLIPSE_POOL,ETERNAL_POOL,promotionSk
 import {LEVEL_CAP,PROMOTIONS,PROMOTION_MATERIALS,ASCENSION_CHAPTERS,ZONES,TRAVEL_PORTALS,NAMED} from '../../../image-prototype/mmo-data.js';
 
 test('high-level roster migration preserves level, rank, equipment and chapter progress',()=>{
- assert.equal(LEVEL_CAP,750);
- assert.equal(PROMOTIONS.length,6);
- for(const job of Object.values(JOBS)){assert.equal(job.rankTitles.length,7);assert.equal(job.skills.length,9);}
+ assert.equal(LEVEL_CAP,1500);
+ assert.equal(PROMOTIONS.length,12);
+ for(const job of Object.values(JOBS)){assert.equal(job.rankTitles.length,13);assert.equal(job.skills.length,9);}
  const a=profile({job:'mage',level:715,rank:6,zone:'sanctum',bag:['training','eternalblade'],equipment:{weapon:'eternalblade'},ascensionStories:{rift:{stage:5,claimed:true},eclipse:{stage:5,claimed:true}},promotionMaterials:{riftCore:111,eclipseSigil:142},endgame:{mastery:77}});
  assert.equal(a.level,715);assert.equal(a.rank,6);assert.equal(a.zone,'sanctum');assert.equal(a.equipment.weapon,'eternalblade');
  assert.equal(a.ascensionStories.rift.claimed,true);
@@ -25,7 +25,7 @@ test('connected maps, late-game raids and item IDs are valid',()=>{
 });
 test('5th and 6th advancement needs a completed, rewarded chapter, and learned skills need materials',()=>{
  let now=1000;
- const w=new World({now:()=>now,random:()=>0.5}),p=w.add('unit','player',profile({job:'warrior',level:500,rank:4,bossKills:80,zone:'rift',x:768,y:805}),'test');
+ const w=new World({now:()=>now,random:()=>0.5}),p=w.add('unit','player',profile({job:'warrior',level:500,rank:4,bossKills:80,gold:50000000,zone:'rift',x:768,y:805}),'test');
  const s=p.state;
  const kill=(zone,enemy)=>{s.zone=zone;s.x=enemy.x;s.y=enemy.y;enemy.tags.set(p.id,{damage:20000,at:now,support:false});w.kill(enemy,p.channel);};
  function finishChapter(zone){
@@ -55,7 +55,7 @@ test('5th and 6th advancement needs a completed, rewarded chapter, and learned s
  assert.equal(promotionSkillLearned(s,6),false);
  s.promotionMaterials.eclipseSigil=PROMOTION_MATERIALS[6].need;w.action(p,{type:'learnPromotionSkill',rank:6});
  assert.equal(promotionSkillLearned(s,6),true);
- assert.equal(p.cooldowns.length,9);
+ assert.equal(p.cooldowns.length,13);
 });
 test('new raid bosses grant region-appropriate mythical equipment to valid participants',()=>{
  let now=1000;const w=new World({now:()=>now,random:()=>0});
