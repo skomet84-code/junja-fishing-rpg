@@ -64,6 +64,7 @@ try{
    if(viewport.label==='mobile')await page.locator('#utilityToggle').click();
    await page.locator('#adventureBtn').click();
    assert.equal(await page.locator('[data-map-travel]').count(),17,'Existing 11 maps plus 6 creator-ascension maps must appear');
+    assert.equal(await page.locator('#modalActions').getByRole('button',{name:'1차 전직 시련'}).count(),1,'Map dialog must not hardcode completed 5~6 chapters');
     assert.equal(await page.locator('[data-map-travel="astral"]').isDisabled(),true,'new maps must honor level gates');
    assert.equal(await page.locator('[data-map-travel="cave"]').isDisabled(),true);
    await page.locator('[data-map-travel="grove"]').click();

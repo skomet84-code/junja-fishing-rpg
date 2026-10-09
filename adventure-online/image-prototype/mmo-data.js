@@ -1,5 +1,6 @@
 export const LEVEL_CAP=1500,CHANNEL_CAP=48,WORLD_CAP=192;
 export const PROMOTIONS=[{level:100,name:'1차 전직',bosses:1,gold:500},{level:200,name:'2차 전직',bosses:5,gold:3000},{level:300,name:'3차 전직',bosses:15,gold:30000},{level:400,name:'4차 전직',bosses:30,gold:300000},{level:500,name:'5차 전직',bosses:45,story:'rift',gold:3000000},{level:650,name:'6차 전직',bosses:70,story:'eclipse',gold:9000000},{level:750,name:'7차 전직',bosses:90,story:'astral',gold:20000000},{level:900,name:'8차 전직',bosses:120,story:'zenith',gold:35000000},{level:1050,name:'9차 전직',bosses:160,story:'chaos',gold:60000000},{level:1200,name:'10차 전직',bosses:210,story:'eon',gold:90000000},{level:1350,name:'11차 전직',bosses:270,story:'genesis',gold:140000000},{level:1500,name:'12차 창세신',bosses:340,story:'creation',gold:220000000,primordial:true}];
+export function currentAscensionLabel(rank){const completed=Math.max(0,Math.min(PROMOTIONS.length,Math.floor(Number(rank)||0)));return completed===PROMOTIONS.length?'창세신 · 최종 전직 완료':(completed+1)+'차 전직 시련';}
 export const PROMOTION_MATERIALS={
  3:{key:'voidSeal',name:'공허의 인장',need:100,zone:'void',source:'공허 성채 정예 · 공허성의 파괴자 · 공허제 아르카논'},
  4:{key:'originMark',name:'태초의 성흔',need:100,zone:'origin',source:'태초의 신전 정예 · 태초신전 수문신 · 태초신 카이로스'},

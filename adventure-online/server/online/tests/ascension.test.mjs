@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {World} from '../engine.mjs';
 import {profile,JOBS,ITEMS,stats,RIFT_POOL,ECLIPSE_POOL,ETERNAL_POOL,promotionSkillLearned} from '../../../image-prototype/catalog.js';
-import {LEVEL_CAP,PROMOTIONS,PROMOTION_MATERIALS,ASCENSION_CHAPTERS,ZONES,TRAVEL_PORTALS,NAMED} from '../../../image-prototype/mmo-data.js';
+import {LEVEL_CAP,PROMOTIONS,PROMOTION_MATERIALS,ASCENSION_CHAPTERS,ZONES,TRAVEL_PORTALS,NAMED,currentAscensionLabel} from '../../../image-prototype/mmo-data.js';
 
 test('high-level roster migration preserves level, rank, equipment and chapter progress',()=>{
  assert.equal(LEVEL_CAP,1500);
@@ -67,3 +67,5 @@ test('new raid bosses grant region-appropriate mythical equipment to valid parti
  assert.ok(ETERNAL_POOL.some(id=>p.state.bag.at(-1)===id+'_mage'), 'mage must receive the appropriate eternal-class weapon variant');
  assert.ok(p.state.bossClaims.includes('eternalLord:test-slot'));
 });
+
+test('all current ascension menu labels represent the next uncompleted promotion',()=>{const ranks=[[0,'1차 전직 시련'],[4,'5차 전직 시련'],[5,'6차 전직 시련'],[6,'7차 전직 시련'],[11,'12차 전직 시련'],[12,'창세신 · 최종 전직 완료']];for(const [rank,label] of ranks)assert.equal(currentAscensionLabel(rank),label);assert.equal(currentAscensionLabel(99),'창세신 · 최종 전직 완료');});
