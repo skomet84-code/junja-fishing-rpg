@@ -290,7 +290,7 @@ function paintProductionSprite(el,mode,time,dx=0,dy=1,progress=null){
   layer.style.backgroundRepeat='no-repeat';
  }
  layer.style.display='block';
- layer.style.backgroundPosition=(column*100/7).toFixed(3)+'% '+(row*100/3).toFixed(3)+'%';
+ layer.style.setProperty('--rank-frame-position',(column*100/7).toFixed(3)+'% '+(row*100/3).toFixed(3)+'%');
  const phase=Math.sin(time*(job==='rogue'?13:11)),stride=mode==='walk'?Math.abs(phase)*2.1:0;
  const impact=(mode==='attack'||mode==='skill')?Math.sin(p*Math.PI):0;
  const travel=impact*(mode==='skill'?6:11),lean=mode==='walk'?phase*.85:impact*(dx<0?-5:5);
