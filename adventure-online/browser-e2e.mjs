@@ -60,6 +60,18 @@ try{
     assert.equal(await page.locator('#bagBtn').isVisible(),true);
     await page.locator('#utilityToggle').click();
    }
+   // Mobile and desktop: all cards selectable at the matching player level.
+   if(viewport.label==='mobile')await page.locator('#utilityToggle').click();
+   await page.locator('#adventureBtn').click();
+   assert.equal(await page.locator('[data-map-travel]').count(),11);
+   assert.equal(await page.locator('[data-map-travel="cave"]').isDisabled(),true);
+   await page.locator('[data-map-travel="grove"]').click();
+   await page.waitForFunction(()=>window.__adventure?.snapshot()?.zone==='grove',{timeout:10000});
+   await page.locator('#adventureBtn').click();
+   await page.locator('[data-map-travel="surface"]').click();
+   await page.waitForFunction(()=>window.__adventure?.snapshot()?.zone==='surface',{timeout:10000});
+   await page.screenshot({path:path.join(screens,viewport.label+'-map-travel.png')});
+   if(viewport.label==='mobile')await page.locator('#utilityToggle').click();
    await page.screenshot({path:path.join(screens,viewport.label+'-game.png')});
    await page.evaluate(()=>{window.__warriorFxObserved=false;const effects=document.querySelector('#effects');window.__warriorFxObserver=new MutationObserver(changes=>{for(const c of changes)for(const el of c.addedNodes){if(el?.nodeType===1&&(el.classList?.contains('warrior-technique')||el.querySelector?.('.warrior-technique')))window.__warriorFxObserved=true;}});window.__warriorFxObserver.observe(effects,{childList:true});});
    await page.locator('#autoBtn').click();

@@ -1569,3 +1569,13 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .region-node[data-zone=origin],.region-node[data-zone=celestial],.region-node[data-zone=sanctum]{border-left-color:#efdb97}
 .region-node[data-zone=eclipse]{border-left-color:#f58aa9}
 @media(max-width:600px){.region-route{max-height:260px;gap:6px}.region-node{padding:6px;min-height:54px}.region-node b{font-size:10px}.region-node small{font-size:9px}.region-num{font-size:12px;min-width:15px}}
+
+
+/* Map travel controls: accessible, touchable region cards */
+button.region-node{font:inherit;appearance:none;-webkit-appearance:none;text-align:left;color:inherit;width:100%;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .14s ease,transform .14s ease}
+button.region-node:not(:disabled){border-color:#99c6a8;background:linear-gradient(120deg,#244131,#132d27);opacity:1}
+button.region-node:not(:disabled):active{transform:scale(.98);background:#3a5b42}
+button.region-node:not(:disabled):focus-visible{outline:3px solid #f4dfa1;outline-offset:2px}
+button.region-node:disabled{cursor:default;opacity:.49}
+button.region-node.current:disabled{opacity:1;background:#384632;border-color:#f6d380}
+.region-node small{white-space:normal}
