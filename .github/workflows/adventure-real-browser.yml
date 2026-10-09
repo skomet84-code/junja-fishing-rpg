@@ -27,6 +27,8 @@ jobs:
         run: node adventure-online/movement-e2e.mjs
       - name: Verify compact kill notifications and reduced mobile rendering overhead
         run: node adventure-online/mobile-performance-e2e.mjs
+      - name: Verify smaller avatars, more gathering sites and name-matched new monsters
+        run: node adventure-online/ui-monsters-e2e.mjs
       - name: Save real browser screenshots
         if: always()
         uses: actions/upload-artifact@v4
