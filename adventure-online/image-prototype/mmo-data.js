@@ -108,6 +108,7 @@ export const RECIPES={
  eternalblade:{name:'초월 · 영겁의 파천검',materials:{ore:2000,crystal:1200,stardust:480},gold:40000000,level:700,item:'eternalblade'},
 };
 export const ZONES={
+ partyTrial:{name:'봉인된 천룡의 심장 · 파티 던전',level:100,theme:'abyss'},
  surface:{name:'준자마을 · 초원숲',level:1,theme:'forest'},
  grove:{name:'깊은 다람쥐숲',level:5,theme:'deepforest'},
  cave:{name:'수정 동굴',level:28,theme:'cave'},

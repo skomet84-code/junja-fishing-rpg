@@ -16,7 +16,7 @@ export function progress(w,p,key,n=1){const d=daily(p,w.now());d[key]=Math.min(D
 function clearMotion(p){p.navPath=[];p.input={x:0,y:0};p.auto=false;p.autoTarget=null;p.combatTarget=null;p.combatSkill=-1;p.attackTarget=null;p.attackSkill=-1;p.attackUntil=0;}
 function same(a,b){return a&&b&&a.channel===b.channel&&a.state.zone===b.state.zone;}
 function close(a,b){return same(a,b)&&distance(a.state,b.state)<=220;}
-export function initSystems(w){w.trades=new Map();w.duels=new Map();w.nextSocial=new Map();w.parties=new Map();w.partyInvites=new Map();}
+export function initSystems(w){w.trades=new Map();w.duels=new Map();w.nextSocial=new Map();w.parties=new Map();w.partyInvites=new Map();w.partyDungeons=new Map();}
 export function socialId(w,p){return [...w.trades.values()].find(t=>t.players.includes(p.id))||[...w.duels.values()].find(t=>t.players.includes(p.id));}
 export function partyOf(w,p){return p?[...w.parties.values()].find(t=>t.members.includes(p.id))||null:null;}
 export function partyMembers(w,p,{sameZone=false}={}){const party=partyOf(w,p);if(!party)return [p].filter(Boolean);return party.members.map(id=>w.players.get(id)).filter(Boolean).filter(q=>!sameZone||(q.channel===p.channel&&q.state.zone===p.state.zone));}
@@ -26,8 +26,84 @@ export function removeSocial(w,p){for(const map of [w.trades,w.duels])for(const 
 function invite(w,p,data,duel){const q=w.players.get(data.player);if(!q||q===p||!close(p,q)){w.event(p,'같은 지역의 가까운 유저를 선택하세요.');return;}if(socialId(w,p)||socialId(w,q)||p.exchangeBusy||q.exchangeBusy){w.event(p,'진행 중인 거래·대련을 먼저 끝내세요.');return;}if((w.nextSocial.get(p.id)||0)>w.now()){w.event(p,'초대는 10초마다 보낼 수 있습니다.');return;}if(duel&&(p.state.y>590||q.state.y>590)){w.event(p,'PVP 대련은 안전한 마을에서 시작하세요.');return;}const id=randomUUID(),t={id,players:[p.id,q.id],from:p.id,accepted:false,expires:w.now()+60,offers:{[p.id]:{gold:0,items:[],materials:{}},[q.id]:{gold:0,items:[],materials:{}}},confirmed:[]};(duel?w.duels:w.trades).set(id,t);w.nextSocial.set(p.id,w.now()+10);clearMotion(p);clearMotion(q);w.event(q,p.name+(duel?'님이 PVP 대련을 신청했습니다.':'님이 거래를 신청했습니다.'));}
 function validOffer(p,o){if(!Number.isSafeInteger(o.gold)||o.gold<0||o.gold>p.state.gold||!Array.isArray(o.items)||o.items.length>8)return false;const counts={};for(const id of o.items){if(!Object.hasOwn(ITEMS,id)||id==='training'||id==='glowing')return false;counts[id]=(counts[id]||0)+1;if(counts[id]>p.state.bag.filter(x=>x===id).length-(Object.values(p.state.equipment).includes(id)?1:0))return false;}for(const [k,n] of Object.entries(o.materials||{}))if(!Object.hasOwn(MATERIALS,k)||!Number.isSafeInteger(n)||n<0||n>p.state.materials[k])return false;return true;}
 async function settle(w,t){const [a,b]=t.players.map(id=>w.players.get(id));if(!t.accepted||!close(a,b)||a.exchangeBusy||b.exchangeBusy||!validOffer(a,t.offers[a.id])||!validOffer(b,t.offers[b.id])){w.trades.delete(t.id);if(a)w.event(a,'보유품·거리 변화로 거래가 취소되었습니다.');if(b)w.event(b,'보유품·거리 변화로 거래가 취소되었습니다.');return;}const aa=structuredClone(a.state),bb=structuredClone(b.state);for(const [p,q] of [[aa,bb],[bb,aa]]){const i=p===aa?a.id:b.id,o=t.offers[i];p.gold-=o.gold;q.gold+=o.gold;for(const item of o.items){p.bag.splice(p.bag.indexOf(item),1);q.bag.push(item);}for(const [key,n] of Object.entries(o.materials)){p.materials[key]-=n;q.materials[key]+=n;}}if(aa.bag.length>80||bb.bag.length>80||aa.gold>Number.MAX_SAFE_INTEGER||bb.gold>Number.MAX_SAFE_INTEGER||Object.values(aa.materials).some(n=>n>100000)||Object.values(bb.materials).some(n=>n>100000)){w.trades.delete(t.id);w.event(a,'가방 또는 보유 한도를 초과해 거래가 취소되었습니다.');w.event(b,'가방 또는 보유 한도를 초과해 거래가 취소되었습니다.');return;}a.exchangeBusy=b.exchangeBusy=true;clearMotion(a);clearMotion(b);t.settling=true;try{await w.onExchange(a,aa,b,bb);a.state=aa;b.state=bb;w.dirty(a);w.dirty(b);w.event(a,'거래 완료 · 양쪽 아이템과 골드가 함께 저장되었습니다.');w.event(b,'거래 완료 · 양쪽 아이템과 골드가 함께 저장되었습니다.');}catch{w.event(a,'저장 실패 · 거래를 취소하고 보유품을 유지했습니다.');w.event(b,'저장 실패 · 거래를 취소하고 보유품을 유지했습니다.');}finally{a.exchangeBusy=b.exchangeBusy=false;w.trades.delete(t.id);}}
+
+/* Daily, party-isolated three-stage instance. Entry is consumed once per KST day
+   and persisted before combat. Ordinary zones/raids are not modified. */
+const DUNGEON_ZONE='partyTrial',DUNGEON_MIN_LEVEL=100,DUNGEON_SECONDS=900;
+function dungeonMonsters(run,stage){
+ const hp=Math.round((run.level*200+run.level*run.level*3)*(1+run.members.length*.16));
+ const designs=stage===1?[
+  ['굴속 가시멧돼지',3,690,935],['숲의 마녀버섯',1,840,950],
+  ['철갑 돌뿔수',0,535,1025],['푸른 날개요괴',2,1005,1025]
+ ]:stage===2?[
+  ['정예 · 붉은 뿔 투사',3,520,1320],['정예 · 흑령 주술사',1,780,1390],
+  ['정예 · 천룡 파수꾼',2,1035,1320]
+ ]:[['★ 봉인된 천룡왕',2,768,1770]];
+ return designs.map(([name,skin,x,y],i)=>{
+  const max=Math.max(1,Math.round(hp*(stage===1?.065:stage===2?.20:1)));
+  return {id:stage*100+i,x,y,homeX:x,homeY:y,zone:DUNGEON_ZONE,level:Math.max(100,run.level),name,skin,atlas:true,variant:(stage+i)%4,regionStyle:stage===3?'boss':'dungeon',dungeonStage:stage,
+   hp:max,max,damage:Math.round(run.level*(stage===3?3.0:stage===2?1.6:1.1)),elite:stage===2,boss:stage===3,
+   alive:true,next:0,tellAt:0,respawn:Infinity,slow:0,stun:0,tags:new Map()};
+ });
+}
+function closePartyDungeon(w,run,won=false,reason=''){
+ if(!w.partyDungeons.has(run.channel))return;
+ const day=koreaDay(w.now());
+ for(const id of run.members){
+  const p=w.players.get(id);if(!p)continue;
+  if(won&&p.state.zone===DUNGEON_ZONE&&p.channel===run.channel){
+   const s=p.state,base=run.level,gold=base*700,xp=base*250;
+   s.gold+=gold;s.materials.crystal=Math.min(100000,(s.materials.crystal||0)+8+Math.floor(base/100));
+   s.materials.stardust=Math.min(100000,(s.materials.stardust||0)+1+Math.floor(base/200));
+   gainXp(s,xp);s.partyDungeonClears=Math.min(9999,(s.partyDungeonClears||0)+1);
+   progress(w,p,'dungeon');
+   const pool=base>=650?ETERNAL_POOL:base>=550?ECLIPSE_POOL:base>=450?RIFT_POOL:base>=300?MYTHIC_POOL:base>=180?LEGENDARY_POOL:RARE_POOL;
+   const pick=pool?.filter(item=>ITEMS[item]&&(ITEMS[item].level||1)<=base+50)||[];
+   if(pick.length&&s.bag.length<80&&w.random()<.30){const item=pick[Math.floor(w.random()*pick.length)];s.bag.push(item);w.event(p,'★ 파티던전 희귀 보너스 · '+ITEMS[item].name,'rare');}
+   w.event(p,'★ 봉인 던전 정복! 골드 '+gold.toLocaleString()+' · EXP '+xp+' · 수정/별빛 파편 지급','mythic');
+  }
+  if(p.state.zone===DUNGEON_ZONE&&p.channel===run.channel){
+   p.channel=run.originChannel;p.state.zone='surface';p.state.x=768;p.state.y=355;
+   clearMotion(p);w.dirty(p);
+   p.urgentSave=w.onUrgent(p);
+  }
+  if(!won)w.event(p,reason||'파티 던전이 종료되었습니다.','rare');
+ }
+ w.partyDungeons.delete(run.channel);w.channels.delete(run.channel+'|'+DUNGEON_ZONE);
+}
+export function onPartyDungeonKill(w,e,channel){
+ const run=w.partyDungeons.get(channel);if(!run||e.dungeonStage!==run.stage)return;
+ const mobs=w.channels.get(channel+'|'+DUNGEON_ZONE)||[];
+ if(mobs.some(m=>m.alive))return;
+ if(run.stage===3){closePartyDungeon(w,run,true);return;}
+ run.stage++;
+ w.channels.set(channel+'|'+DUNGEON_ZONE,dungeonMonsters(run,run.stage));
+ for(const id of run.members){const p=w.players.get(id);if(p)w.event(p,run.stage===2?'2단계 · 정예 수호병이 등장합니다!':'최종 단계 · 봉인된 천룡왕이 깨어났습니다!','rare');}
+}
+function enterPartyDungeon(w,p){
+ const party=partyOf(w,p),day=koreaDay(w.now());
+ if(!party||party.leader!==p.id){w.event(p,'파티장만 던전 입장을 시작할 수 있습니다.');return;}
+ const members=party.members.map(id=>w.players.get(id));
+ if(members.length<2||members.length>4||members.some(q=>!q||q.state.zone!=='surface'||q.channel!==p.channel||q.exchangeBusy||socialId(w,q))){
+  w.event(p,'같은 채널 준자마을에 모인 2~4명이 함께 입장해야 합니다. 거래·대련 중에는 입장할 수 없습니다.');return;
+ }
+ if(members.some(q=>q.state.level<DUNGEON_MIN_LEVEL)){w.event(p,'모든 파티원이 Lv.100 이상이어야 합니다.');return;}
+ if(members.some(q=>q.state.partyDungeonDay===day)){w.event(p,'파티원 중 오늘의 던전 입장권을 이미 사용한 유저가 있습니다.');return;}
+ if([...w.partyDungeons.values()].some(r=>r.partyId===party.id)){w.event(p,'파티 던전이 이미 진행 중입니다.');return;}
+ const channel='party-trial-'+party.id,run={partyId:party.id,channel,originChannel:p.channel,members:members.map(q=>q.id),level:Math.max(100,Math.min(...members.map(q=>q.state.level))),stage:1,started:w.now(),deadline:w.now()+DUNGEON_SECONDS};
+ w.partyDungeons.set(channel,run);w.channels.set(channel+'|'+DUNGEON_ZONE,dungeonMonsters(run,1));
+ for(const [i,q] of members.entries()){
+  q.state.partyDungeonDay=day;q.channel=channel;q.state.zone=DUNGEON_ZONE;q.state.x=650+(i%2)*220;q.state.y=755+(i>=2?70:0);
+  clearMotion(q);w.dirty(q);q.urgentSave=w.onUrgent(q);
+  w.event(q,'★ 파티 던전 입장 · 오늘 1회 소모 · 15분 내 3단계 클리어!','rare');
+ }
+}
+
 export function mmoAction(w,p,data){const s=p.state,now=w.now(),kind=data.type;if(p.exchangeBusy)return true;
+ if(kind==='partyDungeonStart'){enterPartyDungeon(w,p);return true;}
+ if(kind==='partyDungeonExit'){const r=w.partyDungeons.get(p.channel);if(r&&r.members.includes(p.id))closePartyDungeon(w,r,false,'파티원이 퇴장하여 던전 도전이 종료됐습니다.');return true;}
  if(kind==='travel'||kind==='mapTravel'){
+  if(s.zone===DUNGEON_ZONE){w.event(p,'파티 던전에서는 던전 퇴장 버튼을 이용하세요.');return true;}
   if(socialId(w,p)){w.event(p,'거래·대련을 종료한 뒤 이동하세요.');return true;}
   const dest=typeof data.zone==='string'?data.zone:'',z=Object.hasOwn(ZONES,dest)?ZONES[dest]:null;
   const portal=(TRAVEL_PORTALS[s.zone]||[]).find(x=>x.to===dest);
@@ -55,6 +131,6 @@ export function mmoAction(w,p,data){const s=p.state,now=w.now(),kind=data.type;i
  if(kind==='duelAttack'){const t=[...w.duels.values()].find(t=>t.accepted&&t.players.includes(p.id));if(!t||now<t.start||now<(t.next[p.id]||0))return true;const other=w.players.get(t.players.find(id=>id!==p.id));if(!close(p,other))return true;const skill=Number(data.skill),j=w.jobs[s.job],ability=Number.isInteger(skill)&&skill>=0?j.skills[skill]:null;const cd=t.cooldowns[p.id]||Array(j.skills.length).fill(0),rankReq=Number(ability?.[5]?.rank)||0;if(skill>=0&&(!ability||s.level<ability[1]||s.rank<rankReq||!promotionSkillLearned(s,rankReq)||now<cd[skill]))return true;const mpCost=skillMpCost(s,ability);if(ability&&s.mp<mpCost){w.event(p,'마나가 부족합니다.');return true;}const range=Math.min(220,stats(s).range);if(distance(s,other.state)>range){w.event(p,'대련 상대에게 더 가까이 접근하세요.');return true;}t.next[p.id]=now+(ability?skillCastDelay(s,ability):basicAttackDelay(s));if(ability){s.mp=Math.max(0,s.mp-mpCost);w.dirty(p);cd[skill]=now+ability[2];t.cooldowns[p.id]=cd;}const mode=ability?.[4];if(mode==='heal'||mode==='partyHeal')t.health[p.id]=Math.min(1000,t.health[p.id]+(mode==='partyHeal'?240:160));else if(mode==='guard'||mode==='partyGuard'){t.guards??={};t.guards[p.id]=now+5;}else{const bonus=Math.min(.15,(s.rank*.03+Math.max(0,stats(s).atk-10-s.level*3-j.attack)/2500));const hit=Math.round(65*(ability?.[3]||1)*(1+bonus)*(t.guards?.[other.id]>now?.5:1));t.health[other.id]=Math.max(0,t.health[other.id]-hit);if(mode==='drain')t.health[p.id]=Math.min(1000,t.health[p.id]+Math.round(hit*.3));}p.attackSkill=Number.isInteger(skill)?skill:-1;p.attackTarget=other.id;const dx=other.state.x-s.x,dy=other.state.y-s.y,d=Math.hypot(dx,dy)||1;p.dirX=dx/d;p.dirY=dy/d;p.face=Math.abs(dx)>Math.abs(dy)?2:dy<0?1:0;p.flip=p.face===2&&dx<0;p.attackUntil=now+Math.min(.72,(ability?skillCastDelay(s,ability):basicAttackDelay(s))*.82);if(t.health[other.id]===0){s.pvpWins++;w.dirty(p);w.event(p,'PVP 대련 승리! 승수 +1 · 아이템 손실 없음');w.event(other,'대련 종료 · 성장과 장비는 유지됩니다.');w.duels.delete(t.id);}return true;}
  return false;
 }
-export function tickSystems(w){const now=w.now();for(const [id,inv] of w.partyInvites)if(now>inv.expires||!w.players.has(inv.from)||!w.players.has(inv.to))w.partyInvites.delete(id);for(const [id,party] of w.parties){party.members=party.members.filter(pid=>w.players.has(pid));if(party.members.length<2)w.parties.delete(id);else if(!party.members.includes(party.leader))party.leader=party.members[0];}for(const map of [w.trades,w.duels])for(const [id,t] of map){if(t.settling)continue;const [a,b]=t.players.map(id=>w.players.get(id));if(now>t.expires||!same(a,b)||(map===w.trades&&distance(a.state,b.state)>260)||(map===w.duels&&t.accepted&&(a.state.y>590||b.state.y>590||distance(a.state,b.state)>400))){map.delete(id);for(const p of [a,b])if(p)w.event(p,'거리·시간·접속 변화로 거래 또는 대련이 종료되었습니다.');}}
+export function tickSystems(w){const now=w.now();for(const run of [...w.partyDungeons.values()]){const members=run.members.map(id=>w.players.get(id));if(now>run.deadline||members.some(q=>!q||q.channel!==run.channel||q.state.zone!==DUNGEON_ZONE)||!w.parties.get(run.partyId)||w.parties.get(run.partyId).members.length!==run.members.length)closePartyDungeon(w,run,false,now>run.deadline?'파티 던전 제한시간 15분이 종료됐습니다.':'파티 인원이 변경되어 던전이 종료됐습니다.');}for(const [id,inv] of w.partyInvites)if(now>inv.expires||!w.players.has(inv.from)||!w.players.has(inv.to))w.partyInvites.delete(id);for(const [id,party] of w.parties){party.members=party.members.filter(pid=>w.players.has(pid));if(party.members.length<2)w.parties.delete(id);else if(!party.members.includes(party.leader))party.leader=party.members[0];}for(const map of [w.trades,w.duels])for(const [id,t] of map){if(t.settling)continue;const [a,b]=t.players.map(id=>w.players.get(id));if(now>t.expires||!same(a,b)||(map===w.trades&&distance(a.state,b.state)>260)||(map===w.duels&&t.accepted&&(a.state.y>590||b.state.y>590||distance(a.state,b.state)>400))){map.delete(id);for(const p of [a,b])if(p)w.event(p,'거리·시간·접속 변화로 거래 또는 대련이 종료되었습니다.');}}
 }
-export function snapshotSystems(w,p){const t=[...w.trades.values()].find(t=>t.players.includes(p.id)),d=[...w.duels.values()].find(t=>t.players.includes(p.id)),party=partyOf(w,p),partyInvite=[...w.partyInvites.values()].find(x=>x.to===p.id),bossesInZone=w.channel(p.channel,p.state.zone).filter(e=>e.alive&&e.boss&&e.tags?.size),raidBoss=bossesInZone.sort((a,b)=>(b.named?1:0)-(a.named?1:0))[0]||null;let raidContribution=null;if(raidBoss){const total=[...raidBoss.tags.values()].reduce((n,t)=>n+Math.max(0,Number(t.damage)||0),0),ids=party?.members||[p.id];const rows=ids.map(id=>{const q=w.players.get(id),tag=raidBoss.tags.get(id);if(!q||!tag)return null;const damage=Math.max(0,Math.round(Number(tag.damage)||0));return {id,name:q.name,job:q.state.job,damage,support:!!tag.support,percent:total?Math.round(damage/total*100):0};}).filter(Boolean);if(rows.length)raidContribution={bossId:raidBoss.id,name:raidBoss.name,named:!!raidBoss.named,hp:raidBoss.hp,maxHp:raidBoss.max,rows};}return {daily:structuredClone(daily(p,w.now())),nodes:NODES.filter(n=>n.zone===p.state.zone).map(n=>({...n,readyAt:p.state.gatherTimes[n.id]||0})),bosses:NAMED.map(b=>({...b,...bossWindow(b,w.now())})),trade:t?structuredClone(t):null,duel:d?structuredClone(d):null,party:party?{id:party.id,leader:party.leader,members:party.members.map(id=>{const q=w.players.get(id);if(!q)return null;const st=stats(q.state);return {id:q.id,name:q.name,job:q.state.job,rank:q.state.rank,level:q.state.level,hp:q.state.hp,maxHp:st.hp,zone:q.state.zone,channel:q.channel};}).filter(Boolean)}:null,partyInvite:partyInvite?{...partyInvite,fromName:w.players.get(partyInvite.from)?.name||'유저'}:null,raidContribution};}
+export function snapshotSystems(w,p){const t=[...w.trades.values()].find(t=>t.players.includes(p.id)),d=[...w.duels.values()].find(t=>t.players.includes(p.id)),party=partyOf(w,p),partyInvite=[...w.partyInvites.values()].find(x=>x.to===p.id),bossesInZone=w.channel(p.channel,p.state.zone).filter(e=>e.alive&&e.boss&&e.tags?.size),raidBoss=bossesInZone.sort((a,b)=>(b.named?1:0)-(a.named?1:0))[0]||null;let raidContribution=null;if(raidBoss){const total=[...raidBoss.tags.values()].reduce((n,t)=>n+Math.max(0,Number(t.damage)||0),0),ids=party?.members||[p.id];const rows=ids.map(id=>{const q=w.players.get(id),tag=raidBoss.tags.get(id);if(!q||!tag)return null;const damage=Math.max(0,Math.round(Number(tag.damage)||0));return {id,name:q.name,job:q.state.job,damage,support:!!tag.support,percent:total?Math.round(damage/total*100):0};}).filter(Boolean);if(rows.length)raidContribution={bossId:raidBoss.id,name:raidBoss.name,named:!!raidBoss.named,hp:raidBoss.hp,maxHp:raidBoss.max,rows};}const partyDungeon=w.partyDungeons.get(p.channel);return {partyDungeon:partyDungeon?{stage:partyDungeon.stage,totalStages:3,deadline:partyDungeon.deadline,level:partyDungeon.level,members:partyDungeon.members.length}:null,daily:structuredClone(daily(p,w.now())),nodes:NODES.filter(n=>n.zone===p.state.zone).map(n=>({...n,readyAt:p.state.gatherTimes[n.id]||0})),bosses:NAMED.map(b=>({...b,...bossWindow(b,w.now())})),trade:t?structuredClone(t):null,duel:d?structuredClone(d):null,party:party?{id:party.id,leader:party.leader,members:party.members.map(id=>{const q=w.players.get(id);if(!q)return null;const st=stats(q.state);return {id:q.id,name:q.name,job:q.state.job,rank:q.state.rank,level:q.state.level,hp:q.state.hp,maxHp:st.hp,zone:q.state.zone,channel:q.channel};}).filter(Boolean)}:null,partyInvite:partyInvite?{...partyInvite,fromName:w.players.get(partyInvite.from)?.name||'유저'}:null,raidContribution};}
