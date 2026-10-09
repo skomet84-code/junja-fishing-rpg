@@ -57,7 +57,7 @@ try{
     await page.locator('#minimapToggle').click();
     await page.locator('#visualMenuToggle').click();
     assert.equal(await page.locator('#visualMenuToggle').getAttribute('aria-expanded'),'true');
-    assert.equal(await page.locator('#bagBtn').isVisible(),true);
+    await page.locator('#bagBtn').waitFor({state:'visible',timeout:3500});
     await page.locator('#visualMenuToggle').click();
    }
    // Mobile and desktop: all cards selectable at the matching player level.
