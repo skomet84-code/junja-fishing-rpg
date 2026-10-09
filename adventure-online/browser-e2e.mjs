@@ -63,7 +63,8 @@ try{
    // Mobile and desktop: all cards selectable at the matching player level.
    if(viewport.label==='mobile')await page.locator('#utilityToggle').click();
    await page.locator('#adventureBtn').click();
-   assert.equal(await page.locator('[data-map-travel]').count(),11);
+   assert.equal(await page.locator('[data-map-travel]').count(),17,'Existing 11 maps plus 6 creator-ascension maps must appear');
+    assert.equal(await page.locator('[data-map-travel="astral"]').isDisabled(),true,'new maps must honor level gates');
    assert.equal(await page.locator('[data-map-travel="cave"]').isDisabled(),true);
    await page.locator('[data-map-travel="grove"]').click();
    await page.waitForFunction(()=>window.__adventure?.snapshot()?.zone==='grove',{timeout:10000});
