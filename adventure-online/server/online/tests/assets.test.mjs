@@ -11,6 +11,12 @@ test('real Render entrypoint serves all 4 motion WebP images',async()=>{
    assert.equal(a.status,200,'motion '+art);assert.match(a.headers.get('content-type')||'',/image\/webp/);
    assert.equal(b.status,200,'fallback '+art);
   }
+  for(const art of ['boar','mushroom','wolf','treant']){
+   const a=await fetch(base+'/assets/monster-'+art+'.svg');
+   assert.equal(a.status,200,'monster svg '+art);
+   assert.match(a.headers.get('content-type')||'',/image\/svg\+xml/);
+   assert.match(await a.text(),/<svg/);
+  }
   const script=await fetch(base+'/combat-queue.js');assert.equal(script.status,200);
   const html=await fetch(base+'/');assert.equal(html.status,200);assert.match(await html.text(),/준자/);
  }finally{child.kill('SIGTERM');await delay(100);if(child.exitCode===null)child.kill('SIGKILL');}
