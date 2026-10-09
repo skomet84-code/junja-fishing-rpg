@@ -1,0 +1,64 @@
+/* Mobile Safari performance and combat alert placement.
+   Retain original artwork, game rules, hitboxes and desktop appearance. */
+@media (max-width:900px){
+  /* Backdrop blurs re-rasterize large regions as the world scrolls.
+     Existing panels are already 93-97% opaque, so blurs have little visual benefit. */
+  #game header .profile,
+  #game header .zone,
+  #game #quest,
+  #game #targetPanel,
+  #game #onlineBtn,
+  #game .profile,
+  #game .zone{
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+  }
+
+  /* Notifications no longer cover the protagonist in the middle of the field.
+     Routine EXP is one short pill; critical notices retain their full text. */
+  #game #toast{
+    position:absolute!important;
+    top:49%!important;
+    left:8px!important;
+    right:auto!important;
+    bottom:auto!important;
+    transform:none!important;
+    width:max-content!important;
+    max-width:min(126px,32vw)!important;
+    padding:7px 9px!important;
+    border-radius:11px!important;
+    font-size:11px!important;
+    line-height:1.3!important;
+    text-align:left!important;
+    overflow-wrap:anywhere;
+    white-space:normal;
+    box-shadow:none!important;
+    text-shadow:0 1px 2px #06130d;
+    z-index:66!important;
+    transition:opacity .13s linear!important;
+    contain:paint;
+  }
+  #game #toast.combat-toast{
+    max-width:110px!important;
+    color:#f8eab4!important;
+    background:rgba(12,37,26,.83)!important;
+    border:1px solid rgba(218,191,115,.72)!important;
+    font-size:11px!important;
+    font-weight:750;
+    white-space:nowrap;
+  }
+
+  /* Many animated enemies occupy the same mobile field.
+     Keep their sprite sheets visible without redundant heavy filters. */
+  #world .entity.enemy:not(.boss):not(.elite):not(.named)>.sprite{
+    filter:none!important;
+  }
+  #world .zone-decor.mist,
+  #world .zone-decor.abyss-mist{
+    animation:none!important;
+    filter:none!important;
+  }
+}
+@media (max-width:389px){
+  #game #toast{max-width:116px!important;font-size:10px!important;padding:6px 8px!important;}
+}
