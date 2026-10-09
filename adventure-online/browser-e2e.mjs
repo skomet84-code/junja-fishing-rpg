@@ -55,13 +55,13 @@ try{
     assert.equal(await page.locator('#minimapToggle').getAttribute('aria-expanded'),'true');
     assert.equal(await page.locator('#minimap').isVisible(),true);
     await page.locator('#minimapToggle').click();
-    await page.locator('#utilityToggle').click();
-    assert.equal(await page.locator('#utilityToggle').getAttribute('aria-expanded'),'true');
+    await page.locator('#visualMenuToggle').click();
+    assert.equal(await page.locator('#visualMenuToggle').getAttribute('aria-expanded'),'true');
     assert.equal(await page.locator('#bagBtn').isVisible(),true);
-    await page.locator('#utilityToggle').click();
+    await page.locator('#visualMenuToggle').click();
    }
    // Mobile and desktop: all cards selectable at the matching player level.
-   if(viewport.label==='mobile')await page.locator('#utilityToggle').click();
+   if(viewport.label==='mobile')await page.locator('#visualMenuToggle').click();
    await page.locator('#adventureBtn').click();
    assert.equal(await page.locator('[data-map-travel]').count(),17,'Existing 11 maps plus 6 creator-ascension maps must appear');
     assert.equal(await page.locator('#modalActions').getByRole('button',{name:'1차 전직 시련'}).count(),1,'Map dialog must not hardcode completed 5~6 chapters');
@@ -73,7 +73,7 @@ try{
    await page.locator('[data-map-travel="surface"]').click();
    await page.waitForFunction(()=>window.__adventure?.snapshot()?.zone==='surface',{timeout:10000});
    await page.screenshot({path:path.join(screens,viewport.label+'-map-travel.png')});
-   if(viewport.label==='mobile')assert.equal(await page.locator('#utilityToggle').getAttribute('aria-expanded'),'false','Map action should auto-collapse mobile utility menu');
+   if(viewport.label==='mobile')assert.equal(await page.locator('#visualMenuToggle').getAttribute('aria-expanded'),'false','Map action should auto-collapse mobile utility menu');
    await page.screenshot({path:path.join(screens,viewport.label+'-game.png')});
    await page.evaluate(()=>{window.__warriorFxObserved=false;const effects=document.querySelector('#effects');window.__warriorFxObserver=new MutationObserver(changes=>{for(const c of changes)for(const el of c.addedNodes){if(el?.nodeType===1&&(el.classList?.contains('warrior-technique')||el.querySelector?.('.warrior-technique')))window.__warriorFxObserved=true;}});window.__warriorFxObserver.observe(effects,{childList:true});});
    await page.locator('#autoBtn').click();
