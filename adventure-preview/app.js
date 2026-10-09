@@ -1,9 +1,9 @@
-import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261009-ascension56';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,CONQUEST_CAP,conquestNeed,conquestTitle,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261009-ascension56';
+import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261009-real-character-v1';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,CONQUEST_CAP,conquestNeed,conquestTitle,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261009-real-character-v1';
 import {mergeSnapshot} from './network.js';
-import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,ASCENSION_CHAPTERS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261009-ascension56';
+import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,ASCENSION_CHAPTERS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261009-real-character-v1';
 import {API_URL} from './config.js';
-import {createCombatQueue} from './combat-queue.js?v=20261009-ascension56';
+import {createCombatQueue} from './combat-queue.js?v=20261009-real-character-v1';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 const endgameStyle=document.createElement('style');endgameStyle.textContent="#world[data-zone=void]:after{background:radial-gradient(ellipse at 50% 70%,transparent 22%,#160b2670 72%,#06030bcc 100%)!important}#world[data-zone=origin]:after{background:radial-gradient(ellipse at 50% 70%,transparent 25%,#473a1360 72%,#100c04bb 100%)!important}";document.head.append(endgameStyle);
@@ -234,21 +234,71 @@ function blendSprite(art,a,b,mix,row,rows=3,mirror=false){
  sprite(art,a,row,rows,mirror);sprite(twin,b,row,rows,mirror);
  art.style.opacity=String(1-t);twin.style.opacity=String(t);
 }
-const EXPERIMENTAL_RANK_ART=false;
-function productionSpriteEnabled(el){return EXPERIMENTAL_RANK_ART&&el?.dataset?.job==='rogue'&&Number(el?.dataset?.rank||0)>=3;}
+// The high-rank field sheets were present but disabled. Keep the animated base
+// character visible until the replacement has decoded and its first cell contains
+// actual opaque pixels. Never hide the hero to display an unverified image.
+const RANK_FIELD_ART=true;
+const rankSpriteCache=new Map();
+function productionSpriteSheet(job,rank=0){
+ const stage=Number(rank)>=4?4:3;
+ if(job==='warrior'||job==='rogue')return './assets/sprites/'+job+'-r'+stage+'-field.webp';
+ return null;
+}
+function rankSpriteCandidate(job,rank){return RANK_FIELD_ART&&Number(rank)>=3?productionSpriteSheet(job,rank):null;}
+function ensureRankSprite(src){
+ if(!src)return null;
+ let entry=rankSpriteCache.get(src);if(entry)return entry;
+ entry={ready:false,failed:false,width:0,height:0};rankSpriteCache.set(src,entry);
+ entry.promise=new Promise(resolve=>{const img=new Image();img.onload=()=>{
+  // Eight columns, four directions. Anything else is not a field atlas.
+  const w=img.naturalWidth,h=img.naturalHeight;entry.width=w;entry.height=h;
+  if(w<8*24||h<4*24){entry.failed=true;resolve(false);return;}
+  try{
+   const sample=document.createElement('canvas');sample.width=64;sample.height=64;
+   const ctx=sample.getContext('2d',{willReadFrequently:true});
+   if(!ctx)throw Error('No canvas');
+   ctx.drawImage(img,0,0,w/8,h/4,0,0,64,64);
+   const pixels=ctx.getImageData(0,0,64,64).data;let visible=0;
+   for(let i=3;i<pixels.length;i+=4)if(pixels[i]>36)visible++;
+   entry.ready=visible>=25;entry.failed=!entry.ready;
+  }catch{entry.failed=true;}
+  resolve(entry.ready);
+ };img.onerror=()=>{entry.failed=true;resolve(false);};img.src=src+'?v='+BUILD;});
+ return entry;
+}
+function productionSpriteEnabled(el){
+ const src=rankSpriteCandidate(el?.dataset?.job,el?.dataset?.rank);
+ if(!src)return false;
+ const entry=ensureRankSprite(src);
+ return !!entry?.ready;
+}
 function productionSpriteRow(dx=0,dy=1){if(Math.abs(dx)>.45||Math.abs(dx)>Math.abs(dy))return dx<0?1:2;return dy<0?3:0;}
-function productionSpriteSheet(job,rank=0){if(job==='rogue'&&Number(rank)>=4)return './assets/sprites/rogue-r4-field.webp';if(job==='rogue'&&Number(rank)>=3)return './assets/sprites/rogue-r3-field.webp';return job==='warrior'?'./assets/sprites/warrior-sheet.webp':'./assets/sprites/shadow-sheet.webp';}
 function paintProductionSprite(el,mode,time,dx=0,dy=1,progress=null){
- let layer=el.querySelector('.production-sprite');if(!layer){layer=document.createElement('div');layer.className='production-sprite';el.append(layer);}
- const active=productionSpriteEnabled(el);el.classList.toggle('production-active',active);if(!active){layer.style.display='none';layer.style.transform='';return;}
- layer.style.display='block';const job=el.dataset.job,rank=Number(el.dataset.rank||0),src=productionSpriteSheet(job,rank),mirror=dx<-.18?-1:1,p=Math.max(0,Math.min(1,Number(progress??0))),phase=Math.sin(time*10),walkBob=mode==='walk'?Math.sin(time*15)*2.2:Math.sin(time*2.2)*.9;
- if(layer.dataset.spriteSrc!==src){layer.dataset.spriteSrc=src;layer.style.backgroundImage=`url('${src}?v=${BUILD}')`;layer.style.backgroundSize='contain';layer.style.backgroundPosition='center bottom';const test=new Image();test.onerror=()=>{el.classList.remove('production-active');layer.style.display='none';layer.style.backgroundImage='';};test.src=src+'?v='+BUILD;}
- let tx=0,ty=walkBob,rot=0,scale=1;
- if(mode==='walk'){rot=phase*1.1;scale=1+Math.abs(phase)*.012;}
- else if(mode==='attack'){const swing=Math.sin(p*Math.PI);tx=(dx||0)*swing*7;ty+=(dy||0)*swing*2.5;rot=(mirror<0?-1:1)*(-4+11*swing);scale=1+swing*.045;}
- else if(mode==='skill'){const burst=Math.sin(p*Math.PI);tx=(dx||0)*burst*4;ty-=burst*4;rot=(mirror<0?-1:1)*burst*3;scale=1+burst*.075;}
- layer.style.transform=`translateX(-50%) translate(${tx.toFixed(2)}px,${ty.toFixed(2)}px) scaleX(${mirror}) rotate(${rot.toFixed(2)}deg) scale(${scale.toFixed(3)})`;
- layer.dataset.productionMotion=mode;layer.dataset.productionRank=String(rank);
+ let layer=el.querySelector('.production-sprite');
+ if(!layer){layer=document.createElement('div');layer.className='production-sprite';el.append(layer);}
+ const active=productionSpriteEnabled(el);
+ el.classList.toggle('production-active',active);
+ if(!active){layer.style.display='none';layer.style.backgroundImage='';layer.dataset.productionMotion='fallback';return;}
+ const job=el.dataset.job,rank=Number(el.dataset.rank||0),src=productionSpriteSheet(job,rank),row=productionSpriteRow(dx,dy);
+ const p=Math.max(0,Math.min(1,Number(progress??0)));
+ const walkCycle=[1,2,3,4,5,4,3,2];
+ const column=mode==='walk'?walkCycle[Math.floor(time*(job==='rogue'?13:11))%walkCycle.length]:mode==='attack'||mode==='skill'?[6,6,7,7,6,0][Math.min(5,Math.floor(p*6))]:Math.floor(time*1.5)%2;
+ if(layer.dataset.spriteSrc!==src){
+  layer.dataset.spriteSrc=src;
+  layer.style.backgroundImage='url("'+src+'?v='+BUILD+'")';
+  layer.style.backgroundSize='800% 400%';
+  layer.style.backgroundRepeat='no-repeat';
+ }
+ layer.style.display='block';
+ layer.style.backgroundPosition=(column*100/7).toFixed(3)+'% '+(row*100/3).toFixed(3)+'%';
+ const phase=Math.sin(time*(job==='rogue'?13:11)),stride=mode==='walk'?Math.abs(phase)*2.1:0;
+ const impact=(mode==='attack'||mode==='skill')?Math.sin(p*Math.PI):0;
+ const travel=impact*(mode==='skill'?6:11),lean=mode==='walk'?phase*.85:impact*(dx<0?-5:5);
+ layer.style.transform='translateX(-50%) translate('+(dx*travel).toFixed(2)+'px,'+(-stride+dy*travel*.28).toFixed(2)+'px) rotate('+lean.toFixed(2)+'deg) scale('+(1+impact*.045).toFixed(3)+')';
+ layer.dataset.productionMotion=mode;
+ layer.dataset.productionFrame=String(column);
+ layer.dataset.productionDirection=String(row);
+ layer.dataset.productionRank=String(rank);
 }
 const MOTION={
  idle:{keys:[0,0],speed:.7},
@@ -336,7 +386,7 @@ function updateSnapshot(data){
  const me=data.players.find(p=>p.id===state.id);
  if(me){face=me.face;flip=me.flip;if(Number.isFinite(me.dirX)&&Number.isFinite(me.dirY)){headingX=me.dirX;headingY=me.dirY;}if(me.attacking){const key=[me.attackSkill??-1,me.attackTarget??'',state.nextAttack||0].join(':');if(key!==lastServerAttackKey){lastServerAttackKey=key;const hero=$('hero'),skill=me.attackSkill??-1,target=fxTarget(me.attackTarget),duration=combatAnimDuration(skill);attackUntil=clock+duration;hero.dataset.attackStarted=String(clock);hero.dataset.attackDuration=String(duration);hero.dataset.attackSkill=String(skill);hero.dataset.attackVariant=String(attackSerial++%3);if(!lastLocalFx||lastLocalFx.skill!==skill||lastLocalFx.until<now()){if(skill>=0)skillEffect(state.job,skill,target,view);else if(target)combatContact(state.job,-1,target,view);}lastLocalFx=null;}}else lastServerAttackKey='';}
  if(old.job!==state.job){skillQueue.clear();remoteSkillPending=null;lastLocalFx=null;}
- if(old.job!==state.job||old.rank!==state.rank||$('skillbar').childElementCount!==JOBS[state.job].skills.length)makeSkills();if(wasConnected&&(old.rank||0)<(state.rank||0))showPromotion(state.rank,state.job);if(wasConnected&&old.level<state.level&&(old.rank||0)===(state.rank||0))showLevelAchievement(old.level,state.level);actorArt($('heroArt'),state);decorate($('hero'),state);$('hero').querySelector('.entity-name').textContent=state.name+' · '+jobName(state);const portrait=document.querySelector('.portrait'),productionPortrait=EXPERIMENTAL_RANK_ART&&state.job==='rogue'&&Number(state.rank||0)>=3,portraitSrc=productionPortrait?productionSpriteSheet('rogue',state.rank):`./assets/${JOBS[state.job].art}.png`;portrait.style.backgroundImage=`url('${portraitSrc}?v=${BUILD}')`;portrait.style.backgroundSize=productionPortrait?'cover':'400% 300%';portrait.style.backgroundPosition=productionPortrait?'50% 12%':'0 0';portrait.dataset.job=state.job;portrait.dataset.rank=String(state.rank||0);portrait.classList.toggle('production-portrait',productionPortrait);
+ if(old.job!==state.job||old.rank!==state.rank||$('skillbar').childElementCount!==JOBS[state.job].skills.length)makeSkills();if(wasConnected&&(old.rank||0)<(state.rank||0))showPromotion(state.rank,state.job);if(wasConnected&&old.level<state.level&&(old.rank||0)===(state.rank||0))showLevelAchievement(old.level,state.level);actorArt($('heroArt'),state);decorate($('hero'),state);$('hero').querySelector('.entity-name').textContent=state.name+' · '+jobName(state);const portrait=document.querySelector('.portrait'),rankPortraitSrc=rankSpriteCandidate(state.job,state.rank),productionPortrait=!!(rankPortraitSrc&&ensureRankSprite(rankPortraitSrc)?.ready),portraitSrc=productionPortrait?rankPortraitSrc:`./assets/${JOBS[state.job].art}.png`;portrait.style.backgroundImage=`url('${portraitSrc}?v=${BUILD}')`;portrait.style.backgroundSize=productionPortrait?'800% 400%':'400% 300%';portrait.style.backgroundPosition='0% 0%';portrait.dataset.job=state.job;portrait.dataset.rank=String(state.rank||0);portrait.classList.toggle('production-portrait',productionPortrait);
  const mobIds=new Set();for(const e of data.enemies){
   mobIds.add(e.id);let entry=enemies.get(e.id),wasKnown=!!entry,wasAlive=entry?.alive,previousHp=entry?.hp,previousX=entry?.x,previousY=entry?.y,previousAt=entry?.sampleAt;
   if(!entry){const el=entity('enemy'+(e.boss?' boss':''));el.querySelector('b').textContent=e.name||'숲 다람쥐';el.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();select(e.id,true);});$('enemyLayer').append(el);entry={el,art:el.querySelector('.sprite'),vx:e.x,vy:e.y,netVx:0,netVy:0,sampleAt};enemies.set(e.id,entry);}
@@ -390,7 +440,7 @@ async function showSelection(){
   else{$('retryBtn').hidden=false;$('loadMessage').textContent='서버 연결이 잠시 지연되고 있어요. 저장된 로그인 정보는 지우지 않았습니다.';}
   return;
  }
- try{await artReady;$('loadMessage').textContent='친구들과 함께하는 준자마을';roster=me.roster;$('welcome').textContent=me.name+' · 캐릭터 선택';$('characterCards').replaceChildren();for(const s of roster){const job=JOBS[s.job],b=document.createElement('button');b.type='button';b.className='character-card';b.dataset.slot=s.slot;b.setAttribute('aria-pressed',String(s.slot===selectedSlot));const production=EXPERIMENTAL_RANK_ART&&s.job==='rogue'&&Number(s.rank||0)>=3,previewSrc=production?`./assets/sprites/rogue-r${Number(s.rank)>=4?4:3}-field.webp?v=${BUILD}`:`./assets/${job.art}.png`,fallback=`./assets/${job.art}.png`,preview=`<span class="character-preview ${s.job} ${s.rank?'promoted-preview rank-'+s.rank:''} ${production?'production-card':''}"><img src="${previewSrc}" data-fallback="${fallback}" alt="${esc(jobName(s))}" decoding="async"></span>`;b.innerHTML=preview+`<b>${esc(jobName(s))}</b><small>Lv.${s.level} · ${job.role}</small>`;const im=b.querySelector('img');im.onerror=()=>{if(im.dataset.fallback&&im.src.indexOf(im.dataset.fallback)<0){im.src=im.dataset.fallback;b.querySelector('.character-preview')?.classList.remove('production-card');}};b.onclick=()=>{selectedSlot=s.slot;document.querySelectorAll('.character-card').forEach(el=>el.setAttribute('aria-pressed',String(Number(el.dataset.slot)===selectedSlot)));};$('characterCards').append(b);}await Promise.allSettled([...$('characterCards').querySelectorAll('img')].map(im=>im.decode?.()||Promise.resolve()));$('selectPanel').hidden=false;}
+ try{await artReady;$('loadMessage').textContent='친구들과 함께하는 준자마을';roster=me.roster;$('welcome').textContent=me.name+' · 캐릭터 선택';$('characterCards').replaceChildren();for(const s of roster){const job=JOBS[s.job],b=document.createElement('button');b.type='button';b.className='character-card';b.dataset.slot=s.slot;b.setAttribute('aria-pressed',String(s.slot===selectedSlot));const rankSrc=rankSpriteCandidate(s.job,s.rank),fallback=`./assets/${job.art}.png`,preview=`<span class="character-preview ${s.job} ${s.rank?'promoted-preview rank-'+s.rank:''}"><img src="${fallback}" data-fallback="${fallback}" alt="${esc(jobName(s))}" decoding="async"></span>`;b.innerHTML=preview+`<b>${esc(jobName(s))}</b><small>Lv.${s.level} · ${job.role}</small>`;const im=b.querySelector('img');if(rankSrc){const asset=ensureRankSprite(rankSrc);asset.promise.then(ok=>{if(!ok||!b.isConnected)return;const frame=b.querySelector('.character-preview');frame.classList.add('production-card');frame.style.backgroundImage=`url('${rankSrc}?v=${BUILD}')`;frame.style.backgroundSize='800% 400%';frame.style.backgroundPosition='0% 0%';im.style.visibility='hidden';});}im.onerror=()=>{if(im.dataset.fallback&&im.src.indexOf(im.dataset.fallback)<0){im.src=im.dataset.fallback;b.querySelector('.character-preview')?.classList.remove('production-card');}};b.onclick=()=>{selectedSlot=s.slot;document.querySelectorAll('.character-card').forEach(el=>el.setAttribute('aria-pressed',String(Number(el.dataset.slot)===selectedSlot)));};$('characterCards').append(b);}await Promise.allSettled([...$('characterCards').querySelectorAll('img')].map(im=>im.decode?.()||Promise.resolve()));$('selectPanel').hidden=false;}
  catch(e){$('retryBtn').hidden=false;$('loadMessage').textContent=e.message;}
 }
 async function login(register=false){if(!$('authForm').reportValidity())return;const username=$('username').value.trim(),password=$('password').value;$('authMessage').textContent='접속 중…';$('loginBtn').disabled=$('registerBtn').disabled=true;
