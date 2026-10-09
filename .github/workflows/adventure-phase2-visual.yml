@@ -1,0 +1,49 @@
+name: Adventure Phase 2 graphics and mobile layout
+on:
+  push:
+    branches:
+      - feat/adventure-visual-phase2-20261009
+      - junja-adventure-preview
+    paths:
+      - adventure-online/image-prototype/index.html
+      - adventure-online/image-prototype/visual-phase2.css
+      - adventure-online/image-prototype/visual-phase2.js
+      - adventure-online/image-prototype/tests/phase2-visual.mjs
+      - .github/workflows/adventure-phase2-visual.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-layout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --check adventure-online/image-prototype/visual-phase2.js
+      - run: node --check adventure-online/image-prototype/app.js
+      - run: node --test adventure-online/image-prototype/tests/combat-queue.test.mjs adventure-online/image-prototype/tests/auto-skills.test.mjs
+      - run: npm install --no-save playwright@1.55.0
+        working-directory: adventure-online/image-prototype
+      - run: npx playwright install --with-deps chromium
+        working-directory: adventure-online/image-prototype
+      - name: Phase 2 mobile size and menu tests
+        shell: bash
+        run: |
+          python3 -m http.server 4173 > /tmp/junja-phase2.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4173/adventure-online/image-prototype/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node adventure-online/image-prototype/tests/phase2-visual.mjs
+      - name: Save browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junja-phase2-mobile
+          path: adventure-online/artifacts/
+          if-no-files-found: warn
