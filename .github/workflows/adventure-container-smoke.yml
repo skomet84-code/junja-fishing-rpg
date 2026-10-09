@@ -1,0 +1,45 @@
+name: Adventure alternative host container smoke
+on:
+  push:
+    branches:
+      - feat/portable-free-host-migration-20261010
+    paths:
+      - adventure-online/Dockerfile
+      - adventure-online/.dockerignore
+      - adventure-online/image-prototype/**
+      - adventure-online/server/online/**
+      - .github/workflows/adventure-container-smoke.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build independent MMORPG container
+        run: docker build -f adventure-online/Dockerfile -t junja-adventure-portable:ci adventure-online
+      - name: Check production fails closed without PostgreSQL
+        shell: bash
+        run: |
+          if docker run --rm junja-adventure-portable:ci >/tmp/junja-no-db.log 2>&1; then
+            echo 'FAIL: production accepted missing database'
+            exit 1
+          fi
+          grep -F 'DATABASE_URL is required' /tmp/junja-no-db.log
+      - name: Smoke-test temporary isolated memory mode
+        shell: bash
+        run: |
+          docker run -d --name junja-adventure-ci -p 4174:4174 -e TEST_MEMORY=1 junja-adventure-portable:ci
+          trap 'docker logs junja-adventure-ci || true; docker rm -f junja-adventure-ci || true' EXIT
+          for i in {1..40}; do
+            if curl -fsS http://localhost:4174/health > /tmp/junja-health.json; then break; fi
+            sleep 1
+          done
+          cat /tmp/junja-health.json
+          grep -F '"storage":"test"' /tmp/junja-health.json
+          curl -fsS http://localhost:4174/ | grep -F 'JUNJA'
+          curl -fsS http://localhost:4174/visual-phase2.css | grep -F 'Visual Phase 2'
+          curl -fsS http://localhost:4174/visual-phase2.js | grep -F 'Phase-two'
+          echo 'PORTABLE_ADVENTURE_CONTAINER_PASS'

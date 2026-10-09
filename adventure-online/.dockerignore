@@ -1,0 +1,9 @@
+.git
+**/node_modules
+**/artifacts
+**/screenshots
+**/tests
+*.log
+.env
+.env.*
+!.env.example
