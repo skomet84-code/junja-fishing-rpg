@@ -103,6 +103,31 @@ export const EXTRA_ITEMS={
  eternalring:{name:'초월 · 영겁의 심장반지',slot:'ring',rarity:'mythic',atk:1870,def:357,hp:7700,tier:10,level:700,speed:0.27},
  eternalear:{name:'초월 · 영겁의 천명의 귀걸이',slot:'ear',rarity:'mythic',atk:1375,def:714,hp:9800,tier:10,level:700}
 };
+
+/* Shared live weapon families: legacy sword IDs remain unchanged for existing characters. */
+export const WEAPON_FAMILIES=Object.freeze({
+ ...Object.fromEntries(Object.entries(EXTRA_ITEMS).filter(([id,item])=>id.endsWith('blade')&&item.slot==='weapon')),
+ kingblade:{name:'왕꼬리의 서광',slot:'weapon',rarity:'rare',atk:18,speed:.04,tier:2,shop:true,price:55000},
+});
+const WEAPON_STYLE={rogue:'쌍단검',mage:'마도법장',healer:'신령보주'};
+export function classWeapon(base,job){
+ return Object.hasOwn(WEAPON_FAMILIES,base)&&Object.hasOwn(WEAPON_STYLE,job)?base+'_'+job:base;
+}
+export const CLASS_WEAPON_ITEMS=Object.fromEntries(Object.entries(WEAPON_FAMILIES).flatMap(([baseId,base])=>
+ Object.keys(WEAPON_STYLE).map(job=>{
+  const clean=base.name.replace(/(철검|파천검|멸절검|종언검|신검|검|무기|서광)$/u,'').trim();
+  const item={...base,name:clean+' '+WEAPON_STYLE[job],job};
+  if(job==='rogue'){item.atk=Math.round((item.atk||0)*.94);item.speed=(item.speed||0)+.045;}
+  if(job==='mage'){item.atk=Math.round((item.atk||0)*1.03);item.mp=Math.max(12,Math.round((item.atk||0)*.48));}
+  if(job==='healer'){item.atk=Math.round((item.atk||0)*.84);item.def=(item.def||0)+Math.max(2,Math.round((item.atk||0)*.08));item.hp=(item.hp||0)+Math.round((item.atk||0)*.9);item.mp=Math.max(12,Math.round((item.atk||0)*.40));}
+  return [classWeapon(baseId,job),item];
+ })
+));
+export const BOOSTS=Object.freeze({
+ growthBoost:{name:'성장의 축복',field:'growth',price:80000,duration:1800,xpMultiplier:1.2,description:'30분 경험치 +20%'},
+ battleBoost:{name:'전투 각성',field:'battle',price:120000,duration:1200,attackMultiplier:1.12,speedMultiplier:1.05,description:'20분 공격력 +12% · 속도 +5%'},
+});
+
 export const RECIPES={
  primordialblade:{name:'태초 · 창세의 검',materials:{ore:2000,crystal:1500,stardust:300},gold:90000000,level:700,item:'primordialblade',seals:60},
  primordialarmor:{name:'태초 · 기원의 갑주',materials:{ore:2500,crystal:1500,stardust:300},gold:90000000,level:700,item:'primordialarmor',seals:60},
@@ -121,6 +146,14 @@ export const RECIPES={
  eclipseblade:{name:'초월 · 월식의 파천검',materials:{ore:1000,crystal:500,stardust:200},gold:15000000,level:600,item:'eclipseblade'},
  eternalblade:{name:'초월 · 영겁의 파천검',materials:{ore:2000,crystal:1200,stardust:480},gold:40000000,level:700,item:'eternalblade'},
 };
+for(const [id,recipe] of Object.entries(RECIPES)){
+ if(!recipe.item||!Object.hasOwn(WEAPON_FAMILIES,recipe.item))continue;
+ recipe.job='warrior';
+ for(const job of Object.keys(WEAPON_STYLE)){
+  const weaponId=classWeapon(recipe.item,job);
+  RECIPES[weaponId]={...recipe,item:weaponId,job,name:CLASS_WEAPON_ITEMS[weaponId].name};
+ }
+}
 export const ZONES={
  partyTrial:{name:'봉인된 천룡의 심장 · 파티 던전',level:100,theme:'abyss'},
  surface:{name:'준자마을 · 초원숲',level:1,theme:'forest'},
