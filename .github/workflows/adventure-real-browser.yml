@@ -16,12 +16,15 @@ jobs:
         with:
           node-version: 22
       - run: npm install --prefix adventure-online/server/online --omit=dev
-      - run: node --check adventure-online/image-prototype/app.js && node --check adventure-online/server/online/server.mjs
+      - run: node --check adventure-online/image-prototype/app.js && node --check adventure-online/image-prototype/movement-feel.js && node --check adventure-online/server/online/server.mjs
+      - run: node --test adventure-online/image-prototype/tests/movement-feel.test.mjs
       - run: node --test adventure-online/image-prototype/tests/rendered-screen.test.mjs adventure-online/image-prototype/tests/quality2.test.mjs adventure-online/image-prototype/tests/auto-skills.test.mjs adventure-online/image-prototype/tests/polish.test.mjs adventure-online/server/online/tests/operator-auto.test.mjs adventure-online/server/online/tests/assets.test.mjs adventure-online/server/online/tests/combo.test.mjs adventure-online/server/online/tests/action-ack.test.mjs adventure-online/server/online/tests/map-travel.test.mjs adventure-online/server/online/tests/party-dungeon.test.mjs
       - run: node --test adventure-online/server/online/tests/ascension.test.mjs adventure-online/server/online/tests/creator-balance.test.mjs
       - run: npm install --no-save playwright@1.58.2
       - run: npx playwright install --with-deps chromium
       - run: node adventure-online/browser-e2e.mjs
+      - name: Real mobile movement + server reconciliation E2E
+        run: node adventure-online/movement-e2e.mjs
       - name: Save real browser screenshots
         if: always()
         uses: actions/upload-artifact@v4
