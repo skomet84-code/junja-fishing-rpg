@@ -10,40 +10,21 @@ import {CHANNEL_CAP,WORLD_CAP} from '../../image-prototype/mmo-data.js';
 import {removeSocial} from './systems.mjs';
 import {profile,JOBS,BUILD,stats} from '../../image-prototype/catalog.js';
 const scrypt=promisify(sc),hash=s=>createHash('sha256').update(s).digest('hex'),memory=process.env.TEST_MEMORY==='1';
-const adminUsername=String(process.env.ADMIN_USERNAME||'').trim().toLowerCase(),adminPassword=String(process.env.ADMIN_PASSWORD||'');
+const adminUsername='admin_junja',adminClaimHash='840081fd87ad79c349181e2d20e47debab785b9c2e3b1dba892b4c0a65b52029';
 let operatorAccountId=null;
 const isOperator=id=>!!operatorAccountId&&id===operatorAccountId;
 const staticRoot=fileURLToPath(new URL('../../image-prototype/',import.meta.url));
 const accounts=new Map(),sessions=new Map(),streams=new Map(),limits=new Map();let pool;
 if(!memory){if(!process.env.DATABASE_URL)throw Error('DATABASE_URL is required; no temporary production save fallback.');const {default:pg}=await import('pg');pool=new pg.Pool({connectionString:process.env.DATABASE_URL,max:3,connectionTimeoutMillis:10000});const migration=await pool.connect();try{await migration.query('BEGIN');await migration.query('SELECT pg_advisory_xact_lock(202610063)');await migration.query(`CREATE SCHEMA IF NOT EXISTS junja_adventure_online; CREATE TABLE IF NOT EXISTS junja_adventure_online.accounts(id text PRIMARY KEY,username text UNIQUE NOT NULL,salt text NOT NULL,password_hash text NOT NULL,roster jsonb NOT NULL,updated_at timestamptz NOT NULL DEFAULT now()); CREATE TABLE IF NOT EXISTS junja_adventure_online.sessions(token_hash text PRIMARY KEY,account_id text NOT NULL REFERENCES junja_adventure_online.accounts(id),expires_at timestamptz NOT NULL);`);await migration.query('COMMIT');}catch(e){await migration.query('ROLLBACK');throw e;}finally{migration.release();}}
-// Only the server can enroll its sole privileged account.
-// A public registration must never grant operator permissions merely by claiming a username.
-if(!memory&&(adminUsername||adminPassword)){
- if(!/^[a-z0-9_]{4,20}$/.test(adminUsername)||adminPassword.length<16||adminPassword.length>72)throw Error('ADMIN_USERNAME / ADMIN_PASSWORD setup invalid.');
- const db=await pool.connect();
- try{
-  await db.query('BEGIN');
-  await db.query('SELECT pg_advisory_xact_lock(2026101001)');
-  await db.query('CREATE TABLE IF NOT EXISTS junja_adventure_online.admin_accounts(account_id text PRIMARY KEY REFERENCES junja_adventure_online.accounts(id) ON DELETE CASCADE)');
-  const existing=await db.query(`SELECT a.id,m.account_id IS NOT NULL AS enrolled
-    FROM junja_adventure_online.accounts a
-    LEFT JOIN junja_adventure_online.admin_accounts m ON m.account_id=a.id
-    WHERE lower(a.username)=lower($1) LIMIT 1`,[adminUsername]);
-  if(existing.rows.length){
-   if(!existing.rows[0].enrolled)throw Error('Refusing to promote a preexisting unverified player to operator.');
-   operatorAccountId=existing.rows[0].id;
-  }else{
-   const id=randomUUID(),salt=randomBytes(16).toString('hex');
-   const passwordHash=(await scrypt(adminPassword,salt,64)).toString('hex');
-   const roster=Object.keys(JOBS).map(job=>profile({},job));
-   await db.query('INSERT INTO junja_adventure_online.accounts(id,username,salt,password_hash,roster) VALUES($1,$2,$3,$4,$5)',[id,adminUsername,salt,passwordHash,JSON.stringify(roster)]);
-   await db.query('INSERT INTO junja_adventure_online.admin_accounts(account_id) VALUES($1)',[id]);
-   operatorAccountId=id;
-   console.log('[ADMIN] Created verified Adventure operator account.');
-  }
-  await db.query('COMMIT');
-  console.log('[ADMIN] Adventure operator ready.');
- }catch(e){await db.query('ROLLBACK').catch(()=>{});operatorAccountId=null;throw e;}finally{db.release();}
+// Operator identity comes exclusively from an enrollment record in PostgreSQL.
+// Possession of a public username or knowledge of its spelling grants no privileges.
+if(!memory){
+ await pool.query('CREATE TABLE IF NOT EXISTS junja_adventure_online.admin_accounts(account_id text PRIMARY KEY REFERENCES junja_adventure_online.accounts(id) ON DELETE CASCADE)');
+ const enrolled=await pool.query(`SELECT a.id FROM junja_adventure_online.admin_accounts m
+   JOIN junja_adventure_online.accounts a ON a.id=m.account_id
+   WHERE lower(a.username)=$1 LIMIT 1`,[adminUsername]);
+ operatorAccountId=enrolled.rows[0]?.id||null;
+ if(operatorAccountId)console.log('[ADMIN] Verified Adventure operator account loaded.');
 }
 function touch(p){const a=accounts.get(p.id.split(':')[0]);if(!a||a.locked)return;a.roster[p.slot]=structuredClone(p.state);a.dirty=true;a.rev++;a.saveError=false;}
 async function exchange(aPlayer,aState,bPlayer,bState){const a=accounts.get(aPlayer.id.split(':')[0]),b=accounts.get(bPlayer.id.split(':')[0]);if(!a||!b||a===b||a.locked||b.locked)throw Error('TRADE_BUSY');a.locked=b.locked=true;let client;try{while(a.saving||b.saving)await new Promise(r=>setTimeout(r,10));const ar=structuredClone(a.roster),br=structuredClone(b.roster);ar[aPlayer.slot]=aState;br[bPlayer.slot]=bState;if(pool){client=await pool.connect();await client.query('BEGIN');await client.query('SELECT id FROM junja_adventure_online.accounts WHERE id=ANY($1) ORDER BY id FOR UPDATE',[[a.id,b.id]]);for(const [account,roster] of [[a,ar],[b,br]])await client.query('UPDATE junja_adventure_online.accounts SET roster=$2,updated_at=now() WHERE id=$1',[account.id,JSON.stringify(roster)]);await client.query('COMMIT');}a.roster=ar;b.roster=br;a.rev++;b.rev++;a.dirty=b.dirty=false;}catch(e){if(client)await client.query('ROLLBACK').catch(()=>{});throw e;}finally{client?.release();a.locked=b.locked=false;}}
@@ -76,6 +57,35 @@ const server=http.createServer(async(req,res)=>{const url=new URL(req.url,'http:
  if(url.pathname.startsWith('/api/')){
   if(req.headers.origin&&!origins.has(req.headers.origin)&&req.headers.origin!==`https://${req.headers.host}`&&req.headers.origin!==`http://${req.headers.host}`){json(req,res,{error:'허용되지 않은 접속입니다.'},403);return;}
   const ip=String(req.headers['x-forwarded-for']||req.socket.remoteAddress).split(',')[0];
+  if(url.pathname==='/api/admin/claim'&&req.method==='POST'){
+   if(memory||!pool){json(req,res,{error:'운영 계정 개설을 사용할 수 없습니다.'},503);return;}
+   if(!allow('admin-claim:'+ip,5,3600)){json(req,res,{error:'관리자 개설 시도 횟수를 초과했습니다.'},429);return;}
+   const input=await body(req);
+   const proof=String(input.setupCode||'').trim();
+   const submitted=Buffer.from(hash(proof),'hex'),expected=Buffer.from(adminClaimHash,'hex');
+   if(!proof||!timingSafeEqual(submitted,expected)){json(req,res,{error:'개설 코드가 올바르지 않습니다.'},403);return;}
+   const password=String(input.password||'');
+   if(password.length<12||password.length>72){json(req,res,{error:'비밀번호는 12~72자로 설정하세요.'},400);return;}
+   const db=await pool.connect();let createdId=null;
+   try{
+    await db.query('BEGIN');
+    await db.query('SELECT pg_advisory_xact_lock(2026101001)');
+    const found=await db.query('SELECT id FROM junja_adventure_online.accounts WHERE lower(username)=$1 LIMIT 1',[adminUsername]);
+    const enrolled=await db.query('SELECT account_id FROM junja_adventure_online.admin_accounts LIMIT 1');
+    if(found.rows.length||enrolled.rows.length){
+     await db.query('ROLLBACK');json(req,res,{error:'관리자 계정이 이미 개설되어 있습니다.'},409);return;
+    }
+    const id=randomUUID(),salt=randomBytes(16).toString('hex');
+    const passwordHash=(await scrypt(password,salt,64)).toString('hex');
+    const roster=Object.keys(JOBS).map(job=>profile({},job));
+    await db.query('INSERT INTO junja_adventure_online.accounts(id,username,salt,password_hash,roster) VALUES($1,$2,$3,$4,$5)',[id,adminUsername,salt,passwordHash,JSON.stringify(roster)]);
+    await db.query('INSERT INTO junja_adventure_online.admin_accounts(account_id) VALUES($1)',[id]);
+    await db.query('COMMIT');createdId=id;
+   }catch(e){await db.query('ROLLBACK').catch(()=>{});throw e;}finally{db.release();}
+   operatorAccountId=createdId;
+   console.log('[ADMIN] Adventure operator claimed successfully.');
+   json(req,res,{ok:true,username:adminUsername},201);return;
+  }
   if(['/api/register','/api/login'].includes(url.pathname)&&req.method==='POST'){
    if(!allow('auth:'+ip,25,60)){json(req,res,{error:'잠시 후 다시 시도하세요.'},429);return;}const input=await body(req),username=String(input.username||'').trim(),password=String(input.password||'');if(!/^[A-Za-z0-9가-힣_]{2,20}$/.test(username)||password.length<6||password.length>72){json(req,res,{error:'아이디는 한글·영문·숫자 2~20자, 비밀번호는 6~72자입니다.'},400);return;}
    let a;
@@ -98,7 +108,7 @@ const server=http.createServer(async(req,res)=>{const url=new URL(req.url,'http:
    if(a.locked){json(req,res,{error:'거래 저장 중입니다. 잠시 후 접속하세요.'},409);return;}const input=await body(req),slot=Number(input.slot),channel=String(input.channel||'준자마을').trim();if(!Number.isInteger(slot)||slot<0||slot>3||!/^[A-Za-z0-9가-힣_-]{2,16}$/.test(channel)){json(req,res,{error:'캐릭터와 채널 이름을 확인하세요.'},400);return;}
    if([...world.players.values()].filter(p=>!p.id.startsWith(a.id+':')).length>=WORLD_CAP){json(req,res,{error:'전체 접속 인원이 가득 찼습니다. 잠시 후 다시 접속하세요.'},409);return;}
    if([...world.players.values()].filter(p=>p.channel===channel&&!p.id.startsWith(a.id+':')).length>=CHANNEL_CAP){json(req,res,{error:'채널이 가득 찼습니다. 다른 채널을 선택하세요.'},409);return;}
-   for(const id of [...world.players.keys()])if(id.startsWith(a.id+':'))disconnect(id);await flush(a);const id=a.id+':'+slot;const p=world.add(id,a.username,a.roster[slot],channel,slot);p.operator=isOperator(a.id);session.active=id;p.connectionKey=randomBytes(24).toString('base64url');json(req,res,{connectionKey:p.connectionKey,snapshot:world.snapshot(p)});return;
+   for(const id of [...world.players.keys()])if(id.startsWith(a.id+':'))disconnect(id);await flush(a);const id=a.id+':'+slot;const p=world.add(id,isOperator(a.id)?'갓준자':a.username,a.roster[slot],channel,slot);p.operator=isOperator(a.id);session.active=id;p.connectionKey=randomBytes(24).toString('base64url');json(req,res,{connectionKey:p.connectionKey,snapshot:world.snapshot(p)});return;
   }
   const p=world.players.get(session.active);if(!p||req.headers['x-adventure-connection']!==p.connectionKey){json(req,res,{error:'캐릭터를 선택해 접속하세요.'},409);return;}
   if(url.pathname==='/api/state'&&req.method==='GET'){json(req,res,world.snapshot(p));return;}
