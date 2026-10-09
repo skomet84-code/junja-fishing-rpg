@@ -9,6 +9,13 @@ export const PROMOTION_MATERIALS={
 export const MATERIALS={wood:'나무',stone:'돌',ore:'철광석',crystal:'던전 수정',stardust:'별빛 파편'};
 export const QUICK_CHATS=['안녕하세요!','같이 사냥해요!','보스 잡으러 가요!','잠깐만요!','도와주세요!','고마워요!','축하해요!','ㅋㅋㅋㅋ','좋아요!','마을에서 만나요!'];
 export const EXTRA_ITEMS={
+ primordialblade:{name:'태초 · 창세의 검',slot:'weapon',rarity:'primordial',atk:7400,def:390,hp:4800,speed:.29,tier:11,level:700,bound:true},
+ primordialarmor:{name:'태초 · 기원의 갑주',slot:'armor',rarity:'primordial',atk:1380,def:3300,hp:47000,tier:11,level:700,bound:true},
+ primordialcape:{name:'태초 · 무한의 망토',slot:'cape',rarity:'primordial',atk:2780,def:1390,hp:21000,tier:11,level:700,bound:true},
+ primordialcrown:{name:'태초 · 운명의 관',slot:'head',rarity:'primordial',atk:1630,def:1170,hp:12800,tier:11,level:700,bound:true},
+ primordialboots:{name:'태초 · 시공초월의 장화',slot:'boots',rarity:'primordial',atk:980,def:940,hp:17100,speed:.27,tier:11,level:700,bound:true},
+ primordialring:{name:'태초 · 영겁의 반지',slot:'ring',rarity:'primordial',atk:2420,def:420,hp:10100,speed:.28,tier:11,level:700,bound:true},
+ primordialear:{name:'태초 · 신들의 귀걸이',slot:'ear',rarity:'primordial',atk:1890,def:1030,hp:14000,tier:11,level:700,bound:true},
  ironblade:{name:'단조 철검',slot:'weapon',rarity:'uncommon',atk:24,speed:.025,tier:1,level:15,shop:true,price:25000},
  ironarmor:{name:'단조 철갑',slot:'armor',rarity:'uncommon',def:12,hp:100,tier:1,level:15,shop:true,price:30000},
  crystalblade:{name:'수정빛 무기',slot:'weapon',rarity:'rare',atk:95,speed:.05,tier:2,level:50,shop:true,price:180000},
@@ -97,6 +104,13 @@ export const EXTRA_ITEMS={
  eternalear:{name:'초월 · 영겁의 천명의 귀걸이',slot:'ear',rarity:'mythic',atk:1375,def:714,hp:9800,tier:10,level:700}
 };
 export const RECIPES={
+ primordialblade:{name:'태초 · 창세의 검',materials:{ore:2000,crystal:1500,stardust:300},gold:90000000,level:700,item:'primordialblade',seals:60},
+ primordialarmor:{name:'태초 · 기원의 갑주',materials:{ore:2500,crystal:1500,stardust:300},gold:90000000,level:700,item:'primordialarmor',seals:60},
+ primordialcape:{name:'태초 · 무한의 망토',materials:{wood:2500,crystal:1500,stardust:300},gold:90000000,level:700,item:'primordialcape',seals:60},
+ primordialcrown:{name:'태초 · 운명의 관',materials:{stone:2000,crystal:1500,stardust:300},gold:90000000,level:700,item:'primordialcrown',seals:60},
+ primordialboots:{name:'태초 · 시공초월의 장화',materials:{ore:1500,crystal:1500,stardust:300},gold:90000000,level:700,item:'primordialboots',seals:60},
+ primordialring:{name:'태초 · 영겁의 반지',materials:{crystal:1700,stardust:300},gold:90000000,level:700,item:'primordialring',seals:60},
+ primordialear:{name:'태초 · 신들의 귀걸이',materials:{crystal:1700,stardust:300},gold:90000000,level:700,item:'primordialear',seals:60},
  potion:{name:'회복 물약 × 3',materials:{wood:3,stone:1},gold:15,level:1,potions:3},
  ironblade:{name:'단조 철검',materials:{wood:8,ore:12},gold:200,level:15,item:'ironblade'},
  ironarmor:{name:'단조 철갑',materials:{stone:12,ore:15},gold:250,level:15,item:'ironarmor'},
