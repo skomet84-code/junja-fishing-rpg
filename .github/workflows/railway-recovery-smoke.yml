@@ -1,0 +1,19 @@
+name: Railway recovery live smoke
+on:
+  push:
+    branches: [railway-recovery]
+    paths:
+      - scripts/railway-live-smoke.mjs
+      - .github/workflows/railway-recovery-smoke.yml
+  workflow_dispatch:
+jobs:
+  live-games:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify live Railway Adventure and Land signup, login and multiplayer
+        run: node scripts/railway-live-smoke.mjs
