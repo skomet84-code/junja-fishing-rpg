@@ -71,7 +71,7 @@ try{
    await page.locator('[data-map-travel="surface"]').click();
    await page.waitForFunction(()=>window.__adventure?.snapshot()?.zone==='surface',{timeout:10000});
    await page.screenshot({path:path.join(screens,viewport.label+'-map-travel.png')});
-   if(viewport.label==='mobile')await page.locator('#utilityToggle').click();
+   if(viewport.label==='mobile')assert.equal(await page.locator('#utilityToggle').getAttribute('aria-expanded'),'false','Map action should auto-collapse mobile utility menu');
    await page.screenshot({path:path.join(screens,viewport.label+'-game.png')});
    await page.evaluate(()=>{window.__warriorFxObserved=false;const effects=document.querySelector('#effects');window.__warriorFxObserver=new MutationObserver(changes=>{for(const c of changes)for(const el of c.addedNodes){if(el?.nodeType===1&&(el.classList?.contains('warrior-technique')||el.querySelector?.('.warrior-technique')))window.__warriorFxObserved=true;}});window.__warriorFxObserver.observe(effects,{childList:true});});
    await page.locator('#autoBtn').click();
