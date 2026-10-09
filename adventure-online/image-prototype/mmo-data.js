@@ -136,12 +136,12 @@ export const TRAVEL_PORTALS={
 export const NAMED=[
  {id:'stoneking',name:'바위 군주',hours:[8,18],zone:'grove',level:35,hp:18000,damage:75,x:1085,y:1710},
  {id:'shadowking',name:'그림자 군왕',hours:[12,20],zone:'abyss',level:120,hp:130000,damage:280,x:1080,y:1760},
- {id:'dragon',name:'천룡 · 일일 레이드',hours:[22],zone:'celestial',level:240,hp:2500000,damage:1150,x:1060,y:1720,raid:true,minParty:3,dropTier:'high'},
- {id:'voidlord',name:'공허제 · 아르카논',hours:[21],zone:'void',level:380,hp:8000000,damage:2200,x:1060,y:1720,raid:true,minParty:3,dropTier:'raid'},
- {id:'originGod',name:'태초신 · 카이로스',hours:[23],zone:'origin',level:500,hp:18000000,damage:3600,x:1060,y:1720,raid:true,minParty:4,dropTier:'raid'},
- {id:'riftLord',name:'균열 군주 · 벨리온',hours:[20],zone:'rift',level:555,hp:28000000,damage:4900,x:1060,y:1720,raid:true,minParty:3,dropTier:'ascension'},
- {id:'eclipseLord',name:'월식황제 · 녹티스',hours:[21],zone:'eclipse',level:660,hp:48000000,damage:7000,x:1060,y:1720,raid:true,minParty:4,dropTier:'ascension'},
- {id:'eternalLord',name:'영겁신 · 에테르',hours:[22],zone:'sanctum',level:750,hp:75000000,damage:10200,x:1060,y:1720,raid:true,minParty:4,dropTier:'ascension'},
+ {id:'dragon',name:'천룡 · 일일 레이드',hours:[22],zone:'celestial',level:240,hp:2500000,damage:1150,x:1060,y:1720,raid:true,minParty:2,dropTier:'high'},
+ {id:'voidlord',name:'공허제 · 아르카논',hours:[21],zone:'void',level:380,hp:8000000,damage:2200,x:1060,y:1720,raid:true,minParty:2,dropTier:'raid'},
+ {id:'originGod',name:'태초신 · 카이로스',hours:[23],zone:'origin',level:500,hp:18000000,damage:3600,x:1060,y:1720,raid:true,minParty:2,dropTier:'raid'},
+ {id:'riftLord',name:'균열 군주 · 벨리온',hours:[20],zone:'rift',level:555,hp:28000000,damage:4900,x:1060,y:1720,raid:true,minParty:2,dropTier:'ascension'},
+ {id:'eclipseLord',name:'월식황제 · 녹티스',hours:[21],zone:'eclipse',level:660,hp:48000000,damage:7000,x:1060,y:1720,raid:true,minParty:2,dropTier:'ascension'},
+ {id:'eternalLord',name:'영겁신 · 에테르',hours:[22],zone:'sanctum',level:750,hp:75000000,damage:10200,x:1060,y:1720,raid:true,minParty:2,dropTier:'ascension'},
 ];
 export const ASCENSION_CHAPTERS={
  rift:{name:'7장 · 찢어진 하늘',zone:'rift',level:480,rank:4,kills:18,elites:3,boss:'균열 수문장',rewardGold:5000000,rewardMaterial:30,material:'riftCore',story:'태초신의 죽음과 함께 열린 하늘의 균열. 균열 군주 벨리온이 봉인된 차원을 침범한다.'},
