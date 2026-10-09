@@ -71,6 +71,7 @@ try{
    });
    assert.ok(display.sheet,'Phase-two CSS not loaded on live Railway service');
    assert.ok(display.loaded,'Selected class hero image did not load: '+JSON.stringify(display));
+   assert.ok(display.asset?.includes('-motion.webp'),'Motion WebP sheet must be used, not static fallback: '+JSON.stringify(display));
    assert.ok(display.hero.w>40&&display.hero.h>50&&display.hero.visible!=='hidden','Character is invisible');
    assert.equal(display.skills,9,'9 skill buttons must remain available');
    assert.ok(display.overflow<=2,'Mobile horizontal overflow: '+JSON.stringify(display));
