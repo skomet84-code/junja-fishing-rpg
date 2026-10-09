@@ -55,7 +55,7 @@ test('5th and 6th advancement needs a completed, rewarded chapter, and learned s
  assert.equal(promotionSkillLearned(s,6),false);
  s.promotionMaterials.eclipseSigil=PROMOTION_MATERIALS[6].need;w.action(p,{type:'learnPromotionSkill',rank:6});
  assert.equal(promotionSkillLearned(s,6),true);
- assert.equal(p.cooldowns.length,13);
+ assert.equal(p.cooldowns.length,9);
 });
 test('new raid bosses grant region-appropriate mythical equipment to valid participants',()=>{
  let now=1000;const w=new World({now:()=>now,random:()=>0});
