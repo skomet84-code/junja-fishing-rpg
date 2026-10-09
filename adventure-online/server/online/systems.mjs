@@ -107,7 +107,7 @@ export function mmoAction(w,p,data){const s=p.state,now=w.now(),kind=data.type;i
   if(socialId(w,p)){w.event(p,'거래·대련을 종료한 뒤 이동하세요.');return true;}
   const dest=typeof data.zone==='string'?data.zone:'',z=Object.hasOwn(ZONES,dest)?ZONES[dest]:null;
   const portal=(TRAVEL_PORTALS[s.zone]||[]).find(x=>x.to===dest);
-  if(!z||(kind==='travel'&&!portal)){w.event(p,'이동할 수 없는 지역입니다.');return true;}
+  if(dest===DUNGEON_ZONE||!z||(kind==='travel'&&!portal)){w.event(p,'이동할 수 없는 지역입니다.');return true;}
   if(s.level<z.level){w.event(p,'입장 레벨이 부족합니다. · Lv.'+z.level);return true;}
   if(dest===s.zone){w.event(p,'이미 해당 지역에 있습니다.');return true;}
   clearMotion(p);s.zone=dest;s.x=768;

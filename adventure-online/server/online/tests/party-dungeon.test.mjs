@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import {World} from '../engine.mjs';
 import {profile} from '../../../image-prototype/catalog.js';
 const spawn=(level=750,now=100)=>{let clock=now;const w=new World({now:()=>clock,random:()=>.99}),a=w.add('a','A',profile({level,job:'warrior',zone:'surface'}),'main'),b=w.add('b','B',profile({level,job:'healer',zone:'surface'}),'main');w.parties.set('p',{id:'p',leader:a.id,members:[a.id,b.id]});return {w,a,b,setNow:t=>clock=t};};
+test('private dungeon cannot be entered through ordinary map fast travel',()=>{
+ const {w,p}=make(750);
+ w.action(p,{type:'mapTravel',zone:'partyTrial'});assert.equal(p.state.zone,'surface');
+ w.action(p,{type:'travel',zone:'partyTrial'});assert.equal(p.state.zone,'surface');
+});
 test('two-person party enters its own daily dungeon and reaches all three stages',()=>{
  const {w,a,b}=spawn();w.action(a,{type:'partyDungeonStart'});
  assert.equal(a.state.zone,'partyTrial');assert.equal(b.state.zone,'partyTrial');assert.equal(a.channel,b.channel);
