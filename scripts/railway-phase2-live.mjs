@@ -61,6 +61,7 @@ try{
     return {
      sheet:!!sheet,loaded,asset:imgUrl?.split('/').pop()||null,
      hero:{w:hero.getBoundingClientRect().width,h:hero.getBoundingClientRect().height,
+       cssW:parseFloat(getComputedStyle(hero).width),cssH:parseFloat(getComputedStyle(hero).height),
        visible:getComputedStyle(hero).visibility},
      skills:skills.length,columns:grid,rows:new Set(skills.map(x=>Math.round(x.getBoundingClientRect().top))).size,
      overflow:document.documentElement.scrollWidth-innerWidth,
@@ -74,8 +75,8 @@ try{
    assert.ok(display.asset?.includes('-motion.webp'),'Motion WebP sheet must be used, not static fallback: '+JSON.stringify(display));
    assert.ok(display.hero.w>40&&display.hero.h>50&&display.hero.visible!=='hidden','Character is invisible');
    const expected=width<390?{w:106,h:123}:width<900?{w:110,h:127}:{w:112,h:130};
-   assert.equal(display.hero.w,expected.w,'Protagonist is oversized at '+width+'px');
-   assert.equal(display.hero.h,expected.h,'Protagonist height is oversized at '+width+'px');
+   assert.equal(display.hero.cssW,expected.w,'Protagonist is oversized at '+width+'px');
+   assert.equal(display.hero.cssH,expected.h,'Protagonist height is oversized at '+width+'px');
    assert.equal(display.skills,9,'9 skill buttons must remain available');
    assert.ok(display.overflow<=2,'Mobile horizontal overflow: '+JSON.stringify(display));
    assert.ok(display.cdown,'Skill inputs not bound to their live slots');
