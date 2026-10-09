@@ -1579,3 +1579,16 @@ button.region-node:not(:disabled):focus-visible{outline:3px solid #f4dfa1;outlin
 button.region-node:disabled{cursor:default;opacity:.49}
 button.region-node.current:disabled{opacity:1;background:#384632;border-color:#f6d380}
 .region-node small{white-space:normal}
+
+/* Clearly different monster families in the existing illustrated atlas. */
+.enemy.mmo-monster[data-variant='0']>.sprite{filter:saturate(1.10)}
+.enemy.mmo-monster[data-variant='1']>.sprite{filter:hue-rotate(40deg) saturate(1.25)}
+.enemy.mmo-monster[data-variant='2']>.sprite{filter:hue-rotate(-45deg) saturate(1.28)}
+.enemy.mmo-monster[data-variant='3']>.sprite{filter:hue-rotate(110deg) saturate(1.20)}
+.enemy.mmo-monster[data-variant='4']>.sprite{filter:hue-rotate(185deg) saturate(1.25)}
+.enemy.mmo-monster.elite>.sprite{filter:drop-shadow(0 0 5px #ffc488) saturate(1.32)}
+#world[data-zone='partyTrial']{background-image:radial-gradient(circle at 52% 72%,#6338a95e,transparent 40%),linear-gradient(#110d27cf,#120920e8),url('./assets/world.png');background-color:#17102f;background-blend-mode:screen,multiply,normal}
+#world[data-zone='partyTrial'] .region-terrain{opacity:.94;--road:#7d76aa;background:radial-gradient(ellipse at 50% 70%,#8a53d64d,transparent 77%),repeating-linear-gradient(90deg,transparent 0 136px,#885ca527 137px 140px,transparent 143px 274px),linear-gradient(#130f2a,#2a1d43,#0e0920)}
+#world[data-zone='partyTrial'] .hunt-sector{border-color:#aa8af7;background:#21152ecc}
+#world[data-zone='partyTrial'] .enemy.boss{filter:drop-shadow(0 0 12px #bb8afe)}
+#world[data-zone='partyTrial'] .world-portal{display:none!important}
