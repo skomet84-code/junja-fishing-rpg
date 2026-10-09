@@ -28,6 +28,21 @@ try{
     await route.continue({postData:JSON.stringify(data)});
    });
    await page.goto(base,{waitUntil:'domcontentloaded'});
+   const rankArtDiagnostics=await page.evaluate(async()=>{
+    const names=['warrior-r3-field.webp','warrior-r4-field.webp','rogue-r3-field.webp','rogue-r4-field.webp'];
+    return Promise.all(names.map(name=>new Promise(resolve=>{
+     const img=new Image();img.onload=()=>{
+      const sample=document.createElement('canvas');sample.width=64;sample.height=64;
+      const ctx=sample.getContext('2d',{willReadFrequently:true});
+      ctx.drawImage(img,0,0,img.naturalWidth/8,img.naturalHeight/4,0,0,64,64);
+      const pixels=ctx.getImageData(0,0,64,64).data;let opaque=0;
+      for(let i=3;i<pixels.length;i+=4)if(pixels[i]>36)opaque++;
+      resolve({name,loaded:true,width:img.naturalWidth,height:img.naturalHeight,opaque});
+     };img.onerror=()=>resolve({name,loaded:false});img.src='./assets/sprites/'+name;
+    })));
+   });
+   console.log('RANK_ART_DIAGNOSTICS '+viewport.label+' '+JSON.stringify(rankArtDiagnostics));
+   for(const sheet of rankArtDiagnostics)assert.ok(sheet.loaded,'New character art must load: '+sheet.name);
    await page.locator('#username').fill(viewport.label==='mobile'?'admin':'qauser');
    await page.locator('#password').fill('playwright-test-pass-99');
    await page.locator('#registerBtn').click();
