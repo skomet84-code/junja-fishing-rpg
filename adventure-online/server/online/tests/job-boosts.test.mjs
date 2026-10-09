@@ -53,6 +53,14 @@ test('mage and healer weapons improve mana and health while retaining legacy gea
  assert.equal(rollLoot(true,()=>0,'rogue'),classWeapon('kingblade','rogue'));
 });
 
+test('full inventory stores profession-specific primordial weapons without losing them on reload',()=>{
+ const rare=classWeapon('primordialblade','mage');
+ const restored=profile({job:'mage',level:750,primordialPending:[rare,'primordialarmor']});
+ assert.deepEqual(restored.primordialPending,[rare,'primordialarmor']);
+ const after=profile(restored);
+ assert.deepEqual(after.primordialPending,[rare,'primordialarmor']);
+});
+
 test('live merchant purchase and 30-minute XP potion are validated on server',()=>{
  let now=Date.now()/1000;
  const w=new World({now:()=>now,random:()=>.99});
