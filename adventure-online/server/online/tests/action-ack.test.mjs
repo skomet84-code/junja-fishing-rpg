@@ -4,10 +4,10 @@ import {spawn} from 'node:child_process';
 import {setTimeout as sleep} from 'node:timers/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
-test('operator action endpoint sends explicit skill accepted and cooldown metadata',async()=>{
+test('unverified admin-like name has no operator privileges and attack acknowledgement stays correct',async()=>{
  const port=46600+Math.floor(Math.random()*1000),base='http://127.0.0.1:'+port;
  const home=path.dirname(fileURLToPath(import.meta.url));
- const child=spawn(process.execPath,['server.mjs'],{cwd:path.resolve(home,'..'),env:{...process.env,TEST_MEMORY:'1',PORT:String(port),OPERATOR_USERNAMES:'admin'},stdio:'ignore'});
+ const child=spawn(process.execPath,['server.mjs'],{cwd:path.resolve(home,'..'),env:{...process.env,TEST_MEMORY:'1',PORT:String(port)},stdio:'ignore'});
  const api=async(route,token,connectionKey,payload)=>{
   const r=await fetch(base+'/api/'+route,{method:'POST',headers:{'content-type':'application/json',...(token?{authorization:'Bearer '+token}:{}),...(connectionKey?{'x-adventure-connection':connectionKey}:{})},body:JSON.stringify(payload)});
   const data=await r.json();assert.equal(r.status,200,JSON.stringify(data));return data;
@@ -18,7 +18,7 @@ test('operator action endpoint sends explicit skill accepted and cooldown metada
   assert.ok(live);
   const register=await api('register',null,null,{username:'admin',password:'operator-test-1234'});
   const join=await api('join',register.token,null,{slot:0,channel:'테스트'});
-  assert.equal(join.snapshot.self.operator,true);
+  assert.equal(join.snapshot.self.operator,false,'Unverified former admin alias must never gain operator privileges');
   const result=await api('action',register.token,join.connectionKey,{type:'attack',skill:0,manual:true});
   assert.equal(result.ok,true);
   assert.equal(result.accepted,false,'no enemy in village, must reject cast');
