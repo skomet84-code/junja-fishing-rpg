@@ -69,7 +69,7 @@ try{
    assert.equal(await page.locator('[data-map-travel="cave"]').isDisabled(),true);
    await page.locator('[data-map-travel="grove"]').click();
    await page.waitForFunction(()=>window.__adventure?.snapshot()?.zone==='grove',{timeout:10000});
-   await page.locator('#adventureBtn').click();
+   await page.locator(viewport.label==='mobile'?'#fieldShortcuts [data-forward="adventureBtn"]':'#adventureBtn').click();
    await page.locator('[data-map-travel="surface"]').click();
    await page.waitForFunction(()=>window.__adventure?.snapshot()?.zone==='surface',{timeout:10000});
    await page.screenshot({path:path.join(screens,viewport.label+'-map-travel.png')});
