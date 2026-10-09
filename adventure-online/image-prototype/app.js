@@ -4,11 +4,12 @@ import {mergeSnapshot} from './network.js';
 import {BOOSTS,WEAPON_FAMILIES,MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,ASCENSION_CHAPTERS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS,ascensionGuide,currentAscensionLabel} from './mmo-data.js?v=20261009-dynrankfix1';
 import {API_URL} from './config.js';
 import {createCombatQueue} from './combat-queue.js?v=20261009-primordial-motion1';
+import {predictServerPosition,reconcileVisualPosition,advanceFootsteps} from './movement-feel.js?v=20261010-motion1';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 const endgameStyle=document.createElement('style');endgameStyle.textContent="#world[data-zone=void]:after{background:radial-gradient(ellipse at 50% 70%,transparent 22%,#160b2670 72%,#06030bcc 100%)!important}#world[data-zone=origin]:after{background:radial-gradient(ellipse at 50% 70%,transparent 25%,#473a1360 72%,#100c04bb 100%)!important}";document.head.append(endgameStyle);
 let wireSnapshot=null;
-let token='',connectionKey='',legacy=null,roster=[],selectedSlot=0,state=profile(),view={x:768,y:355},connected=false,paused=false,serverNow=0,receivedAt=0,last=0,clock=0,lastSend=0,moveSending=false,pendingMove=null,streamController=null,streamGeneration=0,lastSelfSampleAt=0,lastSelfX=768,lastSelfY=355,serverVelocity={x:0,y:0};
+let token='',connectionKey='',legacy=null,roster=[],selectedSlot=0,state=profile(),view={x:768,y:355},connected=false,paused=false,serverNow=0,receivedAt=0,last=0,clock=0,lastSend=0,moveSending=false,pendingMove=null,streamController=null,streamGeneration=0,lastSelfSampleAt=0,lastSelfX=768,lastSelfY=355,serverVelocity={x:0,y:0},walkClock=0,walkSpeed=0;
 const skillQueue=createCombatQueue(6,2,3);
 let lastLocalFx=null,remoteSkillPending=null,pendingAttackAck=false;
 let navigationRequestedUntil=0;
@@ -174,7 +175,7 @@ function go(x,y){
  command({type:'navigate',x,y}).then(result=>{if(result?.navigating===false)toast('이곳까지 길이 연결되지 않았어요. 다른 바닥을 눌러주세요.');});
  $('marker').style.left=x+'px';$('marker').style.top=y+'px';$('marker').classList.remove('show');void $('marker').offsetWidth;$('marker').classList.add('show');
 }
-function camera(force=false,dt=.016){const vw=$('viewport').clientWidth/scale,vh=$('viewport').clientHeight/scale;const x=clamp(view.x-vw*.5,Math.min(0,(W-vw)/2),Math.max(0,W-vw)),y=clamp(view.y-vh*.53,Math.min(0,(H-vh)/2),Math.max(0,H-vh)),f=force?1:1-Math.exp(-12*dt);cam.x+=(x-cam.x)*f;cam.y+=(y-cam.y)*f;const bump=motionReduced?0:cameraKick;const px=-cam.x*scale+Math.sin(clock*73)*bump,py=-cam.y*scale+Math.cos(clock*83)*bump*.55;cameraKick*=Math.exp(-20*dt);if(cameraKick<.05)cameraKick=0;$('world').style.transform=`translate3d(${px.toFixed(2)}px,${py.toFixed(2)}px,0) scale(${scale})`;}
+function camera(force=false,dt=.016){const vw=$('viewport').clientWidth/scale,vh=$('viewport').clientHeight/scale;const x=clamp(view.x-vw*.5,Math.min(0,(W-vw)/2),Math.max(0,W-vw)),y=clamp(view.y-vh*.53,Math.min(0,(H-vh)/2),Math.max(0,H-vh)),f=force?1:1-Math.exp(-10.5*dt);cam.x+=(x-cam.x)*f;cam.y+=(y-cam.y)*f;if(Math.abs(x-cam.x)<.05)cam.x=x;if(Math.abs(y-cam.y)<.05)cam.y=y;const bump=motionReduced?0:cameraKick;const px=-cam.x*scale+Math.sin(clock*73)*bump,py=-cam.y*scale+Math.cos(clock*83)*bump*.55;cameraKick*=Math.exp(-20*dt);if(cameraKick<.05)cameraKick=0;$('world').style.transform=`translate3d(${px.toFixed(2)}px,${py.toFixed(2)}px,0) scale(${scale})`;}
 function resize(){scale=innerWidth<600?.85:Math.min(1,innerWidth/1150);camera(true);}
 function screenToWorld(x,y){const r=$('viewport').getBoundingClientRect();return {x:(x-r.left)/scale+cam.x,y:(y-r.top)/scale+cam.y};}
 function sprite(el,col,row,rows=3,mirror=false){
@@ -330,7 +331,7 @@ function updateSnapshot(data){
  }else serverVelocity={x:0,y:0};
  lastSelfSampleAt=sampleAt;lastSelfX=next.x;lastSelfY=next.y;
  serverNow=data.now;receivedAt=performance.now();state=next;systems={nodes:data.nodes||[],bosses:data.bosses||[],trade:data.trade,duel:data.duel,partyDungeon:data.partyDungeon||null,party:data.party||null,partyInvite:data.partyInvite||null,raidContribution:data.raidContribution||null,daily:data.daily};
- syncMMO();if(old.zone!==state.zone){skillQueue.clear();remoteSkillPending=null;localActionLockUntil=0;lastLocalFx=null;pendingAttackAck=false;showZoneArrival(state.zone);serverVelocity={x:0,y:0};view={x:state.x,y:state.y};path=[];targetIntent=null;camera(true);}
+ syncMMO();if(old.zone!==state.zone){skillQueue.clear();remoteSkillPending=null;localActionLockUntil=0;lastLocalFx=null;pendingAttackAck=false;showZoneArrival(state.zone);serverVelocity={x:0,y:0};walkClock=0;walkSpeed=0;view={x:state.x,y:state.y};path=[];targetIntent=null;camera(true);}
  auto=state.auto;connected=true;
  if(remoteSkillPending){const {skill,target,started}=remoteSkillPending;if((state.cooldowns?.[skill]||0)>started+.1||now()>started+9||(now()>started+1&&state.combatTarget!==target))remoteSkillPending=null;}
  if(old.zone===state.zone&&distance(view,state)>320){view={x:state.x,y:state.y};path=[];targetIntent=null;camera(true);}
@@ -385,7 +386,7 @@ async function recoverPlay(generation){
 }
 async function showSelection(){
  skillQueue.clear();remoteSkillPending=null;localActionLockUntil=0;lastLocalFx=null;pendingAttackAck=false;
- streamGeneration++;streamController?.abort();connected=false;stopMovement();paused=false;$('modal').hidden=true;$('loading').hidden=false;$('authPanel').hidden=true;$('selectPanel').hidden=true;$('retryBtn').hidden=true;
+ streamGeneration++;streamController?.abort();connected=false;walkSpeed=0;walkClock=0;stopMovement();paused=false;$('modal').hidden=true;$('loading').hidden=false;$('authPanel').hidden=true;$('selectPanel').hidden=true;$('retryBtn').hidden=true;
  let me=null,error=null;for(let attempt=1;attempt<=3;attempt++){try{$('loadMessage').textContent=attempt===1?'캐릭터를 준비하고 있어요…':'계정 기록을 다시 불러오는 중…';me=await api('me');break;}catch(e){error=e;if(e.status===401)break;if(attempt<3)await sleep(400*attempt);}}
  if(!me){
   if(error?.status===401){token='';try{localStorage.removeItem('junja-online-token');}catch{}$('authPanel').hidden=false;$('authMessage').textContent='로그인 시간이 만료되었습니다. 다시 로그인해 주세요.';$('loadMessage').textContent='친구들과 함께하는 준자마을';}
@@ -683,19 +684,22 @@ function frame(time){
    if(!dx&&!dy&&Math.hypot(stick.x,stick.y)>5){dx=stick.x;dy=stick.y;}manualMove=!!(dx||dy);
   }
   const len=Math.hypot(dx,dy);if(len){dx/=len;dy/=len;}
-  if(!auto&&clock>=attackUntil&&len){
+  const beforeMove={x:view.x,y:view.y},locallySteering=!!len&&!auto&&clock>=attackUntil;
+  // First render the local input immediately. Do not pull the actor back on every 100 ms network tick.
+  if(locallySteering){
    const x=view.x+dx*250*dt,y=view.y+dy*250*dt;if(walkable(x,view.y))view.x=x;if(walkable(view.x,y))view.y=y;headingX=dx;headingY=dy;const pose=headingPose(dx,dy,face,flip);face=pose.row;flip=pose.mirror;
   }
-  const sampleAge=Math.min(.09,Math.max(0,(performance.now()-receivedAt)/1000)),serverMoving=manualMove||state.navMoving||state.auto||state.combatTarget!=null,predicted={x:state.x+(serverMoving?serverVelocity.x*sampleAge:0),y:state.y+(serverMoving?serverVelocity.y*sampleAge:0)},drift=distance(view,predicted);
-  if(!len||auto){
-   const f=1-Math.exp(-16*dt);view.x+=(predicted.x-view.x)*f;view.y+=(predicted.y-view.y)*f;
-  }else if(drift>18){
-   const strength=drift>150?14:drift>65?6:1.6,f=1-Math.exp(-strength*dt);view.x+=(predicted.x-view.x)*f;view.y+=(predicted.y-view.y)*f;
-  }
+  const sampleAge=(performance.now()-receivedAt)/1000,serverMoving=!!(locallySteering||state.navMoving||state.auto||state.combatTarget!=null);
+  const predicted=predictServerPosition(state,serverVelocity,sampleAge,serverMoving);
+  const visual=reconcileVisualPosition(view,predicted,dt,locallySteering);
+  view.x=visual.x;view.y=visual.y;
+  // Animation cadence comes from distance actually traveled, never from the auto-hunt toggle.
+  const steps=advanceFootsteps(beforeMove,view,dt,walkClock,walkSpeed);
+  walkClock=steps.time;walkSpeed=steps.speed;
   if(clock-lastSend>=.08&&(manualMove||(!auto&&!state.navMoving&&performance.now()>navigationRequestedUntil))){lastSend=clock;queueMove({type:'move',x:dx,y:dy,manual:manualMove});}
   const attacking=clock<attackUntil,hero=$('hero'),heroArt=$('heroArt');
   if(attacking){const duration=Number(hero.dataset.attackDuration)||.44,started=Number(hero.dataset.attackStarted)||attackUntil-duration;attackPose(hero,heroArt,face,flip,started,duration,state.job,Number(hero.dataset.attackSkill??-1),Number(hero.dataset.attackVariant||0),headingX,headingY);}
-  else motion(hero,heroArt,(len||Math.hypot(serverVelocity.x,serverVelocity.y)>32)?'walk':'idle',face,flip,clock,0,headingX,headingY);
+  else motion(hero,heroArt,steps.walking?'walk':'idle',face,flip,steps.walking?walkClock:clock,0,headingX,headingY);
   placeEntity(hero,view.x,view.y);hero.style.zIndex=Math.round(view.y);hero.classList.toggle('attacking',attacking);hero.classList.toggle('guarded',(state.guard||0)>now());
   const perfNow=performance.now()/1000,vw=$('viewport').clientWidth/scale,vh=$('viewport').clientHeight/scale,pad=innerWidth<700?180:260,left=cam.x-pad,right=cam.x+vw+pad,top=cam.y-pad,bottom=cam.y+vh+pad;
   for(const e of enemies.values()){
