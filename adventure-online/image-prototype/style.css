@@ -1508,146 +1508,21 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .hero[data-gear-set="eclipse"] :is(.gear-armor,.gear-cape){background:linear-gradient(130deg,#ff91b1,#60213e,#a02b73)!important}
 .hero[data-gear-set="eternal"] :is(.gear-armor,.gear-cape){background:linear-gradient(130deg,#ffefbb,#659fc9,#edf6ff)!important}
 
-/* ===== 2026-10-09 LIVE CHARACTER SCALE + PROMOTION COSTUMES =====
-   Preserve foot placement: placeEntity() positions the entity at the character's feet.
-   Covers self, other players, paperdoll and character selection, without resizing mobs. */
+/* 2026-10-09 player-visibility hotfix. Keep illustrated actors small,
+   remove procedural promotion masks that occlude actual character art.
+   Server combat/hitboxes and progression are intentionally untouched. */
 #hero.entity.hero{width:106px;height:124px}
 .entity.peer.hero{width:88px;height:103px}
 @media(max-width:600px){
   #hero.entity.hero{width:100px;height:117px}
   .entity.peer.hero{width:84px;height:98px}
 }
-
-/* Rank 0 remains the original art. Rank 1+ changes the silhouette, not just text/glow.
-   Separate from gear rarity: even characters with no armor equipped visibly promote. */
-.entity.hero>.evolution-costume{
-  position:absolute;inset:0;z-index:3;pointer-events:none;
-  transform-origin:50% 91%;
-  transform:translate(var(--lunge-x,0px),calc(var(--bob,0px) + var(--lunge-y,0px)))
-    skewX(var(--dir-skew,0deg)) rotate(var(--lean,0deg))
-    scaleX(var(--flip,1)) scaleY(var(--squash,1)) scaleY(var(--dir-depth,1));
-  will-change:transform;
-}
-.entity.hero[data-rank="0"]>.evolution-costume,
-.entity.hero:not([data-rank])>.evolution-costume{display:none}
-.entity.hero>.evolution-costume i{display:block;position:absolute;pointer-events:none}
-.entity.hero[data-rank="1"]>.evolution-costume{opacity:.85}
-.entity.hero[data-rank="2"]>.evolution-costume{opacity:.96}
-.entity.hero[data-rank="3"]>.evolution-costume,
-.entity.hero:is([data-rank="4"],[data-rank="5"],[data-rank="6"])>.evolution-costume{opacity:1}
-
-/* Four distinct character palettes, reused by all four progression silhouettes. */
-.entity.hero[data-job="warrior"]{--evo-fabric:#253c55;--evo-dark:#172231;--evo-metal:#c7d9ed;--evo-light:#f3ebd4;--evo-accent:#f6c869;--evo-glow:#e6bc62}
-.entity.hero[data-job="rogue"]{--evo-fabric:#332145;--evo-dark:#100e21;--evo-metal:#7e6eab;--evo-light:#ccacee;--evo-accent:#f08dd7;--evo-glow:#b55aff}
-.entity.hero[data-job="mage"]{--evo-fabric:#394589;--evo-dark:#201d54;--evo-metal:#9693df;--evo-light:#cef0ff;--evo-accent:#76e5f3;--evo-glow:#72b9ff}
-.entity.hero[data-job="healer"]{--evo-fabric:#2c7164;--evo-dark:#173b36;--evo-metal:#b2e2c4;--evo-light:#fff5c6;--evo-accent:#a8f5b9;--evo-glow:#7ed9ac}
-
-.evolution-costume .evo-mantle{
-  left:21%;top:35%;width:58%;height:52%;z-index:0;
-  background:linear-gradient(110deg,var(--evo-dark),var(--evo-fabric) 45%,var(--evo-metal));
-  clip-path:polygon(17% 0,83% 0,100% 100%,60% 86%,50% 100%,40% 86%,0 100%);
-  filter:drop-shadow(0 2px 3px #0007);
-}
-.evolution-costume .evo-breastplate{
-  left:32%;top:41%;width:36%;height:29%;z-index:2;
-  background:linear-gradient(105deg,var(--evo-dark) 0,var(--evo-metal) 35%,var(--evo-fabric) 55%,var(--evo-dark) 100%);
-  border:1px solid var(--evo-light);
-  clip-path:polygon(8% 0,50% 10%,92% 0,100% 30%,76% 92%,50% 100%,24% 92%,0 30%);
-  box-shadow:inset 0 0 4px #fff7;
-}
-.evolution-costume .evo-shoulder{
-  top:37%;width:19%;height:16%;z-index:3;
-  background:linear-gradient(145deg,var(--evo-light),var(--evo-metal) 40%,var(--evo-dark));
-  border-top:1px solid var(--evo-accent);
-  clip-path:polygon(0 38%,22% 0,82% 10%,100% 58%,65% 100%,8% 77%);
-  filter:drop-shadow(0 2px 2px #0008);
-}
-.evolution-costume .evo-left{left:23%;transform:rotate(-11deg)}
-.evolution-costume .evo-right{right:23%;transform:scaleX(-1) rotate(-11deg)}
-.evolution-costume .evo-crown{
-  left:32%;top:12%;width:36%;height:16%;z-index:4;
-  background:linear-gradient(160deg,var(--evo-light),var(--evo-metal) 45%,var(--evo-dark));
-  border-bottom:2px solid var(--evo-accent);
-  clip-path:polygon(10% 35%,25% 0,50% 25%,75% 0,90% 35%,100% 100%,0 100%);
-  filter:drop-shadow(0 2px 2px #0008);
-}
-.evolution-costume .evo-emblem{
-  left:46%;top:48%;width:8%;height:10%;z-index:5;
-  background:radial-gradient(circle at 35% 25%,#fff,var(--evo-accent) 42%,var(--evo-metal) 90%);
-  clip-path:polygon(50% 0,100% 45%,50% 100%,0 45%);
-  filter:drop-shadow(0 0 3px var(--evo-glow));
-}
-.evolution-costume .evo-wings{display:none!important}
-
-/* Class identity: knight / shadow assassin / high wizard / sacred healer. */
-.entity.hero[data-job="warrior"] .evo-crown{top:10%;height:20%;clip-path:polygon(0 34%,18% 0,43% 22%,50% 8%,57% 22%,82% 0,100% 34%,87% 100%,13% 100%)}
-.entity.hero[data-job="warrior"] .evo-shoulder{width:23%;height:19%}
-.entity.hero[data-job="rogue"] .evo-crown{left:30%;top:8%;width:40%;height:26%;clip-path:polygon(50% 0,93% 27%,100% 70%,78% 100%,22% 100%,0 70%,7% 27%);background:linear-gradient(135deg,var(--evo-dark),var(--evo-fabric),var(--evo-metal))}
-.entity.hero[data-job="rogue"] .evo-mantle{clip-path:polygon(25% 0,75% 0,95% 61%,100% 100%,57% 78%,50% 100%,43% 78%,0 100%,5% 61%)}
-.entity.hero[data-job="mage"] .evo-crown{left:29%;top:2%;width:42%;height:31%;clip-path:polygon(52% 0,64% 27%,86% 43%,100% 74%,72% 100%,22% 100%,0 74%,22% 43%,37% 26%)}
-.entity.hero[data-job="mage"] .evo-mantle{left:17%;width:66%;height:60%;clip-path:polygon(31% 0,69% 0,86% 33%,100% 100%,50% 86%,0 100%,14% 33%)}
-.entity.hero[data-job="healer"] .evo-crown{left:27%;top:12%;width:46%;height:13%;background:linear-gradient(90deg,var(--evo-metal),var(--evo-light),var(--evo-metal));clip-path:polygon(0 80%,22% 40%,40% 55%,50% 0,60% 55%,78% 40%,100% 80%,100% 100%,0 100%)}
-.entity.hero[data-job="healer"] .evo-mantle{left:19%;width:62%;height:58%;clip-path:polygon(16% 0,84% 0,91% 58%,100% 100%,50% 90%,0 100%,9% 58%)}
-
-/* Each promotion changes body volume and equipment silhouette, including rank 4 if supplied. */
-.entity.hero[data-rank="2"] .evo-mantle{left:15%;width:70%;height:62%;clip-path:polygon(21% 0,79% 0,90% 34%,100% 100%,73% 82%,50% 100%,27% 82%,0 100%,10% 34%)}
-.entity.hero[data-rank="2"] .evo-shoulder{top:34%;height:20%;width:23%;filter:drop-shadow(0 1px 3px var(--evo-glow))}
-.entity.hero[data-rank="2"] .evo-breastplate{top:39%;height:33%;border:2px solid var(--evo-accent)}
-.entity.hero[data-rank="2"] .evo-crown{filter:drop-shadow(0 1px 3px var(--evo-glow))}
-.entity.hero[data-rank="2"] .evo-emblem{left:44%;width:12%;height:12%}
-.entity.hero[data-rank="3"] .evo-mantle,
-.entity.hero:is([data-rank="4"],[data-rank="5"],[data-rank="6"]) .evo-mantle{left:12%;width:76%;height:66%;background:linear-gradient(110deg,var(--evo-dark),var(--evo-fabric) 39%,var(--evo-metal) 62%,var(--evo-dark));clip-path:polygon(24% 0,76% 0,89% 34%,100% 100%,76% 76%,50% 100%,24% 76%,0 100%,11% 34%)}
-.entity.hero[data-rank="3"] .evo-shoulder,
-.entity.hero:is([data-rank="4"],[data-rank="5"],[data-rank="6"]) .evo-shoulder{top:32%;width:26%;height:22%;border-top:3px solid var(--evo-light);filter:drop-shadow(0 0 5px var(--evo-glow))}
-.entity.hero[data-rank="3"] .evo-breastplate,
-.entity.hero:is([data-rank="4"],[data-rank="5"],[data-rank="6"]) .evo-breastplate{top:37%;height:36%;border:2px solid var(--evo-accent);filter:drop-shadow(0 0 4px var(--evo-glow))}
-.entity.hero[data-rank="3"] .evo-crown,
-.entity.hero:is([data-rank="4"],[data-rank="5"],[data-rank="6"]) .evo-crown{filter:drop-shadow(0 0 5px var(--evo-glow))}
-.entity.hero[data-rank="3"] .evo-emblem,
-.entity.hero:is([data-rank="4"],[data-rank="5"],[data-rank="6"]) .evo-emblem{left:43%;top:47%;width:14%;height:14%;filter:drop-shadow(0 0 7px var(--evo-glow))}
-.entity.hero[data-rank="3"] .evo-wings,
-.entity.hero:is([data-rank="4"],[data-rank="5"],[data-rank="6"]) .evo-wings{
-  display:block!important;left:4%;top:27%;width:92%;height:53%;z-index:0;
-  background:linear-gradient(90deg,transparent,var(--evo-metal) 17%,transparent 34%,transparent 66%,var(--evo-metal) 83%,transparent);
-  opacity:.67;clip-path:polygon(48% 46%,8% 0,0 56%,22% 100%,50% 65%,78% 100%,100% 56%,92% 0,52% 46%);
-  filter:drop-shadow(0 0 7px var(--evo-glow));
-}
-.entity.hero:is([data-rank="4"],[data-rank="5"],[data-rank="6"]) .evo-wings{left:-6%;width:112%;height:67%;top:20%;opacity:.91}
-.entity.hero:is([data-rank="4"],[data-rank="5"],[data-rank="6"]) .evo-crown{top:6%;height:24%;background:linear-gradient(90deg,var(--evo-metal),var(--evo-accent),var(--evo-light),var(--evo-metal))}
-.entity.hero:is([data-rank="4"],[data-rank="5"],[data-rank="6"])>.evolution-costume{filter:drop-shadow(0 0 8px var(--evo-glow))}
-
-/* Promotion must also be obvious in the roster and HUD, not only during battle. */
-.portrait[data-rank="1"]{outline:2px solid #c8d0dc;box-shadow:0 0 7px #a6b8d477}
-.portrait[data-rank="2"]{outline:2px solid #f2cc70;box-shadow:0 0 10px #f1b94b99}
-.portrait[data-rank="3"]{outline:2px solid #c6a0ff;box-shadow:0 0 13px #ad62ffaa}
-.portrait:is([data-rank="4"],[data-rank="5"],[data-rank="6"]){outline:2px solid #ffdc89;box-shadow:0 0 16px #f6c76cbb,0 0 9px #bb71ffbb}
-.character-preview.promoted-preview{border:2px solid #b7ad91;border-radius:9px;box-shadow:0 0 9px #ffd47b44;position:relative}
-.character-preview.promoted-preview:before{content:'';position:absolute;left:26%;top:4%;width:48%;height:19%;z-index:3;clip-path:polygon(0 100%,15% 5%,37% 60%,50% 0,63% 60%,85% 5%,100% 100%);background:linear-gradient(#fff2c4,#b69ad7);filter:drop-shadow(0 1px 3px #1a1d36)}
-.character-preview.promoted-preview.rank-1:after,
-.character-preview.promoted-preview.rank-2:after,
-.character-preview.promoted-preview.rank-3:after,
-.character-preview.promoted-preview.rank-4:after{position:absolute;right:2px;bottom:2px;z-index:4;padding:2px 4px;border:1px solid #eed995b0;border-radius:5px;background:#16251ddc;color:#ffe6a7;font-size:9px;font-weight:900}
-.character-preview.promoted-preview.rank-1:after{content:'1차'}
-.character-preview.promoted-preview.rank-2:after{content:'2차'}
-.character-preview.promoted-preview.rank-3:after{content:'3차'}
-.character-preview.promoted-preview.rank-4:after{content:'4차'}
-
-/* Support the existing game's real fifth and sixth promotions. */
-.entity.hero:is([data-rank="5"],[data-rank="6"])>.evolution-costume{
-  filter:drop-shadow(0 0 6px var(--evo-glow));opacity:1
-}
-.entity.hero[data-rank="5"] .evo-wings{top:20%;height:63%;opacity:.84}
-.entity.hero[data-rank="5"] .evo-crown{top:6%;height:24%}
-.entity.hero[data-rank="6"] .evo-wings{left:-7%;top:14%;width:114%;height:73%;opacity:.96}
-.entity.hero[data-rank="6"] .evo-crown{top:2%;height:28%;background:linear-gradient(90deg,var(--evo-metal),#fff8d2,var(--evo-gem,#fff1a0),var(--evo-metal))}
-.character-preview.promoted-preview.rank-5{border:2px solid #c3a2ff;box-shadow:0 0 11px #ab77ee88}
-.character-preview.promoted-preview.rank-6{border:2px solid #ffefb0;box-shadow:0 0 14px #ffe28f99}
-.character-preview.promoted-preview.rank-5:after{content:'5차';position:absolute;right:2px;bottom:2px;padding:2px 4px;border-radius:5px;background:#2e1946;color:#f1d7ff;font-size:9px;z-index:4}
-.character-preview.promoted-preview.rank-6:after{content:'6차';position:absolute;right:2px;bottom:2px;padding:2px 4px;border-radius:5px;background:#51411c;color:#fff0b9;font-size:9px;z-index:4}
-/* The production-art prototype uses absolute fixed pixels; resize that if enabled later. */
-.entity.hero.production-active>.production-sprite{width:104px!important;height:116px!important;bottom:-13px!important}
-.entity.hero.production-active[data-rank="4"]>.production-sprite{width:109px!important;height:122px!important;bottom:-15px!important}
-@media(max-width:600px){
- .entity.hero.production-active>.production-sprite{width:98px!important;height:110px!important;bottom:-11px!important}
- .entity.hero.production-active[data-rank="4"]>.production-sprite{width:104px!important;height:117px!important;bottom:-13px!important}
-}
+.entity.hero>.promotion-regalia{display:none!important}
+.entity.hero>.promotion-aura{opacity:.22!important}
+#hero.entity.hero>.gear-layers{opacity:.28!important}
+#hero.entity.hero[data-motion='attack']>.gear-layers{opacity:.45!important}
+.entity.peer.hero>.gear-layers{opacity:.28!important}
+/* Preserve the actual character picture above equipment and ornamental elements. */
+.entity.hero>.sprite{image-rendering:auto}
+#hero>.entity-name{top:-23px;z-index:8;padding:2px 5px;border-radius:5px;background:#101b1bc9;font-size:11px}
+@media(max-width:600px){#hero>.entity-name{font-size:10px;top:-21px}}
