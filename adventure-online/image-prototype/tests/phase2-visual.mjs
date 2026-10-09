@@ -50,7 +50,7 @@ try{
   });
   assert.equal(r.count,9,'All nine skills remain accessible');
   assert.equal(r.columns,5,'Five skill columns produce two rows');
-  assert.ok(r.heroWidth>=130,'player sprite is visibly larger without modifying the actor');
+  assert.equal(r.heroWidth,width<390?106:110,'phase 2 protagonist stays compact on mobile without altering world coordinates');
   assert.ok(!overlap(r.dock,r.actions),'Dock and combat actions must not overlap');
   assert.ok(!overlap(r.skillbar,r.actions),'Nine-skill ribbon must sit above action row');
   assert.ok(!overlap(r.skillbar,r.dock),'Nine-skill ribbon must sit above shortcuts');
@@ -73,5 +73,6 @@ try{
  const wide=await browser.newPage({viewport:{width:1280,height:800}});
  await wide.goto(base,{waitUntil:'domcontentloaded'});
  assert.equal(await wide.locator('#fieldShortcuts').evaluate(el=>getComputedStyle(el).display),'none','Desktop shortcuts hidden');
+ assert.equal(await wide.locator('#hero').evaluate(el=>parseFloat(getComputedStyle(el).width)),112,'Desktop illustrated character must also be compact');
  console.log('PHASE2_PASS desktop');
 }finally{await browser.close();}
