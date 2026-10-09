@@ -1,0 +1,194 @@
+/* JUNJA ADVENTURE · Visual Phase 2 · 2026-10-09
+   Presentation only. Keeps the live nine-skill HUD, moving sprites,
+   action handlers, current ascension, and shared-world game state intact. */
+:root{
+ --v2-ink:#254c41;--v2-mint:#4b9277;--v2-ivory:#fffef1;
+ --v2-gold:#e5ba75;--v2-shell:rgba(255,252,234,.94);
+ --v2-shadow:0 4px 14px rgba(21,58,45,.26),inset 0 1px 0 #fff9;
+}
+#game{isolation:isolate}
+#game button{touch-action:manipulation}
+/* Unified bookish parchment cards at the screen top */
+#game>.profile,header .profile,header .zone,#quest,#targetPanel,#onlineBtn{
+ backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
+}
+header{align-items:flex-start}
+header .profile{
+ border-radius:20px;border:2px solid rgba(255,253,231,.92);
+ background:linear-gradient(125deg,rgba(255,255,248,.97),rgba(239,249,221,.93));
+ color:var(--v2-ink);box-shadow:var(--v2-shadow);
+}
+header .profile .portrait{border-radius:13px;box-shadow:0 3px 8px #52795755,inset 0 1px #fff}
+header .profile #playerName{color:var(--v2-ink);font-weight:850;letter-spacing:-.025em}
+header .profile #level{background:linear-gradient(110deg,#468b76,#2f6956);border-radius:9px;color:#ffffee;text-align:left;padding:2px 7px;box-shadow:inset 0 -2px #1d4e36;line-height:1.25;font-weight:750}
+header .profile .stats>div:first-child{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:4px}
+header .profile .bar{border-color:#fffff5}
+header .zone{
+ background:linear-gradient(160deg,rgba(255,255,243,.97),rgba(236,246,219,.95));
+ border:2px solid rgba(255,253,233,.96);color:var(--v2-ink);
+ box-shadow:var(--v2-shadow);border-radius:19px
+}
+header .zone span{color:#986832}
+header .zone #gold{font-weight:800;font-variant-numeric:tabular-nums}
+header .zone #activeBoosts{color:#8a643b!important}
+header .zone #saveStatus{color:#5d8472!important}
+#quest{border:2px solid #fffdf2;background:linear-gradient(135deg,rgba(255,255,242,.96),rgba(234,245,223,.92));box-shadow:var(--v2-shadow)}
+#quest b{color:#2c6651}
+#quest p{line-height:1.4;color:#517363}
+#questToggle{border-radius:11px!important}
+#quest.collapsed{max-height:53px!important;overflow:hidden}
+#quest.collapsed>b{white-space:nowrap;text-overflow:ellipsis;overflow:hidden;padding-right:24px}
+#targetPanel{background:rgba(255,253,235,.97);border:2px solid #fff;color:#285548;box-shadow:var(--v2-shadow)}
+#onlineBtn{border-radius:18px;background:rgba(255,253,236,.93)!important;color:#4f8069!important;border:2px solid #fffdf1!important;font-size:11px!important}
+#minimapWrap{
+ border:2px solid rgba(255,255,230,.92)!important;border-radius:16px!important;
+ background:rgba(255,252,231,.91)!important;box-shadow:var(--v2-shadow)!important}
+#minimapToggle{color:#325c4c!important;background:linear-gradient(#fffdf1,#e6efd9)!important;border-radius:11px!important;font-weight:800!important}
+#minimapWrap>b,#minimapLabel{color:#46705d!important}
+#minimapWrap.open{box-shadow:0 8px 25px #214a4088!important}
+/* Player identity: slightly stronger illustrated silhouette without changing hitbox coordinates. */
+#hero.entity.hero{width:134px;height:155px;transform-origin:50% 100%}
+#hero>.entity-name{
+ top:-24px!important;z-index:8;padding:4px 11px!important;
+ background:linear-gradient(110deg,rgba(26,63,54,.96),rgba(48,86,64,.94))!important;
+ border:1px solid rgba(248,215,144,.9);border-radius:13px!important;color:#fff4c6!important;
+ font-size:11px!important;white-space:nowrap;text-shadow:0 2px 2px #16382d;
+ box-shadow:0 3px 10px #122a2755!important;letter-spacing:-.02em}
+#hero>.shadow{left:26%;width:48%;height:11px;filter:blur(4px);background:#244a3a50}
+.entity.enemy>.entity-name{background:rgba(30,58,43,.88);color:#fff6ce;border:1px solid rgba(255,233,175,.5);border-radius:8px;padding:3px 6px;font-size:10px;text-shadow:0 1px 2px #163225}
+.entity.enemy.elite>.entity-name,.entity.enemy.boss>.entity-name,.entity.enemy.named>.entity-name{color:#ffe3ad;border-color:#e8b76f}
+.npc>b{background:linear-gradient(135deg,rgba(255,254,238,.98),rgba(241,245,222,.96))!important;color:#36634f!important;border:1px solid #f7e5ba!important;border-radius:13px!important;box-shadow:0 5px 12px #264a3c50!important}
+.npc .npc-art{animation:v2-breathe 3.7s ease-in-out infinite alternate}
+@keyframes v2-breathe{from{filter:brightness(.98) saturate(1)}to{filter:brightness(1.07) saturate(1.08)}}
+/* Full nine-skill ribbon: a restrained, legible two-row glass tray */
+#skillbar{z-index:24;align-items:stretch}
+#skillbar button{
+ position:relative;min-height:53px;
+ border:2px solid rgba(249,237,195,.92)!important;border-radius:13px!important;
+ background:linear-gradient(165deg,rgba(48,87,76,.97),rgba(23,53,54,.98))!important;
+ box-shadow:0 3px 11px #244d3f66,inset 0 1px 0 #ffffff23!important;
+ color:#fff7dc!important;text-shadow:0 1px 2px #13312c!important;overflow:hidden;
+}
+#skillbar button b{
+ position:relative;z-index:2;color:#fffaea!important;font-weight:800!important;
+ letter-spacing:-.045em;line-height:1.25;display:block;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 1px}
+#skillbar button small{
+ position:relative;z-index:2;color:#e1d6aa!important;display:block;
+ text-align:center;font-weight:700!important;line-height:1.2!important;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px!important}
+#skillbar button::before{z-index:3;top:2px;left:4px;color:#f2d5a2!important;opacity:.87;font-size:9px}
+#skillbar button[data-kind="area"],
+#skillbar button[data-kind="burst"]{background:linear-gradient(165deg,#655492,#292747)!important;border-color:#d7bbef!important}
+#skillbar button[data-kind="heal"],
+#skillbar button[data-kind="partyHeal"],
+#skillbar button[data-kind="guard"],
+#skillbar button[data-kind="partyGuard"]{background:linear-gradient(165deg,#518c75,#264d52)!important;border-color:#b3e4c8!important}
+#skillbar button[data-kind="move"],
+#skillbar button[data-kind="dash"]{background:linear-gradient(165deg,#4674a2,#244b69)!important;border-color:#b1d5f2!important}
+#skillbar button[data-kind="drain"]{background:linear-gradient(165deg,#98516c,#523451)!important;border-color:#edb3c4!important}
+#skillbar button[data-cooldown="active"]::after{
+ content:'';position:absolute;inset:0!important;display:block;width:auto!important;height:auto!important;max-height:none!important;
+ border-radius:inherit!important;background:linear-gradient(to top,rgba(9,18,31,.69) 0%,rgba(9,18,31,.69) var(--cd-pct,0%),transparent var(--cd-pct,0%))!important;pointer-events:none;z-index:1
+}
+#skillbar button[data-queued="true"]{outline:2px solid #ffde8b!important;outline-offset:1px;box-shadow:0 0 11px #ffe59499!important}
+#skillbar button:disabled{opacity:.78!important}
+#skillbar button[data-cooldown="ready"]:not(:disabled){border-color:#f9e2a2!important;box-shadow:0 0 0 1px #fff5c35a,0 4px 12px #143f3359!important}
+#skillbar button:focus-visible{outline:3px solid #ffdf7a!important;outline-offset:2px}
+/* Unified action buttons, automatic combat state is unmistakable */
+.actions button{font-weight:850!important;letter-spacing:-.02em}
+#autoBtn{
+ color:#3a6957!important;background:linear-gradient(155deg,#fffff5,#d6edda)!important;
+ border:3px solid #fff5d5!important;box-shadow:var(--v2-shadow)!important}
+#autoBtn[aria-pressed="true"]{color:#fff!important;background:linear-gradient(150deg,#5fc28a,#227458)!important;border-color:#ffe69f!important;box-shadow:0 0 0 3px #b7ed9f7a,0 4px 12px #24563866!important}
+#autoBtn[aria-pressed="true"] small{color:#ffffff!important}
+#potionBtn{color:#724d3e!important;background:linear-gradient(150deg,#fff7df,#f2d4bc)!important;border:3px solid #ffeed1!important;box-shadow:var(--v2-shadow)!important}
+#potionBtn:disabled{opacity:.56!important;filter:saturate(.6)}
+#attackBtn{
+ color:#fffdf6!important;border:4px solid #ffedbe!important;
+ background:radial-gradient(circle at 33% 20%,#ffcf91,#d59a5d 52%,#9d583f 95%)!important;
+ box-shadow:0 8px 18px #6a403c6b,inset 0 0 0 2px #ffe8aa77!important;
+ text-shadow:0 2px 3px #6d3f2b!important}
+#attackBtn small{color:#fffae2!important}
+/* Popups and inventory retain functioning controls, with unified readable ink */
+.load-card,.modal{box-shadow:0 25px 60px #183e3280!important}
+.modal button:focus-visible{outline:3px solid #dfaf5f}
+#combatReadout{border:1px solid #fff3b7!important;border-radius:12px!important;box-shadow:0 3px 8px #183a2c5c}
+@media(max-width:900px){
+ header{padding:calc(8px + env(safe-area-inset-top,0px)) 8px 0}
+ header .profile{max-width:67vw;min-width:0;border-radius:17px;padding:8px;gap:8px}
+ header .profile .stats{width:min(40vw,177px)!important;min-width:0}
+ header .profile #playerName{max-width:100%;font-size:13px}
+ header .profile #level{font-size:10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ header .zone{min-width:0;width:30vw;max-width:30vw;border-radius:17px;padding:9px 8px;gap:3px}
+ header .zone b{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+ header .zone #gold{font-size:12px;overflow-wrap:anywhere}
+ header .zone small{font-size:9px}
+ #quest{top:calc(114px + env(safe-area-inset-top,0px));left:8px;width:min(270px,calc(100vw - 106px));padding:10px 12px;border-radius:16px}
+ #quest.collapsed{max-height:49px!important}
+ #onlineBtn{top:calc(125px + env(safe-area-inset-top,0px));right:8px}
+ #minimapWrap{right:8px;top:calc(192px + env(safe-area-inset-top,0px));bottom:auto;z-index:22}
+ #fieldShortcuts{
+   z-index:31;left:9px;top:auto!important;bottom:calc(12px + env(safe-area-inset-bottom,0px));
+   width:111px;display:grid;grid-template-columns:repeat(2,52px);gap:6px
+ }
+ #fieldShortcuts button{width:52px!important;min-height:47px!important;height:47px;padding:3px 2px!important;border-radius:13px!important;
+   font-size:19px;box-shadow:0 4px 12px #23543e5a!important}
+ #fieldShortcuts button span{font-size:10px!important}
+ #fieldShortcuts #visualMenuToggle{background:linear-gradient(150deg,#4c987e,#2a694f);border-color:#fff4d2}
+ /* menu always available, opens above dock rather than across the character */
+ #utilityNav{
+    z-index:39;left:8px!important;
+    top:auto!important;bottom:calc(127px + env(safe-area-inset-bottom,0px))!important;
+    width:min(290px,calc(100vw - 18px))!important;
+    max-height:calc(100dvh - 275px)!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    box-shadow:0 12px 36px #204d3f88!important
+ }
+ #skillbar{
+    z-index:27;left:auto!important;right:8px!important;
+    bottom:calc(126px + env(safe-area-inset-bottom,0px))!important;
+    width:min(365px,calc(100vw - 16px))!important;
+    max-width:none!important;display:grid!important;
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    gap:5px!important;align-items:stretch
+ }
+ #skillbar button{width:100%!important;min-width:0!important;max-width:none!important;
+    height:54px!important;min-height:54px!important;max-height:54px!important;
+    padding:13px 3px 4px!important}
+ #skillbar button b{font-size:10px!important}
+ #skillbar button small{font-size:9px!important}
+ .actions{z-index:31;right:9px!important;bottom:calc(13px + env(safe-area-inset-bottom,0px))!important;gap:7px}
+ .actions #potionBtn,.actions #autoBtn{width:57px!important;height:57px!important;font-size:11px!important}
+ .actions #attackBtn{width:79px!important;height:79px!important;font-size:18px!important}
+ #hero.entity.hero{width:134px!important;height:155px!important}
+ #hero>.entity-name{font-size:10px!important;max-width:225px;text-overflow:ellipsis;overflow:hidden}
+ #targetPanel{top:calc(166px + env(safe-area-inset-top,0px));bottom:auto;right:8px;width:157px}
+ #combatReadout{bottom:calc(257px + env(safe-area-inset-bottom,0px))!important;right:8px;max-width:55vw!important}
+ #chatLog{bottom:calc(242px + env(safe-area-inset-bottom,0px))}
+}
+@media(max-width:389px){
+ header .profile{max-width:65vw;padding:6px}
+ header .profile .portrait{width:35px;height:47px}
+ header .profile .stats{width:36vw!important}
+ header .zone{width:33vw;max-width:33vw}
+ #quest{width:min(235px,calc(100vw - 94px))}
+ #skillbar{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:3px!important}
+ #skillbar button{height:51px!important;min-height:51px!important;max-height:51px!important;padding:13px 2px 3px!important}
+ #skillbar button b{font-size:9px!important}
+ #skillbar button small{font-size:8px!important}
+ #fieldShortcuts{left:6px;width:102px;grid-template-columns:repeat(2,48px);gap:5px}
+ #fieldShortcuts button{width:48px!important;height:45px!important;min-height:45px!important}
+ .actions{gap:4px;right:6px!important}
+ .actions #potionBtn,.actions #autoBtn{width:48px!important;height:52px!important;font-size:10px!important}
+ .actions #attackBtn{width:68px!important;height:70px!important;font-size:16px!important}
+ #hero.entity.hero{width:130px!important;height:151px!important}
+}
+@media(max-width:900px) and (max-height:590px){
+ #quest{top:105px}
+ #skillbar{bottom:calc(104px + env(safe-area-inset-bottom,0px))!important}
+ #skillbar button{height:38px!important;min-height:38px!important;max-height:38px!important}
+ #fieldShortcuts button{height:42px!important;min-height:42px!important}
+ #utilityNav{max-height:42dvh!important}
+}
+@media(prefers-reduced-motion:reduce){.npc .npc-art{animation:none}}
