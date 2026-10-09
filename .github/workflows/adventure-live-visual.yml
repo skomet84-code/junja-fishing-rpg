@@ -1,0 +1,50 @@
+name: Adventure live visual smoke
+on:
+  push:
+    branches:
+      - feat/adventure-live-visual-20261009
+      - junja-adventure-preview
+    paths:
+      - adventure-online/image-prototype/index.html
+      - adventure-online/image-prototype/visual-overhaul.css
+      - adventure-online/image-prototype/visual-overhaul.js
+      - adventure-online/image-prototype/tests/visual-smoke.mjs
+      - .github/workflows/adventure-live-visual.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --check adventure-online/image-prototype/visual-overhaul.js
+      - run: node --check adventure-online/image-prototype/app.js
+      - name: Existing combat queue regression
+        run: node --test adventure-online/image-prototype/tests/combat-queue.test.mjs
+      - run: npm install --no-save playwright@1.55.0
+        working-directory: adventure-online/image-prototype
+      - run: npx playwright install --with-deps chromium
+        working-directory: adventure-online/image-prototype
+      - name: Mobile and desktop browser smoke
+        shell: bash
+        run: |
+          python3 -m http.server 4173 > /tmp/adventure-visual.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for i in {1..25}; do
+            if curl -fsS http://127.0.0.1:4173/adventure-online/image-prototype/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node adventure-online/image-prototype/tests/visual-smoke.mjs
+      - name: Save screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adventure-live-visual-screenshots
+          path: adventure-online/artifacts/
+          if-no-files-found: warn
