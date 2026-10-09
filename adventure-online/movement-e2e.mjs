@@ -38,7 +38,7 @@ try{
   const entries=[],start=performance.now();
   function take(timestamp){
    const hero=document.querySelector('#hero');
-   const point=/translate3d\(([-\d.]+)px,([-\d.]+)px/.exec(hero.style.transform);
+   const point=/translate3d\(\s*([-\d.]+)px,\s*([-\d.]+)px/.exec(hero.style.transform);
    if(point)entries.push({t:timestamp-start,x:Number(point[1]),y:Number(point[2]),motion:hero.dataset.motion});
    if(timestamp-start<1150)requestAnimationFrame(take);
    else resolve(entries);
@@ -52,6 +52,7 @@ try{
  const entries=await stream;
  await sleep(250);
  console.log('MOTION_FRAME_DIAGNOSTIC '+JSON.stringify({frames:entries.length,span:entries.length?entries.at(-1).t-entries[0].t:0,xStart:entries[0]?.x,xEnd:entries.at(-1)?.x,walkFrames:entries.filter(x=>x.motion==='walk').length}));
+ console.log('MOTION_TRANSFORM_DIAGNOSTIC '+await page.locator('#hero').evaluate(el=>el.style.transform));
  assert.ok(entries.length>=14,'animation frames failed to render regularly: '+entries.length);
  const xs=entries.map(x=>x.x),travel=Math.max(...xs)-Math.min(...xs);
  const framesWalking=entries.filter(x=>x.motion==='walk').length;
@@ -61,7 +62,7 @@ try{
  assert.ok(Math.max(...jumps)<45,'position jumped between frames: '+Math.max(...jumps));
  const distanceBack=entries[entries.length-1].x-Math.max(...xs);
  assert.ok(distanceBack>-85,'server correction dragged the player sharply backward');
- const final=await page.evaluate(()=>({server:window.__adventure.snapshot().x,render:parseFloat((/translate3d\(([-\d.]+)px/.exec(document.querySelector('#hero').style.transform)||[])[1])}));
+ const final=await page.evaluate(()=>({server:window.__adventure.snapshot().x,render:parseFloat((/translate3d\(\s*([-\d.]+)px/.exec(document.querySelector('#hero').style.transform)||[])[1])}));
  assert.ok(Math.abs(final.server-final.render)<80,'visual position diverged from authoritative server: '+JSON.stringify(final));
  assert.deepEqual(errors,[],'browser errors in mobile motion loop');
  const folder=path.resolve(root,'../e2e-screenshots');await mkdir(folder,{recursive:true});
