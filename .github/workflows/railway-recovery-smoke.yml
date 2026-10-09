@@ -5,6 +5,7 @@ on:
     paths:
       - scripts/railway-live-smoke.mjs
       - scripts/railway-admin-smoke.mjs
+      - scripts/railway-phase2-live.mjs
       - .github/workflows/railway-recovery-smoke.yml
   workflow_dispatch:
 jobs:
@@ -20,3 +21,14 @@ jobs:
         run: node scripts/railway-live-smoke.mjs
       - name: Confirm admin setup pages and reserved username protection
         run: node scripts/railway-admin-smoke.mjs
+      - run: npm install --no-save playwright@1.58.2
+      - run: npx playwright install --with-deps chromium
+      - name: Railway live four-class graphics and mobile phase-two browser tests
+        run: node scripts/railway-phase2-live.mjs
+      - name: Preserve screenshots from actual deployed Railway graphics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: railway-phase2-live-screens
+          path: e2e-screenshots/railway-phase2/
+          if-no-files-found: ignore
