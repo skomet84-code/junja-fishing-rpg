@@ -1507,3 +1507,24 @@ input{width:100%;min-height:46px;margin:6px 0 12px;padding:10px 12px;font:inheri
 .hero[data-gear-set="rift"] :is(.gear-armor,.gear-cape){background:linear-gradient(130deg,#7858c1,#382253,#9e8cf6)!important}
 .hero[data-gear-set="eclipse"] :is(.gear-armor,.gear-cape){background:linear-gradient(130deg,#ff91b1,#60213e,#a02b73)!important}
 .hero[data-gear-set="eternal"] :is(.gear-armor,.gear-cape){background:linear-gradient(130deg,#ffefbb,#659fc9,#edf6ff)!important}
+
+/* Production sprite fixes: legacy high-rank rules were forcing contain/center
+   and showing the ENTIRE atlas. Each actor must see exactly one 8x4 cell. */
+.entity.hero.production-active>.production-sprite,
+.doll-actor.production-active>.production-sprite{
+ background-size:800% 400%!important;
+ background-position:var(--rank-frame-position,0% 0%)!important;
+ background-repeat:no-repeat!important;
+ image-rendering:auto;
+}
+.character-preview.production-card{
+ background-image:var(--rank-preview-image)!important;
+ background-size:800% 400%!important;
+ background-position:0% 0%!important;
+ background-repeat:no-repeat!important;
+}
+.character-preview.production-card img{visibility:hidden!important}
+.portrait.production-portrait{
+ background-size:800% 400%!important;
+ background-position:0% 0%!important;
+}
