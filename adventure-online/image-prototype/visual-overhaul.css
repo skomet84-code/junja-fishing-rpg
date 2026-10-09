@@ -1,0 +1,210 @@
+/* JUNJA ADVENTURE / Village Art Direction 2026-10-09
+   Non-destructive visual skin. The game, server data, input and hitboxes are unchanged.
+   Reuses existing hand-painted raster character, monster, NPC and world assets. */
+:root {
+  --jade-ink:#204d45;--jade:#488a72;--jade-soft:#a8cfab;
+  --cream:#fffcf1;--cream-deep:#f8f0dc;--ochre:#c9944e;
+  --line:#e8dcbc;--glass:rgba(255,253,244,.94);
+  --panel-shadow:0 10px 28px rgba(37,77,57,.16),0 2px 3px rgba(60,64,42,.08);
+}
+html,body{background:#86bd71;color:var(--jade-ink);font-family:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+#game{background:#83ba6b;color:var(--jade-ink)}
+#world{background-color:#9bce75;image-rendering:auto}
+#world:after{background:radial-gradient(ellipse 70% 50% at 50% 38%,transparent 55%,rgba(47,101,65,.14));mix-blend-mode:multiply}
+#world:before{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+ background:radial-gradient(ellipse 510px 390px at 25% 9%,rgba(252,236,161,.14),transparent 74%),
+ radial-gradient(ellipse 450px 300px at 77% 49%,rgba(255,249,179,.10),transparent 72%),
+ radial-gradient(ellipse 400px 350px at 14% 76%,rgba(246,235,174,.12),transparent 70%)}
+#world[data-zone="surface"]{background-color:#8dbd6c;background-blend-mode:normal}
+#world[data-zone="grove"]{background-color:#4e8b58;background-blend-mode:multiply}
+#world[data-zone="cave"]{background-color:#758aa8;background-blend-mode:multiply}
+#world[data-zone="ruins"]{background-color:#b89373;background-blend-mode:multiply}
+#world[data-zone="abyss"]{background-color:#86769f;background-blend-mode:multiply}
+#world[data-zone="celestial"]{background-color:#d5d2b2;background-blend-mode:soft-light}
+#world[data-zone="grove"]:after{background:linear-gradient(145deg,rgba(22,83,65,.13),rgba(14,45,38,.30))}
+#world[data-zone="cave"]:after{background:linear-gradient(145deg,rgba(13,31,67,.39),rgba(46,70,103,.47))}
+#world[data-zone="ruins"]:after{background:linear-gradient(145deg,rgba(110,63,25,.21),rgba(55,35,33,.27))}
+#world[data-zone="abyss"]:after{background:linear-gradient(145deg,rgba(34,15,76,.31),rgba(22,6,50,.52))}
+#world[data-zone="celestial"]:after{background:linear-gradient(145deg,rgba(246,222,152,.14),rgba(185,166,109,.18))}
+button:focus-visible{outline:3px solid #e5ad52;outline-offset:2px}
+button[hidden],[hidden]{display:none!important}
+/* Top-left portrait: airy ivory RPG status card, no generic dark boxes */
+header{z-index:18;gap:9px;align-items:flex-start;pointer-events:none}
+.profile,.zone,#quest,#targetPanel{color:var(--jade-ink);background:var(--glass);border:1px solid rgba(255,255,255,.9);border-radius:21px;box-shadow:var(--panel-shadow);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+.profile{padding:10px 11px;gap:11px;align-items:center;min-height:86px;box-shadow:var(--panel-shadow),inset 0 0 0 1px #e6ddc78c}
+.profile .portrait{border:2px solid #fff;border-radius:16px;background-color:#bedac1;box-shadow:0 2px 8px #194f3a22;image-rendering:auto}
+.profile .stats{min-width:0}
+.profile .stats>div:first-child{align-items:center;gap:5px;margin:0 0 7px}
+.profile #playerName{font-size:14px;color:#1c5045;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:98px}
+.profile #level{color:#fff;background:#4e987c;border-radius:10px;line-height:1.65;min-width:42px;text-align:center;font-size:12px;box-shadow:inset 0 -2px 0 #276f56;white-space:nowrap;padding:0 5px}
+.profile .bar{background:#e1e8dd;border:2px solid #fff;height:14px;border-radius:12px;box-shadow:inset 0 1px 2px #8ba38b33;margin-top:4px;overflow:hidden}
+.profile .bar.hp i{background:linear-gradient(90deg,#f47b76,#f7b071)}
+.profile .bar.mp{height:12px}
+.profile .bar.mp i{background:linear-gradient(90deg,#6098e6,#88d3ed)}
+.profile .bar.exp{height:7px;border-width:1px;background:#e7e9db}
+.profile .bar.exp i{background:linear-gradient(90deg,#e9b35e,#ffe7a0)}
+.profile .bar span{color:#fff;font-weight:800;text-shadow:0 1px 2px #815d4a90}
+.profile .bar.hp span{line-height:11px}
+.profile .bar.mp span{line-height:9px}
+.profile .stats small{color:#688377}
+.zone{padding:9px 12px;align-items:flex-end;gap:3px;max-width:42vw}
+.zone b{color:#3e715d;font-size:13px}
+.zone span{color:#ad803f;font-weight:750;font-size:12px}
+.zone small{color:#718a7c}
+/* Narrative quest card, always readable on a bright field */
+#quest{z-index:19;top:119px;left:12px;width:min(288px,calc(100vw - 28px));padding:12px 13px 11px;border-radius:18px}
+#quest b{font-size:13px;letter-spacing:-.02em;color:#275a48;padding-right:32px}
+#quest p{color:#567466;font-size:12px;line-height:1.5;margin:6px 0 9px}
+#questToggle{color:#5f8373;border-radius:12px;width:31px;height:31px;top:5px;right:5px}
+#questAction{color:#fff;min-height:35px;border:1px solid #478868;border-radius:11px;font-weight:750;background:linear-gradient(165deg,#6db58e,#3e8b71);box-shadow:0 3px 0 #2d7359}
+#quest.collapsed{padding-bottom:12px}
+#targetPanel{z-index:18;top:117px;color:#285044}
+#targetRange{color:#708679}
+.enemyhp i{background:linear-gradient(90deg,#f48a7c,#d94f5e)}
+/* Character silhouettes: use existing illustrated full-body sprites, never pixelate */
+.entity.hero{width:84px;height:101px}
+.entity.hero .sprite,.peer .sprite,.npc .npc-art,.enemy .sprite{image-rendering:auto;backface-visibility:hidden}
+.entity.hero .sprite{filter:drop-shadow(0 3px 2px rgba(37,77,43,.17))}
+.entity .entity-name{font-size:12px;font-weight:850;color:#fff9de;text-shadow:0 2px 3px #1c473f,0 0 4px #1c473f,0 1px 1px #1c473f;top:-16px}
+.entity .shadow{background:rgba(33,70,44,.22);filter:blur(4px);width:44%;height:10px;left:28%}
+.enemy .entity-name{font-size:11px}
+.npc{width:100px;height:126px;filter:drop-shadow(0 7px 5px rgba(28,73,47,.19))}
+.npc .npc-art{display:block;width:100%;height:100%;border:0;
+  background-image:url('./assets/healer.png')!important;
+  background-repeat:no-repeat!important;background-size:400% 300%!important;
+  background-position:0% 0%!important;filter:none!important}
+.npc#merchant .npc-art{background-image:url('./assets/rogue.png')!important;background-position:0% 0%!important;filter:none!important}
+.npc>b{font-weight:800;font-size:12px;white-space:nowrap;padding:6px 10px;border-radius:20px;background:rgba(255,252,238,.96);border:1px solid #f3e9ce;color:#37634e;box-shadow:0 4px 13px #28573540;text-shadow:none}
+.npc:after{content:'';position:absolute;left:24%;bottom:-4px;width:55%;height:10px;background:#304e3733;border-radius:50%;filter:blur(6px);z-index:-1}
+/* Navigation shortcuts are real buttons forwarding to the existing game actions */
+#fieldShortcuts{position:absolute;z-index:24;left:12px;top:245px;display:flex;flex-direction:column;gap:9px;align-items:flex-start;pointer-events:auto}
+#fieldShortcuts button{width:61px;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 3px;border:2px solid #fff;
+  background:linear-gradient(155deg,#fffff4ee,#f9f2dbee);color:#416957;border-radius:20px;box-shadow:var(--panel-shadow);font-weight:800;font-size:22px;line-height:1.15}
+#fieldShortcuts button span{font-size:10px;letter-spacing:-.02em}
+#fieldShortcuts button:active{background:#dbf0de}
+#fieldShortcuts #visualMenuToggle{background:linear-gradient(155deg,#5ba580,#2f775c);color:#fff;border-color:#e0eac9}
+#fieldShortcuts #visualMenuToggle[aria-expanded=true]{background:#285a48}
+/* Full feature menu sits on top of the world; not hidden or removed */
+.utility{z-index:35;gap:7px;max-width:min(540px,calc(100vw - 24px));flex-wrap:wrap}
+.utility button{color:#396855;font-weight:750;min-height:42px;border:1px solid #f5f0e4;border-radius:13px;background:linear-gradient(#fffef4,#f0ead8);box-shadow:0 3px 10px #27583b22;text-shadow:none;font-size:12px}
+.utility button:active{background:#e6eecf}
+#hint{z-index:12;color:#496b58;background:#fffdeacb;border:1px solid #fff;border-radius:22px;box-shadow:0 4px 16px #193d2d23}
+#chatLog{color:#fff}
+/* Battle UI – tinted ivory ceramic controls and a single powerful primary action */
+.actions{z-index:20;gap:8px}
+.actions button{font-weight:800;text-shadow:none;background:linear-gradient(165deg,#fffef1,#e8f3dc);color:#365d4b;border:2px solid #fffef0;box-shadow:0 5px 14px #315f3b29,inset 0 -3px 0 #d3d6af}
+.actions small{color:#637b64;font-weight:800;font-size:9px}
+#attackBtn{width:87px;height:87px;background:radial-gradient(circle at 32% 22%,#ffd69e,#e5a45d 47%,#b16e4d 92%);border:4px solid #fff1c4;box-shadow:0 8px 20px #945c3e5c,inset 0 -5px 0 #af7153;color:#fffdf4;text-shadow:0 1px 3px #7d4c31}
+#attackBtn small{color:#fffae1;text-shadow:0 1px 2px #8c5639}
+#autoBtn[aria-pressed=true]{background:linear-gradient(150deg,#74ba79,#338f77);border-color:#f9fbd5;color:#fff}
+#autoBtn[aria-pressed=true] small{color:#fff}
+#potionBtn{background:linear-gradient(150deg,#fff5e5,#fbd8ca)}
+.skillbar{z-index:20;gap:6px}
+.skillbar button{color:#315d54;background:linear-gradient(155deg,#fbf9e7,#dfeddd);border:2px solid #fffbe8;border-radius:16px;box-shadow:0 6px 15px #27583d2d,inset 0 -3px 0 #b1ceaf}
+.skillbar button b{color:#345f55}
+.skillbar button small{color:#648373}
+/* Loading and every existing window gets the same restrained storybook treatment */
+.overlay{z-index:60;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+.load-card,.modal{color:#2d594a!important;background:linear-gradient(160deg,#fffdf2 0%,#f6efd8 100%)!important;border:2px solid #fffef7!important;border-radius:25px!important;box-shadow:0 21px 60px #103c3190,0 0 0 1px #d7be91!important}
+.load-card h1{font-weight:950;letter-spacing:.09em;color:#2d7864;text-shadow:0 2px #ffffeb}
+.load-card p,.modal p,.modal label,.load-card label{color:#526e5d}
+.load-card input,.modal input,.modal select,.modal textarea{background:#fffef9;color:#274f43;border:1px solid #d8dbc3;border-radius:12px}
+.load-card button,.modal button{background:linear-gradient(#72b795,#3d896a);color:#fffef6;border-color:#b9e4bf}
+#modalTitle{color:#2c6855}
+#modalClose{background:#fff6eb;color:#527562;border-color:#e2d8be}
+/* Footer edges are softened while preserving touch hitboxes */
+#chatLog{border-radius:14px}
+#toast{z-index:65}
+#onlineBtn{color:#497866;background:#fffdf1e9;border:1px solid #fff9e7;box-shadow:var(--panel-shadow)}
+#minimapWrap{border-radius:18px}
+.world-portal{filter:drop-shadow(0 3px 6px rgba(35,76,58,.32))}
+@media(min-width:901px){
+  #fieldShortcuts{display:none}
+  header{padding:15px}
+  #quest{top:117px}
+  .utility{left:15px;bottom:15px}
+}
+@media(max-width:900px){
+  header{padding:calc(7px + env(safe-area-inset-top,0px)) 9px 0}
+  .profile{padding:7px 8px;gap:7px;min-height:68px;border-radius:17px}
+  .profile .portrait{width:42px;height:53px;border-radius:13px}
+  .profile .stats{width:clamp(106px,29vw,158px)}
+  .profile #playerName{font-size:13px;max-width:86px}
+  .profile #level{font-size:11px}
+  .zone{padding:8px 9px;border-radius:15px;min-width:0;max-width:35vw}
+  .zone b{font-size:11px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .zone span{font-size:11px}
+  .zone small{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  #quest{top:calc(102px + env(safe-area-inset-top,0px));left:9px;width:min(272px,calc(100vw - 18px));padding:10px 11px}
+  #fieldShortcuts{left:9px;top:calc(248px + env(safe-area-inset-top,0px))}
+  #fieldShortcuts button{width:56px;min-height:56px;border-radius:17px;font-size:21px}
+  /* All original utility controls remain available via the visible '전체' button. */
+  nav.utility{position:absolute;left:73px;top:calc(235px + env(safe-area-inset-top,0px));bottom:auto;width:min(293px,calc(100vw - 83px));max-height:calc(100dvh - 270px);overflow-y:auto;padding:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:8px;
+    color:var(--jade-ink);background:var(--glass);border:1px solid #fff;border-radius:19px;box-shadow:0 16px 36px #194b3a66;
+    opacity:0;visibility:hidden;pointer-events:none;transform:translateX(-10px);transition:opacity .15s,transform .15s,visibility .15s}
+  nav.utility.visual-open{opacity:1;visibility:visible;pointer-events:auto;transform:translateX(0)}
+  nav.utility button{white-space:normal;min-width:0;font-size:11px;line-height:1.3;min-height:45px}
+  #hint{display:none}
+  #minimapWrap{top:auto;bottom:calc(212px + env(safe-area-inset-bottom,0px));right:8px;opacity:.92}
+  .skillbar{bottom:calc(114px + env(safe-area-inset-bottom,0px));right:8px;left:auto}
+  .skillbar button{min-width:50px;max-width:67px;min-height:51px;font-size:11px;padding:5px 3px;border-radius:15px}
+  .skillbar button b{font-size:11px;line-height:1.2}
+  .skillbar button small{font-size:9px}
+  .actions{right:8px;bottom:calc(13px + env(safe-area-inset-bottom,0px));gap:6px}
+  .actions button{width:61px;height:61px;font-size:11px}
+  #attackBtn{width:79px;height:79px;font-size:18px}
+  #targetPanel{top:calc(115px + env(safe-area-inset-top,0px));right:9px;width:min(184px,43vw)}
+  #onlineBtn{top:calc(85px + env(safe-area-inset-top,0px));right:9px}
+}
+@media(max-width:380px){
+  .zone{max-width:33vw;padding:6px}
+  .zone small{display:none}
+  .profile .stats{width:108px}
+  .profile .portrait{width:34px;height:47px}
+  #quest{top:calc(94px + env(safe-area-inset-top,0px));max-width:235px}
+  #fieldShortcuts{top:calc(226px + env(safe-area-inset-top,0px))}
+  #fieldShortcuts button{width:51px;min-height:49px;font-size:18px}
+  .skillbar button{min-width:42px;max-width:54px;font-size:9px}
+  .actions button{width:51px;height:55px;font-size:10px}
+  #attackBtn{width:69px;height:71px;font-size:15px}
+  nav.utility{top:calc(215px + env(safe-area-inset-top,0px));left:65px}
+}
+@media(prefers-reduced-motion:reduce){nav.utility{transition:none}.profile .bar i{transition:none}}
+
+/* Live MMORPG branch adaptation: the expanded utility panel is a preexisting
+   gameplay feature. Its original listeners continue to handle button actions. */
+@media(max-width:900px){
+  #utilityNav{left:73px!important;top:calc(235px + env(safe-area-inset-top,0px))!important;bottom:auto!important;
+    width:min(293px,calc(100vw - 83px))!important;max-height:calc(100dvh - 270px)!important;
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    overflow-y:auto!important;align-content:start!important;gap:8px!important;
+    padding:12px!important;background:var(--glass)!important;
+    border:1px solid #fff!important;border-radius:19px!important;
+    box-shadow:0 16px 36px #194b3a66!important}
+  #utilityNav #utilityToggle{display:none!important}
+  #utilityNav.visual-open>button:not(#utilityToggle){display:block!important}
+  #utilityNav:not(.visual-open)>button{pointer-events:none!important}
+  #utilityNav button{min-height:45px}
+}
+@media(min-width:701px) and (max-width:900px){
+  #utilityNav{max-height:calc(100dvh - 300px)!important}
+}
+@media(max-width:380px){
+  #utilityNav{top:calc(215px + env(safe-area-inset-top,0px))!important;left:65px!important;
+    width:min(280px,calc(100vw - 74px))!important}
+}
+/* Retain the real MMORPG nine-skill combat row rather than forcing a four-button width. */
+@media(max-width:900px){
+  #skillbar{display:flex;flex-wrap:wrap;justify-content:flex-end;max-width:min(345px,calc(100vw - 79px));gap:4px}
+  #skillbar button{min-width:39px;max-width:61px;min-height:43px;padding:3px;border-radius:12px}
+  #skillbar button b{font-size:10px}
+  #skillbar button small{font-size:8px}
+  #fieldShortcuts{z-index:37}
+}
+/* The existing minimap uses its own open/collapsed state. Never override that runtime logic. */
+@media(max-width:700px){
+  #minimapWrap{top:calc(196px + env(safe-area-inset-top,0px));bottom:auto;right:7px}
+  #minimapToggle{display:block}
+}
+/* Real skill and rank glow layers must stay visible above the simplified character silhouette. */
+.entity.hero .promotion-aura{pointer-events:none}
