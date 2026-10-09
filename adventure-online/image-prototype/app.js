@@ -1,9 +1,9 @@
-import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261009-ascension56';
-import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,CONQUEST_CAP,conquestNeed,conquestTitle,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261009-ascension56';
+import {W,H,clamp,distance,walkable,pathfind} from './core.js?v=20261009-real-character-v1';
+import {JOBS,ITEMS,SLOTS,profile,stats,jobName,BUILD,needXp,itemSellPrice,setBonuses,promotionSkillLearned,CONQUEST_CAP,conquestNeed,conquestTitle,MAX_ENHANCE,enhanceChance,enhancementLevel,enhanceGrade,skillCastDelay,skillMpCost} from './catalog.js?v=20261009-real-character-v1';
 import {mergeSnapshot} from './network.js';
-import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,ASCENSION_CHAPTERS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261009-ascension56';
+import {MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASKS,PROMOTIONS,PROMOTION_MATERIALS,ASCENSION_CHAPTERS,CHANNEL_CAP,LEVEL_CAP,QUICK_CHATS} from './mmo-data.js?v=20261009-real-character-v1';
 import {API_URL} from './config.js';
-import {createCombatQueue} from './combat-queue.js?v=20261009-ascension56';
+import {createCombatQueue} from './combat-queue.js?v=20261009-real-character-v1';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 const endgameStyle=document.createElement('style');endgameStyle.textContent="#world[data-zone=void]:after{background:radial-gradient(ellipse at 50% 70%,transparent 22%,#160b2670 72%,#06030bcc 100%)!important}#world[data-zone=origin]:after{background:radial-gradient(ellipse at 50% 70%,transparent 25%,#473a1360 72%,#100c04bb 100%)!important}";document.head.append(endgameStyle);
@@ -234,21 +234,70 @@ function blendSprite(art,a,b,mix,row,rows=3,mirror=false){
  sprite(art,a,row,rows,mirror);sprite(twin,b,row,rows,mirror);
  art.style.opacity=String(1-t);twin.style.opacity=String(t);
 }
-const EXPERIMENTAL_RANK_ART=false;
-function productionSpriteEnabled(el){return EXPERIMENTAL_RANK_ART&&el?.dataset?.job==='rogue'&&Number(el?.dataset?.rank||0)>=3;}
+// The high-rank field sheets were present but disabled. Keep the animated base
+// character visible until the replacement has decoded and its first cell contains
+// actual opaque pixels. Never hide the hero to display an unverified image.
+const RANK_FIELD_ART=true;
+const rankSpriteCache=new Map();
+function productionSpriteSheet(job,rank=0){
+ const stage=Number(rank)>=4?4:3;
+ if(job==='warrior'||job==='rogue')return './assets/sprites/'+job+'-r'+stage+'-field.webp';
+ return null;
+}
+function rankSpriteCandidate(job,rank){return RANK_FIELD_ART&&Number(rank)>=3?productionSpriteSheet(job,rank):null;}
+function ensureRankSprite(src){
+ if(!src)return null;
+ let entry=rankSpriteCache.get(src);if(entry)return entry;
+ entry={ready:false,failed:false,width:0,height:0};rankSpriteCache.set(src,entry);
+ const img=new Image();img.onload=()=>{
+  // Eight columns, four directions. Anything else is not a field atlas.
+  const w=img.naturalWidth,h=img.naturalHeight;entry.width=w;entry.height=h;
+  if(w<8*24||h<4*24){entry.failed=true;return;}
+  try{
+   const sample=document.createElement('canvas');sample.width=64;sample.height=64;
+   const ctx=sample.getContext('2d',{willReadFrequently:true});
+   if(!ctx)throw Error('No canvas');
+   ctx.drawImage(img,0,0,w/8,h/4,0,0,64,64);
+   const pixels=ctx.getImageData(0,0,64,64).data;let visible=0;
+   for(let i=3;i<pixels.length;i+=4)if(pixels[i]>36)visible++;
+   entry.ready=visible>=25;entry.failed=!entry.ready;
+  }catch{entry.failed=true;}
+ };img.onerror=()=>{entry.failed=true;};img.src=src+'?v='+BUILD;
+ return entry;
+}
+function productionSpriteEnabled(el){
+ const src=rankSpriteCandidate(el?.dataset?.job,el?.dataset?.rank);
+ if(!src)return false;
+ const entry=ensureRankSprite(src);
+ return !!entry?.ready;
+}
 function productionSpriteRow(dx=0,dy=1){if(Math.abs(dx)>.45||Math.abs(dx)>Math.abs(dy))return dx<0?1:2;return dy<0?3:0;}
-function productionSpriteSheet(job,rank=0){if(job==='rogue'&&Number(rank)>=4)return './assets/sprites/rogue-r4-field.webp';if(job==='rogue'&&Number(rank)>=3)return './assets/sprites/rogue-r3-field.webp';return job==='warrior'?'./assets/sprites/warrior-sheet.webp':'./assets/sprites/shadow-sheet.webp';}
 function paintProductionSprite(el,mode,time,dx=0,dy=1,progress=null){
- let layer=el.querySelector('.production-sprite');if(!layer){layer=document.createElement('div');layer.className='production-sprite';el.append(layer);}
- const active=productionSpriteEnabled(el);el.classList.toggle('production-active',active);if(!active){layer.style.display='none';layer.style.transform='';return;}
- layer.style.display='block';const job=el.dataset.job,rank=Number(el.dataset.rank||0),src=productionSpriteSheet(job,rank),mirror=dx<-.18?-1:1,p=Math.max(0,Math.min(1,Number(progress??0))),phase=Math.sin(time*10),walkBob=mode==='walk'?Math.sin(time*15)*2.2:Math.sin(time*2.2)*.9;
- if(layer.dataset.spriteSrc!==src){layer.dataset.spriteSrc=src;layer.style.backgroundImage=`url('${src}?v=${BUILD}')`;layer.style.backgroundSize='contain';layer.style.backgroundPosition='center bottom';const test=new Image();test.onerror=()=>{el.classList.remove('production-active');layer.style.display='none';layer.style.backgroundImage='';};test.src=src+'?v='+BUILD;}
- let tx=0,ty=walkBob,rot=0,scale=1;
- if(mode==='walk'){rot=phase*1.1;scale=1+Math.abs(phase)*.012;}
- else if(mode==='attack'){const swing=Math.sin(p*Math.PI);tx=(dx||0)*swing*7;ty+=(dy||0)*swing*2.5;rot=(mirror<0?-1:1)*(-4+11*swing);scale=1+swing*.045;}
- else if(mode==='skill'){const burst=Math.sin(p*Math.PI);tx=(dx||0)*burst*4;ty-=burst*4;rot=(mirror<0?-1:1)*burst*3;scale=1+burst*.075;}
- layer.style.transform=`translateX(-50%) translate(${tx.toFixed(2)}px,${ty.toFixed(2)}px) scaleX(${mirror}) rotate(${rot.toFixed(2)}deg) scale(${scale.toFixed(3)})`;
- layer.dataset.productionMotion=mode;layer.dataset.productionRank=String(rank);
+ let layer=el.querySelector('.production-sprite');
+ if(!layer){layer=document.createElement('div');layer.className='production-sprite';el.append(layer);}
+ const active=productionSpriteEnabled(el);
+ el.classList.toggle('production-active',active);
+ if(!active){layer.style.display='none';layer.style.backgroundImage='';layer.dataset.productionMotion='fallback';return;}
+ const job=el.dataset.job,rank=Number(el.dataset.rank||0),src=productionSpriteSheet(job,rank),row=productionSpriteRow(dx,dy);
+ const p=Math.max(0,Math.min(1,Number(progress??0)));
+ const walkCycle=[1,2,3,4,5,4,3,2];
+ const column=mode==='walk'?walkCycle[Math.floor(time*(job==='rogue'?13:11))%walkCycle.length]:mode==='attack'||mode==='skill'?[6,6,7,7,6,0][Math.min(5,Math.floor(p*6))]:Math.floor(time*1.5)%2;
+ if(layer.dataset.spriteSrc!==src){
+  layer.dataset.spriteSrc=src;
+  layer.style.backgroundImage='url("'+src+'?v='+BUILD+'")';
+  layer.style.backgroundSize='800% 400%';
+  layer.style.backgroundRepeat='no-repeat';
+ }
+ layer.style.display='block';
+ layer.style.backgroundPosition=(column*100/7).toFixed(3)+'% '+(row*100/3).toFixed(3)+'%';
+ const phase=Math.sin(time*(job==='rogue'?13:11)),stride=mode==='walk'?Math.abs(phase)*2.1:0;
+ const impact=(mode==='attack'||mode==='skill')?Math.sin(p*Math.PI):0;
+ const travel=impact*(mode==='skill'?6:11),lean=mode==='walk'?phase*.85:impact*(dx<0?-5:5);
+ layer.style.transform='translateX(-50%) translate('+(dx*travel).toFixed(2)+'px,'+(-stride+dy*travel*.28).toFixed(2)+'px) rotate('+lean.toFixed(2)+'deg) scale('+(1+impact*.045).toFixed(3)+')';
+ layer.dataset.productionMotion=mode;
+ layer.dataset.productionFrame=String(column);
+ layer.dataset.productionDirection=String(row);
+ layer.dataset.productionRank=String(rank);
 }
 const MOTION={
  idle:{keys:[0,0],speed:.7},
