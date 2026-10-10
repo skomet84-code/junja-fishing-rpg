@@ -24,21 +24,26 @@ const SKILL_INFO={
  mage:['화염구 직격 + 주변 폭발','넓은 냉기장 · 5초 둔화','최대 4마리 연쇄 낙뢰','초대형 범위 낙뢰 · 기절'],
  healer:['성광 피해 + 자신 10% 회복','주변 아군 38% 회복','주변 파티 7초 보호막','넓은 범위 62% 회복 + 2초 보호']
 };
-let lastStory=null,lastSelf=null;
+let lastStory=null,lastSelf=null,lastPaintKey='';
 function present(snapshot){
  if(!snapshot?.self)return snapshot;
  const raw=snapshot.self.storyQuest||snapshot.self.quest;
  snapshot={...snapshot,self:{...snapshot.self,storyQuest:raw,quest:SAFE[raw]||raw}};
  lastSelf=snapshot.self;
  if(raw!==lastStory&&STORY[raw]){lastStory=raw;flash(raw,snapshot.self);}
- if(typeof document!=='undefined')queueMicrotask(paint);
+ if(typeof document!=='undefined'){
+  const uiKey=snapshot.self.job+'|'+raw;
+  const modal=document.getElementById('modal');
+  const npcModal=modal&&!modal.hidden&&document.getElementById('modalTitle')?.textContent==='준자마을 촌장';
+  if(lastPaintKey!==uiKey||npcModal){lastPaintKey=uiKey;queueMicrotask(paint);}
+ }
  return snapshot;
 }
 function paint(){
  const s=lastSelf,raw=s?.storyQuest,m=STORY[raw];if(!s||!m)return;
  // The main app owns #quest. Do not rewrite quest title/text here:
  // two writers caused the HUD to alternate every few frames.
- const bar=document.getElementById('skillbar'),info=SKILL_INFO[s.job];if(bar&&info)[...bar.querySelectorAll('button')].forEach((b,i)=>{b.title=info[i]||'';b.dataset.skillRole=info[i]||'';});
+ const bar=document.getElementById('skillbar'),info=SKILL_INFO[s.job];if(bar&&info)[...bar.querySelectorAll('button')].forEach((b,i)=>{const label=info[i]||'';if(b.title!==label)b.title=label;if(b.dataset.skillRole!==label)b.dataset.skillRole=label;});
  const modal=document.getElementById('modal'),titleEl=document.getElementById('modalTitle'),body=document.getElementById('modalBody'),actions=document.getElementById('modalActions');
  if(modal&&!modal.hidden&&titleEl?.textContent==='준자마을 촌장'&&raw.endsWith('Intro')){
   const p=body?.querySelector('p');if(p)p.textContent=(typeof m[1]==='function'?m[1](s):m[1]);

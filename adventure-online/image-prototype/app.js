@@ -361,6 +361,7 @@ layers($('hero'));
 function entity(type){const el=document.createElement('div');el.className='entity '+type;el.innerHTML='<div class="shadow"></div><div class="sprite"></div><b class="entity-name"></b><div class="life"><i></i></div><div class="tell" hidden></div>';return el;}
 function speechBubble(playerId,text){const el=playerId===state.id?$('hero'):peers.get(playerId)?.el;if(!el)return;let bubble=el.querySelector('.speech-bubble');if(!bubble){bubble=document.createElement('div');bubble.className='speech-bubble';el.append(bubble);}bubble.textContent=text;bubble.classList.remove('show');void bubble.offsetWidth;bubble.classList.add('show');clearTimeout(bubble._timer);bubble._timer=setTimeout(()=>bubble.classList.remove('show'),2600);}
 function updateSnapshot(data){
+ const snapshotBegan=performance.now();
  data=mergeSnapshot(wireSnapshot,data);if(!data)return;wireSnapshot=data;
  if(data.disconnected){connected=false;streamController?.abort();toast(data.disconnected);showSelection();return;}
  if(!data.self)return;
@@ -400,6 +401,7 @@ function updateSnapshot(data){
  $('onlineCount').textContent=data.players.length+'명';$('saveStatus').textContent=data.saveStatus==='error'?'저장 재시도 중':data.saveStatus==='pending'?'서버 저장 대기':'계정에 저장됨';
  for(const event of data.events){if(seenEvents.has(event.id))continue;seenEvents.add(event.id);if(event.kind==='chat'){const row=document.createElement('p');row.textContent=event.text;$('chatLog').append(row);while($('chatLog').childElementCount>3)$('chatLog').firstChild.remove();speechBubble(event.from,event.phrase||event.text);}else{const exp=String(event.text||'').match(/(?:EXP|경험치)\s*\+\s*([\d,]+)/i),routineKill=!!(exp&&/(?:처치|사냥)/.test(String(event.text)));toast(routineKill?'EXP +'+exp[1]:event.text,routineKill?'combat':'notice');$('toast').classList.toggle('rare-toast',['rare','legendary'].includes(event.kind));$('toast').classList.toggle('mythic-toast',['mythic','mythicGlobal'].includes(event.kind));if(event.item&&['legendary','mythic','primordial'].includes(event.rarity))showItemAcquisition(event);$('toast').classList.toggle('primordial-toast',['primordial','primordialGlobal'].includes(event.kind));}}
  if(seenEvents.size>500)[...seenEvents].slice(0,300).forEach(id=>seenEvents.delete(id));
+ perfLatestSnapshotMs=performance.now()-snapshotBegan;perfPeakSnapshotMs=Math.max(perfLatestSnapshotMs,perfPeakSnapshotMs);
 }
 async function consumeStream(generation){
  streamController?.abort();const controller=new AbortController();streamController=controller;
@@ -715,9 +717,28 @@ function release(ev){if(!gesture||ev.pointerId!==gesture.id)return;const wasDrag
 window.addEventListener('keydown',ev=>{if(ev.target.closest('input,textarea'))return;if(paused){if(ev.key==='Escape')closeModal();return;}const key=ev.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d'].includes(key)){ev.preventDefault();keys.add(key);path=[];npcIntent=null;if(auto)command({type:'auto',on:false});if(key===' '&&!ev.repeat)attack();}if(!ev.repeat&&['1','2','3','4','5','6','7','8','9'].includes(key))attack(Number(key)-1);if(key==='e'&&nearNpc)talk(nearNpc.id);if(key==='q'&&!ev.repeat)attack(0);});window.addEventListener('keyup',ev=>keys.delete(ev.key.toLowerCase()));window.addEventListener('blur',stopMovement);document.addEventListener('visibilitychange',()=>{stopMovement();last=performance.now();});window.addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);
 for(const n of npcs)$(n.id).onclick=()=>distance(view,n)<115?talk(n.id):seekNpc(n.id);$('contextBtn').onclick=()=>nearNpc&&talk(nearNpc.id);$('attackBtn').onclick=()=>attack();$('potionBtn').onclick=()=>command({type:'potion'});$('autoBtn').onclick=()=>{path=[];npcIntent=null;skillQueue.clear();remoteSkillPending=null;const on=!auto;auto=on;state.auto=on;command({type:'auto',on});toast(on?'자동사냥 ON · 스킬 자동 시전 · 직접 스킬도 함께 사용':'자동 사냥 OFF');hud();};$('homeBtn').onclick=()=>{stopMovement();selected=null;command({type:'home'});};$('questToggle').onclick=()=>{$('quest').classList.toggle('collapsed');$('questToggle').textContent=$('quest').classList.contains('collapsed')?'+':'−';};$('questAction').onclick=()=>{if(state.rank>=PROMOTIONS.length){ascensionWindow();return;}if(ascensionGuide(state)){followAscensionQuest();return;}if(ASCENSION_CHAPTERS[state.zone]&&!state.ascensionStories?.[state.zone]?.claimed){followAscensionQuest(state.zone);return;}const oq=state.originStory||{};if(state.zone==='origin'&&oq.stage>0&&!oq.claimed){if(oq.stage===1)go(768,820);else if(oq.stage===2)go(768,1330);else if(oq.stage===3){const e=[...enemies.values()].find(e=>e.boss&&!e.named);if(e?.alive)select(e.id);else toast('수문신 재출현을 기다리는 중입니다.');}else if(oq.stage===4)bossWindowUI();else if(oq.stage===5)regionalNpcWindow('origin-scribe');return;}if(['available','ready','complete','bossReady'].includes(state.quest))seekNpc('elder');else if(state.quest==='bossActive'){const e=[...enemies.values()].find(e=>e.boss);if(e?.alive)select(e.id);else toast('왕꼬리 재출현까지 '+Math.max(0,Math.ceil((e?.respawn||0)-now()))+'초');}else go(768,720);};$('bagBtn').onclick=bagWindow;$('boostBtn').onclick=boostWindow;$('jobBtn').onclick=jobWindow;$('ascensionBtn').onclick=ascensionWindow;$('onlineBtn').onclick=onlineWindow;$('chatBtn').onclick=chatWindow;$('helpBtn').onclick=()=>modal('모험 안내','<p><b>몬스터를 터치하면 자동으로 추적해 사거리에 들어온 뒤 공격합니다.</b> 공격·스킬 버튼도 대상이 없으면 가까운 몬스터를 자동으로 찾습니다. 빈 곳 터치로 이동하고, 화면 드래그로 방향 이동합니다. PC: WASD / 방향키, Space 공격, Q 첫 스킬, 1~9 스킬, E 대화.</p><p><b>다른 지역 이동:</b> 지도·이동에서 연결된 지역을 누르면 즉시 순간이동합니다. 필드 포탈을 직접 눌러도 바로 이동합니다.</p><p><b>전투:</b> 몬스터 터치는 타겟을 고정해 현재 위치를 추적·공격합니다. 스킬은 위력에 따라 서로 다른 쿨타임과 마나를 사용합니다.</p><p><b>자동 물약:</b> 장비·가방 → 자동 물약 설정에서 HP/MP 각각 OFF·30%·50%·70%를 선택할 수 있습니다.</p><p>촌장 임무 → 다람쥐 10마리 → 왕꼬리 → 정예·던전 → Lv.100 첫 전직. 직업에 따라 공격 범위·스킬이 달라집니다.</p><p><b>3차 전직 스킬:</b> 공허의 인장 100개 · <b>4차 전직 스킬:</b> 태초의 성흔 100개 · 5차 균열의 핵 120개 · 6차 월식의 문장 150개를 모아 촌장에게 전수받습니다. 재료는 해당 고레벨 던전의 정예·지역보스·일일 레이드에서 획득합니다.</p><p>가방에서 장비를 장착하고 강화소에서 강화하세요. +6부터 실패 시 단계가 내려가며, 빛나는 강화석은 성공 시 +2입니다.</p><p>신화와 기존 초월 장비 위에 태초 등급을 추가했습니다. 천룡 드롭 확률은 0.0001%. Lv.200부터 일일 임무 보상을 모두 받으면 하루 1개의 인장을 획득하며, 60개를 모아 Lv.700부터 최종 태초 장비 제작·착용이 가능합니다.</p><p>성장은 계정에 저장됩니다. 같은 아이디의 동시 접속은 마지막 접속만 유지됩니다.</p>');$('modalClose').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal();};
 let hudAt=0;
+// Record actual animation-frame gaps on the user's device. A short slow frame
+// never enables low-detail mode by itself; two sustained poor windows do.
+const mobileFrames=typeof matchMedia==='function'&&matchMedia('(hover:none) and (pointer:coarse)').matches;
+const perfDiagnostics=new URL(location.href).searchParams.get('perf')==='1';
+let perfFrames=0,perfElapsed=0,perfStalls=0,perfSlowWindows=0,perfFps=0,perfPeakSnapshotMs=0,perfLatestSnapshotMs=0;
+let perfMeter=null;
+if(perfDiagnostics){perfMeter=document.createElement('output');perfMeter.id='adventurePerfMeter';perfMeter.setAttribute('aria-label','게임 성능 진단');perfMeter.textContent='FPS 측정 중';$('game').append(perfMeter);}
 function frame(time){
  // On 30fps mobile frames do not discard half the elapsed movement time.
- const elapsed=Math.min(.25,(time-last)/1000||.016),dt=Math.min(.075,elapsed);last=time;clock+=elapsed;
+ const gapMs=last?time-last:16,elapsed=Math.min(.25,gapMs/1000||.016),dt=Math.min(.075,elapsed);last=time;clock+=elapsed;
+ if(connected&&!paused&&!document.hidden&&gapMs<600){
+  perfFrames++;perfElapsed+=Math.max(0,gapMs);if(gapMs>75)perfStalls++;
+  if(perfElapsed>=3000){
+   perfFps=Math.round(perfFrames*1000/perfElapsed);
+   if(mobileFrames&&state.zone!=='surface'){
+    perfSlowWindows=(perfFps<26||perfStalls>=6)?perfSlowWindows+1:Math.max(0,perfSlowWindows-1);
+    if(perfSlowWindows>=2)$('game').classList.add('mobile-lite');
+   }
+   if(perfMeter)perfMeter.textContent='FPS '+perfFps+' · 프레임 지연 '+perfStalls+' · 갱신 '+perfLatestSnapshotMs.toFixed(1)+'ms'+($('game').classList.contains('mobile-lite')?' · 경량':'' );
+   perfFrames=0;perfElapsed=0;perfStalls=0;perfPeakSnapshotMs=0;
+  }
+ }else if(!connected||document.hidden){perfFrames=0;perfElapsed=0;perfStalls=0;perfSlowWindows=0;}
  if(connected){
   flushManualCombo();
   let dx=0,dy=0,manualMove=false;
@@ -743,7 +764,7 @@ function frame(time){
   if(attacking){const duration=Number(hero.dataset.attackDuration)||.44,started=Number(hero.dataset.attackStarted)||attackUntil-duration;attackPose(hero,heroArt,face,flip,started,duration,state.job,Number(hero.dataset.attackSkill??-1),Number(hero.dataset.attackVariant||0),headingX,headingY);}
   else motion(hero,heroArt,steps.walking?'walk':'idle',face,flip,steps.walking?walkClock:clock,0,headingX,headingY);
   placeEntity(hero,view.x,view.y);hero.style.zIndex=Math.round(view.y);hero.classList.toggle('attacking',attacking);hero.classList.toggle('guarded',(state.guard||0)>now());
-  const perfNow=performance.now()/1000,vw=viewportWorldW,vh=viewportWorldH,pad=innerWidth<700?180:260,left=cam.x-pad,right=cam.x+vw+pad,top=cam.y-pad,bottom=cam.y+vh+pad;
+  const perfNow=performance.now()/1000,vw=viewportWorldW,vh=viewportWorldH,pad=$('game').classList.contains('mobile-lite')?80:innerWidth<700?180:260,left=cam.x-pad,right=cam.x+vw+pad,top=cam.y-pad,bottom=cam.y+vh+pad;
   for(const e of enemies.values()){
    const age=Math.min(.12,Math.max(0,perfNow-(e.sampleAt||perfNow))),tx=e.x+(e.netVx||0)*age,ty=e.y+(e.netVy||0)*age,onScreen=tx>=left&&tx<=right&&ty>=top&&ty<=bottom;
    if(!onScreen){e.vx=tx;e.vy=ty;if(e.renderVisible!==false){e.el.style.visibility='hidden';e.renderVisible=false;}continue;}
@@ -766,8 +787,8 @@ function frame(time){
   if(npcIntent&&nearNpc?.id===npcIntent&&!path.length){const id=npcIntent;npcIntent=null;talk(id);}
   for(const el of portalEls.values()){const p=el.portal,d=p?distance(view,p):9999;el.classList.toggle('near',d<190);el.classList.toggle('very-near',d<105);}
   if(travelIntent)travelIntent=null;
-  syncBossSector();camera(false,dt);if(clock-hudAt>(innerWidth<701?.22:.12)){hud();hudAt=clock;}
-   if(clock-minimapAt>(innerWidth<701?.45:.18)&&!document.hidden){renderMinimap();minimapAt=clock;}
+  syncBossSector();camera(false,dt);const lite=$('game').classList.contains('mobile-lite');if(clock-hudAt>(lite?.34:innerWidth<701?.22:.12)){hud();hudAt=clock;}
+   if(clock-minimapAt>(lite?.8:innerWidth<701?.45:.18)&&!document.hidden){renderMinimap();minimapAt=clock;}
  }
  requestAnimationFrame(frame);
 }
@@ -787,7 +808,7 @@ if(utility&&utilityToggle){utilityToggle.onclick=()=>{const expanded=utility.cla
  utility.querySelectorAll('button:not(#utilityToggle)').forEach(b=>b.addEventListener('click',()=>{if(innerWidth<701){utility.classList.remove('expanded');utilityToggle.textContent='메뉴 +';utilityToggle.setAttribute('aria-expanded','false');}}));
 }
 if(innerWidth<600){$('quest').classList.add('collapsed');$('questToggle').textContent='+';}resize();makeSkills();requestAnimationFrame(frame);if(token)showSelection();
-window.__adventure={build:BUILD,snapshot:()=>({...state,systems:structuredClone(systems),connected,paused,auto,selected,pendingCombo:skillQueue.snapshot(now()),peers:[...peers.values()].map(({id,name,x,y,job,equipment})=>({id,name,x,y,job,equipment})),enemies:[...enemies.values()].map(({id,x,y,hp,alive,boss})=>({id,x,y,hp,alive,boss}))})};
+window.__adventure={build:BUILD,performance:()=>({fps:perfFps,lastSnapshotMs:perfLatestSnapshotMs,peakSnapshotMs:perfPeakSnapshotMs,lite:$('game').classList.contains('mobile-lite'),zone:state.zone}),snapshot:()=>({...state,systems:structuredClone(systems),connected,paused,auto,selected,pendingCombo:skillQueue.snapshot(now()),peers:[...peers.values()].map(({id,name,x,y,job,equipment})=>({id,name,x,y,job,equipment})),enemies:[...enemies.values()].map(({id,x,y,hp,alive,boss})=>({id,x,y,hp,alive,boss}))})};
 let partyHudEl=null;
 function syncPartyHud(){if(!partyHudEl){partyHudEl=document.createElement('div');partyHudEl.id='partyHud';$('game').append(partyHudEl);}const party=systems.party;if(!party){partyHudEl.hidden=true;return;}const raid=systems.raidContribution,role={warrior:'🛡',rogue:'🗡',mage:'🔮',healer:'✚'};partyHudEl.hidden=false;const partyMarkup='<b>PARTY '+party.members.length+'/4'+(raid?' · '+esc(raid.name):'')+'</b>'+party.members.map(m=>{const me=m.id===state.id,leader=m.id===party.leader,pct=Math.max(0,Math.min(100,m.maxHp?m.hp/m.maxHp*100:0)),r=raid?.rows?.find(x=>x.id===m.id),contrib=r?(r.support?' · ✚지원':' · ⚔'+r.percent+'%'):'';return '<div class="party-member '+(me?'me':'')+'"><span><strong>'+(leader?'★ ':'')+(role[m.job]||'•')+' '+esc(m.name)+'</strong><small>'+esc(jobName({job:m.job,rank:m.rank}))+' · Lv.'+m.level+contrib+(m.zone!==state.zone?' · '+esc(ZONES[m.zone]?.name||m.zone):'')+'</small></span><i><em style="width:'+pct+'%"></em></i></div>';}).join('');if(partyHudEl.dataset.partyMarkup!==partyMarkup){partyHudEl.innerHTML=partyMarkup;partyHudEl.dataset.partyMarkup=partyMarkup;}partyHudEl.onclick=partyWindow;}
 function syncMMO(){
