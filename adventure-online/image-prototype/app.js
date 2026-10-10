@@ -5,12 +5,12 @@ import {BOOSTS,WEAPON_FAMILIES,MATERIALS,RECIPES,ZONES,TRAVEL_PORTALS,DAILY_TASK
 import {API_URL} from './config.js';
 import {createCombatQueue} from './combat-queue.js?v=20261009-primordial-motion1';
 import {monsterIllustration} from './monster-art.js?v=20261010-monster1';
-import {predictServerPosition,reconcileVisualPosition,advanceFootsteps} from './movement-feel.js?v=20261010-motion1';
+import {predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity} from './movement-feel.js?v=20261010-motion2';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 const endgameStyle=document.createElement('style');endgameStyle.textContent="#world[data-zone=void]:after{background:radial-gradient(ellipse at 50% 70%,transparent 22%,#160b2670 72%,#06030bcc 100%)!important}#world[data-zone=origin]:after{background:radial-gradient(ellipse at 50% 70%,transparent 25%,#473a1360 72%,#100c04bb 100%)!important}";document.head.append(endgameStyle);
 let wireSnapshot=null;
-let token='',connectionKey='',legacy=null,roster=[],selectedSlot=0,state=profile(),view={x:768,y:355},connected=false,paused=false,serverNow=0,receivedAt=0,last=0,clock=0,lastSend=0,moveSending=false,pendingMove=null,streamController=null,streamGeneration=0,lastSelfSampleAt=0,lastSelfX=768,lastSelfY=355,serverVelocity={x:0,y:0},walkClock=0,walkSpeed=0;
+let token='',connectionKey='',legacy=null,roster=[],selectedSlot=0,state=profile(),view={x:768,y:355},connected=false,paused=false,serverNow=0,receivedAt=0,last=0,clock=0,lastSend=0,moveSending=false,pendingMove=null,streamController=null,streamGeneration=0,lastSelfSampleAt=0,lastSelfServerAt=0,lastSelfX=768,lastSelfY=355,serverVelocity={x:0,y:0},walkClock=0,walkSpeed=0;
 const skillQueue=createCombatQueue(6,2,3);
 let lastLocalFx=null,remoteSkillPending=null,pendingAttackAck=false;
 let navigationRequestedUntil=0;
@@ -175,7 +175,7 @@ const motionArt=new Set(),characterArt=['hero','rogue','mage','healer'];
 // Render each of the four new name-matched SVG families into one shared bitmap
 // at load time; preserve the original art rather than reverting the monster types.
 const monsterArtSetting=new URL(location.href).searchParams.get('monsterArt');
-const monsterArtMode=monsterArtSetting==='legacy'?'legacy':monsterArtSetting==='svg'?'svg':'raster';
+const monsterArtMode=monsterArtSetting==='raster'?'raster':monsterArtSetting==='svg'?'svg':'legacy';
 const monsterRasterArt=new Map();
 const MONSTER_FAMILIES=['mushroom','boar','wolf','treant'];
 function rasterizeMonsterArt(family){
@@ -229,7 +229,7 @@ function go(x,y){
  $('marker').style.left=x+'px';$('marker').style.top=y+'px';$('marker').classList.remove('show');void $('marker').offsetWidth;$('marker').classList.add('show');
 }
 let viewportWorldW=0,viewportWorldH=0;
-function camera(force=false,dt=.016){const vw=viewportWorldW,vh=viewportWorldH;const x=clamp(view.x-vw*.5,Math.min(0,(W-vw)/2),Math.max(0,W-vw)),y=clamp(view.y-vh*.53,Math.min(0,(H-vh)/2),Math.max(0,H-vh)),f=force?1:1-Math.exp(-10.5*dt);cam.x+=(x-cam.x)*f;cam.y+=(y-cam.y)*f;if(Math.abs(x-cam.x)<.05)cam.x=x;if(Math.abs(y-cam.y)<.05)cam.y=y;const bump=motionReduced?0:cameraKick;const px=-cam.x*scale+Math.sin(clock*73)*bump,py=-cam.y*scale+Math.cos(clock*83)*bump*.55;cameraKick*=Math.exp(-20*dt);if(cameraKick<.05)cameraKick=0;$('world').style.transform=`translate3d(${px.toFixed(2)}px,${py.toFixed(2)}px,0) scale(${scale})`;}
+function camera(force=false,dt=.016){const vw=viewportWorldW,vh=viewportWorldH;const x=clamp(view.x-vw*.5,Math.min(0,(W-vw)/2),Math.max(0,W-vw)),y=clamp(view.y-vh*.53,Math.min(0,(H-vh)/2),Math.max(0,H-vh)),f=force?1:1-Math.exp(-10.5*dt);cam.x+=(x-cam.x)*f;cam.y+=(y-cam.y)*f;if(Math.abs(x-cam.x)<.05)cam.x=x;if(Math.abs(y-cam.y)<.05)cam.y=y;const bump=motionReduced||innerWidth<701?0:cameraKick;const px=-cam.x*scale+Math.sin(clock*73)*bump,py=-cam.y*scale+Math.cos(clock*83)*bump*.55;cameraKick*=Math.exp(-20*dt);if(cameraKick<.05)cameraKick=0;$('world').style.transform=`translate3d(${px.toFixed(2)}px,${py.toFixed(2)}px,0) scale(${scale})`;}
 function resize(){scale=innerWidth<600?.85:Math.min(1,innerWidth/1150);viewportWorldW=$('viewport').clientWidth/scale;viewportWorldH=$('viewport').clientHeight/scale;camera(true);}
 function screenToWorld(x,y){const r=$('viewport').getBoundingClientRect();return {x:(x-r.left)/scale+cam.x,y:(y-r.top)/scale+cam.y};}
 function sprite(el,col,row,rows=3,mirror=false){
@@ -400,11 +400,14 @@ function updateSnapshot(data){
  if(!data.self)return;
  const sampleAt=performance.now()/1000,old=state,next=data.self,wasConnected=connected;
  if(connected&&old.zone===next.zone&&next.hp<old.hp)heroDamage(old.hp-next.hp);
- if(lastSelfSampleAt&&old.zone===next.zone){
-  const dt=Math.max(.03,sampleAt-lastSelfSampleAt),vx=(next.x-lastSelfX)/dt,vy=(next.y-lastSelfY)/dt,mag=Math.hypot(vx,vy),cap=300,ratio=mag>cap?cap/mag:1;
-  serverVelocity.x=serverVelocity.x*.45+vx*ratio*.55;serverVelocity.y=serverVelocity.y*.45+vy*ratio*.55;
+ // Authoritative simulation timestamps stay 100ms apart even if mobile
+ // Safari receives network packets in bursts. Arrival time must NOT
+ // dictate walking speed (it caused intermittent acceleration/deceleration).
+ if(lastSelfServerAt&&old.zone===next.zone){
+  serverVelocity=estimateNetworkVelocity(
+   {x:lastSelfX,y:lastSelfY},next,Number(data.now)-lastSelfServerAt,serverVelocity,300);
  }else serverVelocity={x:0,y:0};
- lastSelfSampleAt=sampleAt;lastSelfX=next.x;lastSelfY=next.y;
+ lastSelfSampleAt=sampleAt;lastSelfServerAt=Number(data.now)||0;lastSelfX=next.x;lastSelfY=next.y;
  serverNow=data.now;receivedAt=performance.now();state=next;systems={nodes:data.nodes||[],bosses:data.bosses||[],trade:data.trade,duel:data.duel,partyDungeon:data.partyDungeon||null,party:data.party||null,partyInvite:data.partyInvite||null,raidContribution:data.raidContribution||null,daily:data.daily};
  syncMMO();if(old.zone!==state.zone){skillQueue.clear();remoteSkillPending=null;localActionLockUntil=0;lastLocalFx=null;pendingAttackAck=false;showZoneArrival(state.zone);serverVelocity={x:0,y:0};walkClock=0;walkSpeed=0;view={x:state.x,y:state.y};path=[];targetIntent=null;camera(true);}
  auto=state.auto;connected=true;
@@ -416,19 +419,19 @@ function updateSnapshot(data){
  if(old.job!==state.job){skillQueue.clear();remoteSkillPending=null;lastLocalFx=null;}
  if(old.job!==state.job||old.rank!==state.rank||$('skillbar').childElementCount!==JOBS[state.job].skills.length)makeSkills();if(wasConnected&&(old.rank||0)<(state.rank||0))showPromotion(state.rank,state.job);if(wasConnected&&old.level<state.level&&(old.rank||0)===(state.rank||0))showLevelAchievement(old.level,state.level);actorArt($('heroArt'),state);decorate($('hero'),state);const heroLabel=$('hero').querySelector('.entity-name'),labelText=state.name+' · '+jobName(state);if(heroLabel.textContent!==labelText)heroLabel.textContent=labelText;const portrait=document.querySelector('.portrait'),productionPortrait=EXPERIMENTAL_RANK_ART&&state.job==='rogue'&&Number(state.rank||0)>=3,portraitSrc=productionPortrait?productionSpriteSheet('rogue',state.rank):`./assets/${JOBS[state.job].art}.png`;if(portrait.dataset.portraitSrc!==portraitSrc){portrait.dataset.portraitSrc=portraitSrc;portrait.style.backgroundImage=`url('${portraitSrc}?v=${BUILD}')`;portrait.style.backgroundSize=productionPortrait?'cover':'400% 300%';portrait.style.backgroundPosition=productionPortrait?'50% 12%':'0 0';}if(portrait.dataset.job!==state.job)portrait.dataset.job=state.job;if(portrait.dataset.rank!==String(state.rank||0))portrait.dataset.rank=String(state.rank||0);portrait.classList.toggle('production-portrait',productionPortrait);
  const mobIds=new Set();for(const e of data.enemies){
-  mobIds.add(e.id);let entry=enemies.get(e.id),wasKnown=!!entry,wasAlive=entry?.alive,previousHp=entry?.hp,previousX=entry?.x,previousY=entry?.y,previousAt=entry?.sampleAt;
-  if(!entry){const el=entity('enemy'+(e.boss?' boss':''));el.querySelector('b').textContent=e.name||'숲 다람쥐';el.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();select(e.id,true);});$('enemyLayer').append(el);entry={el,art:el.querySelector('.sprite'),label:el.querySelector('b'),life:el.querySelector('.life i'),tell:el.querySelector('.tell'),vx:e.x,vy:e.y,netVx:0,netVy:0,sampleAt};enemies.set(e.id,entry);}
-  if(wasKnown&&previousAt&&sampleAt>previousAt+.025){const dt=sampleAt-previousAt,rvx=(e.x-previousX)/dt,rvy=(e.y-previousY)/dt,mag=Math.hypot(rvx,rvy),ratio=mag>260?260/mag:1;entry.netVx=entry.netVx*.4+rvx*ratio*.6;entry.netVy=entry.netVy*.4+rvy*ratio*.6;}
-  entry.sampleAt=sampleAt;Object.assign(entry,e);
+  mobIds.add(e.id);let entry=enemies.get(e.id),wasKnown=!!entry,wasAlive=entry?.alive,previousHp=entry?.hp,previousX=entry?.x,previousY=entry?.y,previousAt=entry?.serverAt;
+  if(!entry){const el=entity('enemy'+(e.boss?' boss':''));el.querySelector('b').textContent=e.name||'숲 다람쥐';el.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();select(e.id,true);});$('enemyLayer').append(el);entry={el,art:el.querySelector('.sprite'),label:el.querySelector('b'),life:el.querySelector('.life i'),tell:el.querySelector('.tell'),vx:e.x,vy:e.y,netVx:0,netVy:0,sampleAt,serverAt:Number(data.now)};enemies.set(e.id,entry);}
+  if(wasKnown&&previousAt){const v=estimateNetworkVelocity({x:previousX,y:previousY},e,Number(data.now)-previousAt,{x:entry.netVx,y:entry.netVy},260);entry.netVx=v.x;entry.netVy=v.y;}
+  entry.sampleAt=sampleAt;entry.serverAt=Number(data.now);Object.assign(entry,e);
   if(wasKnown&&wasAlive&&e.hp<previousHp&&distance(view,e)<580)damageNumber(entry,previousHp-e.hp);
   if(wasKnown&&wasAlive&&!e.alive){spawnLootFx(e);if(e.boss)bossIntroSeen.delete(state.zone+':'+e.id);}if(wasKnown&&wasAlive===false&&e.alive&&e.boss&&bossSector)showBossIntro(e);entry.mmo=!!e.atlas;entry.el.classList.toggle('mmo-monster',entry.mmo);const artwork=monsterArtMode==='legacy'?null:monsterIllustration(e.name),artKey=artwork||('atlas:'+entry.mmo);entry.illustrated=!!artwork;if(entry.renderArtKey!==artKey){entry.renderArtKey=artKey;entry.el.classList.toggle('illustrated-monster',!!artwork);entry.el.dataset.artFamily=artwork||'';entry.art.style.backgroundImage=artwork?monsterBackground(artwork):entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=artwork?'contain':entry.mmo?'400% 400%':'';entry.art.style.backgroundPosition=artwork?'center bottom':'';entry.art.style.backgroundRepeat=artwork?'no-repeat':'';entry.renderSpriteKey='';}const mobLabel=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);if(entry.lastMobLabel!==mobLabel){entry.label.textContent=mobLabel;entry.lastMobLabel=mobLabel;}entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('summoned',!!e.summoned);entry.el.classList.toggle('dead',!e.alive);const hpPercent=(e.max>0?Math.max(0,e.hp/e.max*100):0).toFixed(1)+'%';if(entry.lastHpPercent!==hpPercent){entry.life.style.width=hpPercent;entry.lastHpPercent=hpPercent;}entry.tell.hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);const phase=String(e.phase||1),variant=String(e.variant??((e.skin||0)%5));if(entry.el.dataset.phase!==phase)entry.el.dataset.phase=phase;if(entry.el.dataset.variant!==variant)entry.el.dataset.variant=variant;if(entry.el.dataset.zone!==state.zone)entry.el.dataset.zone=state.zone;syncBossPattern(e);
  }
  for(const [id,e] of enemies)if(!mobIds.has(id)){e.el.remove();bossPatternEls.get(id)?.remove();bossPatternEls.delete(id);enemies.delete(id);if(selected===id){selected=null;targetIntent=null;}}
  const peerIds=new Set();for(const p of data.players){
-  if(p.id===state.id)continue;peerIds.add(p.id);let peer=peers.get(p.id),previousX=peer?.x,previousY=peer?.y,previousAt=peer?.sampleAt;
-  if(!peer){const el=entity('peer hero');layers(el);$('world').append(el);peer={el,art:el.querySelector('.sprite'),labelEl:el.querySelector('b'),hpEl:el.querySelector('.life i'),vx:p.x,vy:p.y,netVx:0,netVy:0,sampleAt};peers.set(p.id,peer);}
-  if(previousAt&&sampleAt>previousAt+.025){const dt=sampleAt-previousAt,rvx=(p.x-previousX)/dt,rvy=(p.y-previousY)/dt,mag=Math.hypot(rvx,rvy),ratio=mag>300?300/mag:1;peer.netVx=peer.netVx*.4+rvx*ratio*.6;peer.netVy=peer.netVy*.4+rvy*ratio*.6;}
-  peer.sampleAt=sampleAt;Object.assign(peer,p);actorArt(peer.art,p);decorate(peer.el,p);const name=p.name+' · '+jobName(p),hp=(p.maxHp>0?p.hp/p.maxHp*100:0)+'%';if(peer._displayName!==name){peer.labelEl.textContent=name;peer._displayName=name;}if(peer._hpDisplay!==hp){peer.hpEl.style.width=hp;peer._hpDisplay=hp;}
+  if(p.id===state.id)continue;peerIds.add(p.id);let peer=peers.get(p.id),previousX=peer?.x,previousY=peer?.y,previousAt=peer?.serverAt;
+  if(!peer){const el=entity('peer hero');layers(el);$('world').append(el);peer={el,art:el.querySelector('.sprite'),labelEl:el.querySelector('b'),hpEl:el.querySelector('.life i'),vx:p.x,vy:p.y,netVx:0,netVy:0,sampleAt,serverAt:Number(data.now)};peers.set(p.id,peer);}
+  if(previousAt){const v=estimateNetworkVelocity({x:previousX,y:previousY},p,Number(data.now)-previousAt,{x:peer.netVx,y:peer.netVy},300);peer.netVx=v.x;peer.netVy=v.y;}
+  peer.sampleAt=sampleAt;peer.serverAt=Number(data.now);Object.assign(peer,p);actorArt(peer.art,p);decorate(peer.el,p);const name=p.name+' · '+jobName(p),hp=(p.maxHp>0?p.hp/p.maxHp*100:0)+'%';if(peer._displayName!==name){peer.labelEl.textContent=name;peer._displayName=name;}if(peer._hpDisplay!==hp){peer.hpEl.style.width=hp;peer._hpDisplay=hp;}
  }
  for(const [id,p] of peers)if(!peerIds.has(id)){p.el.remove();peers.delete(id);}
  $('onlineCount').textContent=data.players.length+'명';$('saveStatus').textContent=data.saveStatus==='error'?'저장 재시도 중':data.saveStatus==='pending'?'서버 저장 대기':'계정에 저장됨';
@@ -453,7 +456,7 @@ async function recoverPlay(generation){
   await sleep(350*attempt);
   try{
    const r=await api('join',{slot:selectedSlot,channel});if(generation!==streamGeneration)return;
-   connectionKey=r.connectionKey;wireSnapshot=null;lastSelfSampleAt=0;updateSnapshot(r.snapshot);resize();makeSkills();$('loading').hidden=true;last=performance.now();toast('연결이 복구되었습니다.');return consumeStream(++streamGeneration);
+   connectionKey=r.connectionKey;wireSnapshot=null;lastSelfSampleAt=0;lastSelfServerAt=0;updateSnapshot(r.snapshot);resize();makeSkills();$('loading').hidden=true;last=performance.now();toast('연결이 복구되었습니다.');return consumeStream(++streamGeneration);
   }catch(e){if(e.status===401){token='';try{localStorage.removeItem('junja-online-token');}catch{}break;}}
  }
  if(generation!==streamGeneration)return;$('loading').hidden=false;$('retryBtn').hidden=false;
@@ -476,7 +479,7 @@ async function login(register=false){if(!$('authForm').reportValidity())return;c
  try{const r=await api(register?'register':'login',{username,password,...(register&&legacy&&$('legacyCheck').checked?{legacy}:{})});token=r.token;try{localStorage.setItem('junja-online-token',token);}catch{}$('password').value='';await showSelection();}catch(e){$('authMessage').textContent=e.message;}finally{$('loginBtn').disabled=$('registerBtn').disabled=false;}
 }
 $('authForm').onsubmit=e=>{e.preventDefault();login();};$('registerBtn').onclick=()=>login(true);$('switchAccount').onclick=()=>{token='';try{localStorage.removeItem('junja-online-token');}catch{}$('authPanel').hidden=false;$('selectPanel').hidden=true;$('authMessage').textContent='';};
-async function join(){$('joinBtn').disabled=true;$('loadMessage').textContent='준자마을에 접속 중…';try{await artReady;const r=await api('join',{slot:selectedSlot,channel:$('channelInput').value.trim()});connectionKey=r.connectionKey;wireSnapshot=null;lastSelfSampleAt=0;state=r.snapshot.self;view={x:state.x,y:state.y};selected=null;targetIntent=null;path=[];skillQueue.clear();remoteSkillPending=null;localActionLockUntil=0;lastLocalFx=null;pendingAttackAck=false;updateSnapshot(r.snapshot);resize();makeSkills();face=0;flip=false;headingX=0;headingY=1;placeEntity($('hero'),view.x,view.y);$('hero').style.zIndex=Math.round(view.y);motion($('hero'),$('heroArt'),'idle',0,false,clock);$('loading').hidden=true;last=performance.now();consumeStream(++streamGeneration);toast(state.channel+'에 접속했습니다. 친구에게 같은 채널을 알려 주세요.');}catch(e){$('loadMessage').textContent=e.message;}finally{$('joinBtn').disabled=false;}}
+async function join(){$('joinBtn').disabled=true;$('loadMessage').textContent='준자마을에 접속 중…';try{await artReady;const r=await api('join',{slot:selectedSlot,channel:$('channelInput').value.trim()});connectionKey=r.connectionKey;wireSnapshot=null;lastSelfSampleAt=0;lastSelfServerAt=0;state=r.snapshot.self;view={x:state.x,y:state.y};selected=null;targetIntent=null;path=[];skillQueue.clear();remoteSkillPending=null;localActionLockUntil=0;lastLocalFx=null;pendingAttackAck=false;updateSnapshot(r.snapshot);resize();makeSkills();face=0;flip=false;headingX=0;headingY=1;placeEntity($('hero'),view.x,view.y);$('hero').style.zIndex=Math.round(view.y);motion($('hero'),$('heroArt'),'idle',0,false,clock);$('loading').hidden=true;last=performance.now();consumeStream(++streamGeneration);toast(state.channel+'에 접속했습니다. 친구에게 같은 채널을 알려 주세요.');}catch(e){$('loadMessage').textContent=e.message;}finally{$('joinBtn').disabled=false;}}
 $('joinBtn').onclick=join;$('retryBtn').onclick=()=>token?showSelection():location.reload();
 function nearestTarget(maxDistance=560){const safe=e=>(!e.boss&&!e.elite)||e.level<=state.level+(e.boss?5:3);return [...enemies.values()].filter(e=>e.alive&&distance(view,e)<=maxDistance&&safe(e)).sort((a,b)=>{const ad=distance(view,a)+(a.named?140:a.boss?90:a.elite?35:0),bd=distance(view,b)+(b.named?140:b.boss?90:b.elite?35:0);return ad-bd;})[0]||null;}
 function select(id,engage=false){const e=enemies.get(id);if(!e?.alive)return;skillQueue.clear();remoteSkillPending=null;selected=id;npcIntent=null;path=[];targetIntent=null;if(auto){command({type:'autoTarget',target:e.id});toast(e.name+' · 자동사냥 타겟 지정');}else if(engage){command({type:'engage',target:e.id,skill:-1});toast(e.name+' 타겟 고정 · 자동 추적/공격');}hud();}
@@ -796,7 +799,7 @@ function frame(time){
   const attacking=clock<attackUntil,hero=$('hero'),heroArt=$('heroArt');
   if(attacking){const duration=Number(hero.dataset.attackDuration)||.44,started=Number(hero.dataset.attackStarted)||attackUntil-duration;attackPose(hero,heroArt,face,flip,started,duration,state.job,Number(hero.dataset.attackSkill??-1),Number(hero.dataset.attackVariant||0),headingX,headingY);}
   else motion(hero,heroArt,steps.walking?'walk':'idle',face,flip,steps.walking?walkClock:clock,0,headingX,headingY);
-  placeEntity(hero,view.x,view.y);hero.style.zIndex=Math.round(view.y);hero.classList.toggle('attacking',attacking);hero.classList.toggle('guarded',(state.guard||0)>now());
+  placeEntity(hero,view.x,view.y);const heroDepth=Math.round(view.y);if(hero._renderDepth!==heroDepth){hero.style.zIndex=heroDepth;hero._renderDepth=heroDepth;}hero.classList.toggle('attacking',attacking);hero.classList.toggle('guarded',(state.guard||0)>now());
   const perfNow=performance.now()/1000,vw=viewportWorldW,vh=viewportWorldH,pad=$('game').classList.contains('mobile-lite')?80:innerWidth<700?180:260,left=cam.x-pad,right=cam.x+vw+pad,top=cam.y-pad,bottom=cam.y+vh+pad;
   for(const e of enemies.values()){
    const age=Math.min(.12,Math.max(0,perfNow-(e.sampleAt||perfNow))),tx=e.x+(e.netVx||0)*age,ty=e.y+(e.netVy||0)*age,onScreen=tx>=left&&tx<=right&&ty>=top&&ty<=bottom;
@@ -821,7 +824,7 @@ function frame(time){
   for(const el of portalEls.values()){const p=el.portal,d=p?distance(view,p):9999;el.classList.toggle('near',d<190);el.classList.toggle('very-near',d<105);}
   if(travelIntent)travelIntent=null;
   syncBossSector();camera(false,dt);const lite=$('game').classList.contains('mobile-lite');if(clock-hudAt>(lite?.34:innerWidth<701?.22:.12)){hud();hudAt=clock;}
-   if(clock-minimapAt>(lite?.8:innerWidth<701?.45:.18)&&!document.hidden){renderMinimap();minimapAt=clock;}
+   if(clock-minimapAt>(lite?.8:innerWidth<701?.45:.18)&&!document.hidden&&($('minimapWrap')?.classList.contains('open')||innerWidth>=701)){renderMinimap();minimapAt=clock;}
  }
  requestAnimationFrame(frame);
 }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {WALK_SPEED,predictServerPosition,reconcileVisualPosition,advanceFootsteps} from '../movement-feel.js';
+import {WALK_SPEED,predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity} from '../movement-feel.js';
 
 test('server extrapolation uses a bounded time horizon and never grants extra movement speed',()=>{
  const state={x:100,y:200};
@@ -46,4 +46,26 @@ test('visual reconciliation immediately snaps only genuine large respawns or zon
  assert.deepEqual(reconcileVisualPosition({x:0,y:0},{x:400,y:900},1/60,false),{x:400,y:900});
  const x=reconcileVisualPosition({x:0,y:0},{x:200,y:0},1/60,false);
  assert.ok(x.x>0&&x.x<200,'normal reconciliation is eased, not snapped');
+});
+
+test('network packet arrival jitter cannot change estimated walking speed when server tick stays fixed',()=>{
+ let previous={x:0,y:0},v={x:0,y:0},results=[];
+ for(let i=1;i<=12;i++){
+  const authoritative={x:i*25,y:0};
+  const wildlyVariableArrivalInterval=i%3===0?.31:i%3===1?.02:.07;
+  // Arrival interval is purposefully different from authoritative 100ms.
+  assert.ok(wildlyVariableArrivalInterval>0);
+  v=estimateNetworkVelocity(previous,authoritative,.1,v,300);
+  results.push(v.x);
+  previous=authoritative;
+ }
+ assert.ok(Math.abs(results[11]-250)<.05,'steady 250 px/s movement emerges despite arrival jitter');
+ assert.ok(results.slice(2).every(x=>x>240&&x<=250),'movement speed is bounded and never spikes');
+});
+test('distant zone warp does not get interpreted as high-speed walking',()=>{
+ assert.deepEqual(estimateNetworkVelocity({x:0,y:0},{x:450,y:780},.1,{x:200,y:0},300),{x:0,y:0});
+});
+test('subpixel client quantization does not joggle standing hero',()=>{
+ const origin={x:500.2,y:320.4};
+ assert.deepEqual(reconcileVisualPosition(origin,{x:500.4,y:320.5},1/60),origin);
 });

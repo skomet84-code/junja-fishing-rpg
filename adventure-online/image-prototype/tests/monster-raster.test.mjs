@@ -12,11 +12,15 @@ test('new monster art uses shared PNG rasterized once per family before entering
  assert.match(app,/entry\.art\.style\.backgroundImage=artwork\?monsterBackground\(artwork\)/);
 });
 test('A/B switch can isolate October 10 new SVG monster regression without touching game data',()=>{
- assert.match(app,/monsterArtSetting==='legacy'\?'legacy'/);
+ assert.match(app,/monsterArtSetting==='raster'\?'raster'/);
  assert.match(app,/monsterArtSetting==='svg'\?'svg'/);
  assert.match(app,/monsterArtMode==='legacy'\?null:monsterIllustration\(e\.name\)/);
  assert.match(app,/\.svg\?v=20261010-monster1/);
 });
 test('updated JS entrypoint busts stale Kakao iPhone webview cache',()=>{
  assert.match(html,/app\.js\?v=20261010-monster-raster1/);
+});
+
+test('known smooth legacy monster renderer is the safe production default',()=>{
+ assert.match(app,/monsterArtSetting==='raster'\?'raster':monsterArtSetting==='svg'\?'svg':'legacy'/);
 });
