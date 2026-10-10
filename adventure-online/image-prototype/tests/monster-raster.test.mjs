@@ -18,7 +18,7 @@ test('A/B switch can isolate October 10 new SVG monster regression without touch
  assert.match(app,/\.svg\?v=20261010-monster1/);
 });
 test('updated JS entrypoint busts stale Kakao iPhone webview cache',()=>{
- assert.match(html,/app\.js\?v=20261010-monster-raster1/);
+ assert.match(html,/app\.js\?v=20261010-smooth-core1/);
 });
 
 test('known smooth legacy monster renderer is the safe production default',()=>{
