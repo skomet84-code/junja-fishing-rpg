@@ -119,6 +119,14 @@ for(const t of ENDGAME_TIERS){
  }
 }
 
+/* True final Primordial gear beyond Lv.1500 Mythic Creation. */
+export const CREATION_PRIMORDIAL_BASE=[["blade","weapon","창세신의 절대검"],["armor","armor","창세신의 근원갑주"],["cape","cape","창세신의 성운망토"],["crown","head","창세신의 왕관"],["boots","boots","창세신의 신행장화"],["ring","ring","창세신의 영겁반지"],["ear","ear","창세신의 기원귀걸이"]];
+for(const [suffix,slot,name] of CREATION_PRIMORDIAL_BASE){
+ const old=EXTRA_ITEMS['creation'+suffix],id='primordialcreation'+suffix;
+ EXTRA_ITEMS[id]={...old,name:'태초 · '+name,slot,rarity:'primordial',tier:18,level:1500,bound:true,
+ atk:Math.round((old.atk||0)*1.16),def:Math.round((old.def||0)*1.16),hp:Math.round((old.hp||0)*1.16),
+ ...(old.speed?{speed:Math.min(.30,old.speed+.02)}:{})};
+}
 /* Shared live weapon families: legacy sword IDs remain unchanged for existing characters. */
 export const WEAPON_FAMILIES=Object.freeze({
  ...Object.fromEntries(Object.entries(EXTRA_ITEMS).filter(([id,item])=>id.endsWith('blade')&&item.slot==='weapon')),
@@ -145,6 +153,8 @@ export const BOOSTS=Object.freeze({
 });
 
 export const RECIPES={
+ ...Object.fromEntries(CREATION_PRIMORDIAL_BASE.map(([suffix],i)=>{const id='primordialcreation'+suffix,item=EXTRA_ITEMS[id];return [id,{name:item.name,item:id,level:1500,rank:12,seals:90,promotionMaterials:{creationCore:180},materials:{ore:4200+i*120,crystal:2600+i*80,stardust:1000+i*50},gold:260000000+i*15000000}];})),
+
  primordialblade:{name:'태초 · 창세의 검',materials:{ore:2000,crystal:1500,stardust:300},gold:90000000,level:700,item:'primordialblade',seals:60},
  primordialarmor:{name:'태초 · 기원의 갑주',materials:{ore:2500,crystal:1500,stardust:300},gold:90000000,level:700,item:'primordialarmor',seals:60},
  primordialcape:{name:'태초 · 무한의 망토',materials:{wood:2500,crystal:1500,stardust:300},gold:90000000,level:700,item:'primordialcape',seals:60},
