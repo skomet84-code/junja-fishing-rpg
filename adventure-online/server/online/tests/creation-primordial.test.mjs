@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {World} from '../engine.mjs';
-import {ITEMS,CREATION_PRIMORDIAL_POOL,PRIMORDIAL_POOL,classWeapon,profile,stats,setBonuses} from '../../../image-prototype/catalog.js';
-import {RECIPES,LEVEL_CAP} from '../../../image-prototype/mmo-data.js';
+import {ITEMS,CREATION_PRIMORDIAL_POOL,PRIMORDIAL_POOL,profile,stats,setBonuses} from '../../../image-prototype/catalog.js';
+import {RECIPES,LEVEL_CAP,classWeapon} from '../../../image-prototype/mmo-data.js';
 test('Lv.1500 primordial top rank remains separate from Lv.700 primordial and Lv.1500 mythic',()=>{
  assert.equal(LEVEL_CAP,1500);assert.equal(PRIMORDIAL_POOL.length,7);assert.equal(ITEMS.primordialblade.level,700);
  assert.equal(CREATION_PRIMORDIAL_POOL.length,7);assert.equal(ITEMS.creationblade.rarity,'mythic');
