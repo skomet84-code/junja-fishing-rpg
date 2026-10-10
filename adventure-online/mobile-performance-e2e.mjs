@@ -63,6 +63,26 @@ try{
  assert.match(npcArt.merchantPosition,/100%/,'Merchant must use second frame in dedicated NPC atlas');
  assert.ok(npcArt.npcWidth<=80,'NPC silhouette should stay reasonably sized');
  console.log('NPC_ORIGINAL_ATLAS_OK '+JSON.stringify(npcArt));
+ const iosStability=await page.evaluate(async()=>{
+  const portrait=document.querySelector('.portrait');
+  let portraitMutations=0;
+  const observer=new MutationObserver(items=>{portraitMutations+=items.length});
+  observer.observe(portrait,{attributes:true,attributeFilter:['style']});
+  await new Promise(resolve=>setTimeout(resolve,650));observer.disconnect();
+  const world=document.querySelector('#world'),original=world.dataset.zone;
+  world.dataset.zone='grove';
+  const blend=getComputedStyle(world).backgroundBlendMode;
+  const image=getComputedStyle(world).backgroundImage;
+  const fog=getComputedStyle(world,'::after').animationName;
+  world.dataset.zone=original;
+  return{portraitMutations,blend,imageLoaded: image.includes('world.png'),fog};
+ });
+ assert.ok(iosStability.portraitMutations<=1,'Unchanged portrait was re-rasterized on each server snapshot: '+JSON.stringify(iosStability));
+ assert.match(iosStability.blend,/normal/,'Mobile forest is still multiply darkened');
+ assert.doesNotMatch(iosStability.blend,/multiply/,'Excessively dark forest blend mode');
+ assert.equal(iosStability.imageLoaded,true,'Original world painting must remain visible');
+ assert.equal(iosStability.fog,'none','Large forest dark overlay must not animate');
+ console.log('IOS_STABILITY_BROWSER_OK '+JSON.stringify(iosStability));
  assert.ok(metrics.stylesheet,'The mobile performance stylesheet was not loaded');
  assert.equal(metrics.blur,'none','Mobile panel blur is still creating expensive composited layers');
  if(metrics.webkitBlur!=null)assert.equal(metrics.webkitBlur,'none','Safari webkit backdrop blur must be disabled'); // Chromium may not expose this prefixed property.
