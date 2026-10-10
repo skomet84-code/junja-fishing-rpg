@@ -1600,3 +1600,19 @@ button.region-node.current:disabled{opacity:1;background:#384632;border-color:#f
 .hero[data-weapon='11'] .gear-weapon,.hero[data-armor='11'] .gear-armor,.hero[data-cape='11'] .gear-cape,.hero[data-head='11'] .gear-head,.hero[data-boots='11'] .gear-boots{display:block;background:linear-gradient(120deg,#fffbdc,#ecd2ff,#d3ad5e)!important;box-shadow:0 0 13px #fcf2cc,0 0 24px #a671ff}
 .hero[data-weapon='11'] .gear-weapon{width:8%}
 .hero[data-armor='11'] .sprite{filter:drop-shadow(0 0 8px #d4acff) drop-shadow(0 0 10px #fff2b2)}
+
+/* 2026-10-10 mobile Safari frame-budget hotfix:
+   Keep actual characters, NPC art, map texture and collision unchanged.
+   Full-map animated blend lighting forces expensive repaint/compositing
+   on iOS WebKit when the entire world is camera-transformed. */
+@media (hover:none) and (pointer:coarse) {
+  #world[data-zone]::before {
+    animation:none!important;
+    mix-blend-mode:normal!important;
+    opacity:.24!important;
+  }
+  #world .zone-decor::before,
+  #world .zone-decor::after {
+    animation:none!important;
+  }
+}
