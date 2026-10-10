@@ -171,10 +171,43 @@ function syncBossSector(){
 try{token=localStorage.getItem('junja-online-token')||'';const old=localStorage.getItem('junja-adventure-play-v2');if(old)legacy=JSON.parse(old);}catch{}
 if(legacy)$('legacyRow').hidden=false;
 const motionArt=new Set(),characterArt=['hero','rogue','mage','healer'];
+// Safari/WebKit can repaint SVG CSS backgrounds as moving enemies transform.
+// Render each of the four new name-matched SVG families into one shared bitmap
+// at load time; preserve the original art rather than reverting the monster types.
+const monsterArtSetting=new URL(location.href).searchParams.get('monsterArt');
+const monsterArtMode=monsterArtSetting==='legacy'?'legacy':monsterArtSetting==='svg'?'svg':'raster';
+const monsterRasterArt=new Map();
+const MONSTER_FAMILIES=['mushroom','boar','wolf','treant'];
+function rasterizeMonsterArt(family){
+ return new Promise(resolve=>{
+  const source='./assets/monster-'+family+'.svg?v=20261010-monster1',image=new Image();
+  image.onload=()=>{
+   try{
+    const canvas=document.createElement('canvas');canvas.width=320;canvas.height=256;
+    const ctx=canvas.getContext('2d',{alpha:true});
+    if(ctx){ctx.drawImage(image,0,0,320,256);
+     // One transparent bitmap Blob URL shared by all enemies of this family.
+     canvas.toBlob(blob=>{
+      if(blob){monsterRasterArt.set(family,URL.createObjectURL(blob));}
+      resolve();
+     },'image/png');return;
+    }
+   }catch{}
+   resolve(); // Safari fallback retains the original source SVG.
+  };
+  image.onerror=()=>resolve();
+  image.src=source;
+ });
+}
+function monsterBackground(family){
+ if(monsterArtMode==='raster'&&monsterRasterArt.has(family))return "url('"+monsterRasterArt.get(family)+"')";
+ return "url('./assets/monster-"+family+".svg?v=20261010-monster1')";
+}
 function preload(src,required=true,onload=()=>{}){return new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>{onload();resolve();};im.onerror=()=>required?reject(Error('캐릭터 이미지를 불러오지 못했어요. 다시 연결해 주세요.')):resolve();im.src=src;});}
 const artReady=Promise.all([
  ...['hero','rogue','mage','healer','world','npcs','squirrel','monster-atlas'].map(name=>preload('./assets/'+name+'.png')),
- ...characterArt.map(name=>preload('./assets/'+name+'-motion.webp?v='+BUILD,false,()=>motionArt.add(name)))
+ ...characterArt.map(name=>preload('./assets/'+name+'-motion.webp?v='+BUILD,false,()=>motionArt.add(name))),
+ ...(monsterArtMode==='raster'?MONSTER_FAMILIES.map(rasterizeMonsterArt):[])
 ]);artReady.catch(()=>{});
 function toast(text,kind='notice'){const el=$('toast');el.textContent=text;el.classList.toggle('combat-toast',kind==='combat');el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),kind==='combat'?1150:2400);}
 function now(){return serverNow+(performance.now()-receivedAt)/1000;}
@@ -388,7 +421,7 @@ function updateSnapshot(data){
   if(wasKnown&&previousAt&&sampleAt>previousAt+.025){const dt=sampleAt-previousAt,rvx=(e.x-previousX)/dt,rvy=(e.y-previousY)/dt,mag=Math.hypot(rvx,rvy),ratio=mag>260?260/mag:1;entry.netVx=entry.netVx*.4+rvx*ratio*.6;entry.netVy=entry.netVy*.4+rvy*ratio*.6;}
   entry.sampleAt=sampleAt;Object.assign(entry,e);
   if(wasKnown&&wasAlive&&e.hp<previousHp&&distance(view,e)<580)damageNumber(entry,previousHp-e.hp);
-  if(wasKnown&&wasAlive&&!e.alive){spawnLootFx(e);if(e.boss)bossIntroSeen.delete(state.zone+':'+e.id);}if(wasKnown&&wasAlive===false&&e.alive&&e.boss&&bossSector)showBossIntro(e);entry.mmo=!!e.atlas;entry.el.classList.toggle('mmo-monster',entry.mmo);const artwork=monsterIllustration(e.name),artKey=artwork||('atlas:'+entry.mmo);entry.illustrated=!!artwork;if(entry.renderArtKey!==artKey){entry.renderArtKey=artKey;entry.el.classList.toggle('illustrated-monster',!!artwork);entry.el.dataset.artFamily=artwork||'';entry.art.style.backgroundImage=artwork?"url('./assets/monster-"+artwork+".svg?v=20261010-monster1')":entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=artwork?'contain':entry.mmo?'400% 400%':'';entry.art.style.backgroundPosition=artwork?'center bottom':'';entry.art.style.backgroundRepeat=artwork?'no-repeat':'';entry.renderSpriteKey='';}const mobLabel=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);if(entry.lastMobLabel!==mobLabel){entry.label.textContent=mobLabel;entry.lastMobLabel=mobLabel;}entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('summoned',!!e.summoned);entry.el.classList.toggle('dead',!e.alive);const hpPercent=(e.max>0?Math.max(0,e.hp/e.max*100):0).toFixed(1)+'%';if(entry.lastHpPercent!==hpPercent){entry.life.style.width=hpPercent;entry.lastHpPercent=hpPercent;}entry.tell.hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);const phase=String(e.phase||1),variant=String(e.variant??((e.skin||0)%5));if(entry.el.dataset.phase!==phase)entry.el.dataset.phase=phase;if(entry.el.dataset.variant!==variant)entry.el.dataset.variant=variant;if(entry.el.dataset.zone!==state.zone)entry.el.dataset.zone=state.zone;syncBossPattern(e);
+  if(wasKnown&&wasAlive&&!e.alive){spawnLootFx(e);if(e.boss)bossIntroSeen.delete(state.zone+':'+e.id);}if(wasKnown&&wasAlive===false&&e.alive&&e.boss&&bossSector)showBossIntro(e);entry.mmo=!!e.atlas;entry.el.classList.toggle('mmo-monster',entry.mmo);const artwork=monsterArtMode==='legacy'?null:monsterIllustration(e.name),artKey=artwork||('atlas:'+entry.mmo);entry.illustrated=!!artwork;if(entry.renderArtKey!==artKey){entry.renderArtKey=artKey;entry.el.classList.toggle('illustrated-monster',!!artwork);entry.el.dataset.artFamily=artwork||'';entry.art.style.backgroundImage=artwork?monsterBackground(artwork):entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=artwork?'contain':entry.mmo?'400% 400%':'';entry.art.style.backgroundPosition=artwork?'center bottom':'';entry.art.style.backgroundRepeat=artwork?'no-repeat':'';entry.renderSpriteKey='';}const mobLabel=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);if(entry.lastMobLabel!==mobLabel){entry.label.textContent=mobLabel;entry.lastMobLabel=mobLabel;}entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('summoned',!!e.summoned);entry.el.classList.toggle('dead',!e.alive);const hpPercent=(e.max>0?Math.max(0,e.hp/e.max*100):0).toFixed(1)+'%';if(entry.lastHpPercent!==hpPercent){entry.life.style.width=hpPercent;entry.lastHpPercent=hpPercent;}entry.tell.hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);const phase=String(e.phase||1),variant=String(e.variant??((e.skin||0)%5));if(entry.el.dataset.phase!==phase)entry.el.dataset.phase=phase;if(entry.el.dataset.variant!==variant)entry.el.dataset.variant=variant;if(entry.el.dataset.zone!==state.zone)entry.el.dataset.zone=state.zone;syncBossPattern(e);
  }
  for(const [id,e] of enemies)if(!mobIds.has(id)){e.el.remove();bossPatternEls.get(id)?.remove();bossPatternEls.delete(id);enemies.delete(id);if(selected===id){selected=null;targetIntent=null;}}
  const peerIds=new Set();for(const p of data.players){
