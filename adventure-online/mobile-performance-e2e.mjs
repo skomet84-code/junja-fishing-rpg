@@ -46,6 +46,23 @@ try{
    webkitBlur:getComputedStyle(p).webkitBackdropFilter,
    stylesheet:[...document.styleSheets].some(s=>s.href?.includes('mobile-performance.css'))};
  });
+ const npcArt=await page.evaluate(()=>{
+  const elder=document.querySelector('#elder .npc-art'),merchant=document.querySelector('#merchant .npc-art');
+  return {
+   chief:getComputedStyle(elder).backgroundImage,
+   chiefPosition:getComputedStyle(elder).backgroundPosition,
+   merchant:getComputedStyle(merchant).backgroundImage,
+   merchantPosition:getComputedStyle(merchant).backgroundPosition,
+   npcWidth:parseFloat(getComputedStyle(document.getElementById('elder')).width),
+   restored:[...document.styleSheets].some(sheet=>sheet.href?.includes('npc-restore.css'))
+  };
+ });
+ assert.ok(npcArt.restored,'Original NPC restoration stylesheet did not load');
+ assert.match(npcArt.chief,/assets\\/npcs\\.png/,'Chief must render original npc illustration, not the healer class');
+ assert.match(npcArt.merchant,/assets\\/npcs\\.png/,'Merchant must render original npc illustration, not the rogue class');
+ assert.match(npcArt.merchantPosition,/100%/,'Merchant must use second frame in dedicated NPC atlas');
+ assert.ok(npcArt.npcWidth<=80,'NPC silhouette should stay reasonably sized');
+ console.log('NPC_ORIGINAL_ATLAS_OK '+JSON.stringify(npcArt));
  assert.ok(metrics.stylesheet,'The mobile performance stylesheet was not loaded');
  assert.equal(metrics.blur,'none','Mobile panel blur is still creating expensive composited layers');
  if(metrics.webkitBlur!=null)assert.equal(metrics.webkitBlur,'none','Safari webkit backdrop blur must be disabled'); // Chromium may not expose this prefixed property.
