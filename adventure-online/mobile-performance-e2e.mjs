@@ -58,8 +58,8 @@ try{
   };
  });
  assert.ok(npcArt.restored,'Original NPC restoration stylesheet did not load');
- assert.match(npcArt.chief,/assets\\/npcs\\.png/,'Chief must render original npc illustration, not the healer class');
- assert.match(npcArt.merchant,/assets\\/npcs\\.png/,'Merchant must render original npc illustration, not the rogue class');
+ assert.ok(npcArt.chief.includes('assets/npcs.png'),'Chief must render original npc illustration, not the healer class');
+ assert.ok(npcArt.merchant.includes('assets/npcs.png'),'Merchant must render original npc illustration, not the rogue class');
  assert.match(npcArt.merchantPosition,/100%/,'Merchant must use second frame in dedicated NPC atlas');
  assert.ok(npcArt.npcWidth<=80,'NPC silhouette should stay reasonably sized');
  console.log('NPC_ORIGINAL_ATLAS_OK '+JSON.stringify(npcArt));
