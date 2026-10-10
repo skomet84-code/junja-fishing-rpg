@@ -1616,3 +1616,24 @@ button.region-node.current:disabled{opacity:1;background:#384632;border-color:#f
     animation:none!important;
   }
 }
+
+/* 2026-10-10: Mobile field-only rendering budget. Keep unique illustrated
+   monster images, character artwork, labels, portal silhouettes and hitboxes;
+   simplify costly live GPU filters used by many simultaneous enemies. */
+@media (hover:none) and (pointer:coarse) {
+ #world:not([data-zone="surface"]) .enemy.illustrated-monster>.sprite,
+ #world:not([data-zone="surface"]) .enemy.mmo-monster:not(.illustrated-monster)>.sprite {
+   filter:none!important;
+ }
+ #world:not([data-zone="surface"]) .enemy>.shadow {
+   filter:none!important;
+ }
+ #world:not([data-zone="surface"]) .zone-decor,
+ #world:not([data-zone="surface"]) .zone-decor::before,
+ #world:not([data-zone="surface"]) .zone-decor::after,
+ #world:not([data-zone="surface"]) .world-portal i,
+ #world:not([data-zone="surface"]) .world-portal i::before,
+ #world:not([data-zone="surface"]) .world-portal i::after {
+   animation:none!important;
+ }
+}
