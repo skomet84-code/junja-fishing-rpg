@@ -168,7 +168,12 @@ const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function api(route,data){let r;try{r=await fetch(apiBase+'/api/'+route,{method:data?'POST':'GET',headers:{'content-type':'application/json',...(token?{authorization:'Bearer '+token}:{}),...(connectionKey?{'x-adventure-connection':connectionKey}:{})},body:data?JSON.stringify(data):undefined});}catch(cause){const e=Error('서버 연결이 지연되고 있습니다. 잠시 후 다시 시도하세요.');e.status=0;e.cause=cause;throw e;}let json={};try{json=await r.json();}catch{}if(!r.ok){const e=Error(json.error||'연결을 확인하세요.');e.status=r.status;throw e;}return json;}
 let commandChain=Promise.resolve();function command(data){const task=commandChain.then(async()=>{if(!connected)return;try{return await api('action',data);}catch(e){toast(e.message);return null;}});commandChain=task.catch(()=>{});return task;}
 async function queueMove(data){pendingMove=data;if(moveSending)return;moveSending=true;try{while(pendingMove&&connected){const next=pendingMove;pendingMove=null;try{await api('action',next);}catch(e){if(e.status===401||e.status===409)break;}}}finally{moveSending=false;}}
-function placeEntity(el,x,y){el.style.left='0px';el.style.top='0px';el.style.transform=`translate3d(${x.toFixed(2)}px,${y.toFixed(2)}px,0) translate(-50%,-100%)`;}
+function placeEntity(el,x,y){
+ // Element layout origin never changes; only the GPU translation does.
+ if(!el._worldOriginSet){el.style.left='0px';el.style.top='0px';el._worldOriginSet=true;}
+ const position=`translate3d(${x.toFixed(2)}px,${y.toFixed(2)}px,0) translate(-50%,-100%)`;
+ if(el._lastWorldTransform!==position){el.style.transform=position;el._lastWorldTransform=position;}
+}
 function stopMovement(){keys.clear();stick={x:0,y:0};path=[];targetIntent=null;gesture=null;pendingMove=null;$('joystick').hidden=true;if(connected)queueMove({type:'move',x:0,y:0,manual:true});}
 function go(x,y){
  // The server alone owns tap-to-move pathfinding; avoid stale client routes.
@@ -176,8 +181,9 @@ function go(x,y){
  command({type:'navigate',x,y}).then(result=>{if(result?.navigating===false)toast('이곳까지 길이 연결되지 않았어요. 다른 바닥을 눌러주세요.');});
  $('marker').style.left=x+'px';$('marker').style.top=y+'px';$('marker').classList.remove('show');void $('marker').offsetWidth;$('marker').classList.add('show');
 }
-function camera(force=false,dt=.016){const vw=$('viewport').clientWidth/scale,vh=$('viewport').clientHeight/scale;const x=clamp(view.x-vw*.5,Math.min(0,(W-vw)/2),Math.max(0,W-vw)),y=clamp(view.y-vh*.53,Math.min(0,(H-vh)/2),Math.max(0,H-vh)),f=force?1:1-Math.exp(-10.5*dt);cam.x+=(x-cam.x)*f;cam.y+=(y-cam.y)*f;if(Math.abs(x-cam.x)<.05)cam.x=x;if(Math.abs(y-cam.y)<.05)cam.y=y;const bump=motionReduced?0:cameraKick;const px=-cam.x*scale+Math.sin(clock*73)*bump,py=-cam.y*scale+Math.cos(clock*83)*bump*.55;cameraKick*=Math.exp(-20*dt);if(cameraKick<.05)cameraKick=0;$('world').style.transform=`translate3d(${px.toFixed(2)}px,${py.toFixed(2)}px,0) scale(${scale})`;}
-function resize(){scale=innerWidth<600?.85:Math.min(1,innerWidth/1150);camera(true);}
+let viewportWorldW=0,viewportWorldH=0;
+function camera(force=false,dt=.016){const vw=viewportWorldW||$('viewport').clientWidth/scale,vh=viewportWorldH||$('viewport').clientHeight/scale;const x=clamp(view.x-vw*.5,Math.min(0,(W-vw)/2),Math.max(0,W-vw)),y=clamp(view.y-vh*.53,Math.min(0,(H-vh)/2),Math.max(0,H-vh)),f=force?1:1-Math.exp(-10.5*dt);cam.x+=(x-cam.x)*f;cam.y+=(y-cam.y)*f;if(Math.abs(x-cam.x)<.05)cam.x=x;if(Math.abs(y-cam.y)<.05)cam.y=y;const bump=motionReduced?0:cameraKick;const px=-cam.x*scale+Math.sin(clock*73)*bump,py=-cam.y*scale+Math.cos(clock*83)*bump*.55;cameraKick*=Math.exp(-20*dt);if(cameraKick<.05)cameraKick=0;$('world').style.transform=`translate3d(${px.toFixed(2)}px,${py.toFixed(2)}px,0) scale(${scale})`;}
+function resize(){scale=innerWidth<600?.85:Math.min(1,innerWidth/1150);viewportWorldW=$('viewport').clientWidth/scale;viewportWorldH=$('viewport').clientHeight/scale;camera(true);}
 function screenToWorld(x,y){const r=$('viewport').getBoundingClientRect();return {x:(x-r.left)/scale+cam.x,y:(y-r.top)/scale+cam.y};}
 function sprite(el,col,row,rows=3,mirror=false){
  el.style.backgroundPosition=`${col*100/3}% ${row*100/(rows-1)}%`;
@@ -226,11 +232,18 @@ function applyHeading(el,dx,dy,fallbackRow=0,fallbackMirror=false){
 }
 
 function motionSprite(art,frame,state,row,mirror=false){
- const stateIndex=state==='walk'?1:state==='attack'?2:0,r=stateIndex*3+row,twin=art.parentElement?.querySelector('.sprite-b');
+ const stateIndex=state==='walk'?1:state==='attack'?2:0,r=stateIndex*3+row;
+ const key=stateIndex+'|'+r+'|'+frame+'|'+(mirror?1:0);
+ // A 12-frame sheet only changes 7-18 times a second: avoid rewriting its
+ // background position, opacity and size on every 60 Hz animation callback.
+ if(art._motionFrameKey===key)return;
+ art._motionFrameKey=key;
+ const twin=art.parentElement?.querySelector('.sprite-b');
  art.style.backgroundSize='1200% 900%';art.style.backgroundPosition=`${frame*100/11}% ${r*100/8}%`;art.style.setProperty('--flip',mirror?-1:1);art.style.opacity='1';
  if(twin){twin.style.opacity='0';twin.style.backgroundSize='1200% 900%';}
 }
 function blendSprite(art,a,b,mix,row,rows=3,mirror=false){
+ art._motionFrameKey=null;
  const twin=art.parentElement?.querySelector('.sprite-b');
  if(!twin){sprite(art,mix<.5?a:b,row,rows,mirror);return;}
  art.style.backgroundSize='400% 300%';twin.style.backgroundSize='400% 300%';
@@ -243,8 +256,12 @@ function productionSpriteEnabled(el){return EXPERIMENTAL_RANK_ART&&el?.dataset?.
 function productionSpriteRow(dx=0,dy=1){if(Math.abs(dx)>.45||Math.abs(dx)>Math.abs(dy))return dx<0?1:2;return dy<0?3:0;}
 function productionSpriteSheet(job,rank=0){if(job==='rogue'&&Number(rank)>=4)return './assets/sprites/rogue-r4-field.webp';if(job==='rogue'&&Number(rank)>=3)return './assets/sprites/rogue-r3-field.webp';return job==='warrior'?'./assets/sprites/warrior-sheet.webp':'./assets/sprites/shadow-sheet.webp';}
 function paintProductionSprite(el,mode,time,dx=0,dy=1,progress=null){
+ const active=productionSpriteEnabled(el);
+ // Production override is disabled in live mode. Do not query/create/resize
+ // a second sprite element on every animation frame for every actor.
+ if(!active){if(el._productionSpriteActive){el.classList.remove('production-active');const old=el.querySelector('.production-sprite');if(old){old.style.display='none';old.style.transform='';}el._productionSpriteActive=false;}return;}
  let layer=el.querySelector('.production-sprite');if(!layer){layer=document.createElement('div');layer.className='production-sprite';el.append(layer);}
- const active=productionSpriteEnabled(el);el.classList.toggle('production-active',active);if(!active){layer.style.display='none';layer.style.transform='';return;}
+ if(!el._productionSpriteActive){el.classList.add('production-active');el._productionSpriteActive=true;}
  layer.style.display='block';const job=el.dataset.job,rank=Number(el.dataset.rank||0),src=productionSpriteSheet(job,rank),mirror=dx<-.18?-1:1,p=Math.max(0,Math.min(1,Number(progress??0))),phase=Math.sin(time*10),walkBob=mode==='walk'?Math.sin(time*15)*2.2:Math.sin(time*2.2)*.9;
  if(layer.dataset.spriteSrc!==src){layer.dataset.spriteSrc=src;layer.style.backgroundImage=`url('${src}?v=${BUILD}')`;layer.style.backgroundSize='contain';layer.style.backgroundPosition='center bottom';const test=new Image();test.onerror=()=>{el.classList.remove('production-active');layer.style.display='none';layer.style.backgroundImage='';};test.src=src+'?v='+BUILD;}
  let tx=0,ty=walkBob,rot=0,scale=1;
@@ -258,7 +275,16 @@ const MOTION={
  idle:{keys:[0,0],speed:.7},
  walk:{keys:[1,0,2,0],speed:7.2},
 };
+const motionRenderCache=new WeakMap();
 function motion(el,art,mode,row,mirror,time,phase=0,dx=0,dy=0){
+ // Movement and camera remain requestAnimationFrame-smooth. Expensive
+ // illustration pose/style writes run at a capped ~36Hz on mobile, far above
+ // the 14-18Hz source sprite sheet's actual new-image rate.
+ if(innerWidth<701){
+  const previous=motionRenderCache.get(el),stamp=performance.now();
+  if(previous&&stamp-previous.at<27&&previous.mode===mode&&previous.row===row&&previous.mirror===mirror&&previous.x===Math.sign(dx)&&previous.y===Math.sign(dy))return;
+  motionRenderCache.set(el,{at:stamp,mode,row,mirror,x:Math.sign(dx),y:Math.sign(dy)});
+ }
  const pose=applyHeading(el,dx,dy,row,mirror),cfg=MOTION[mode]||MOTION.idle,keys=cfg.keys;
  const pos=((time*cfg.speed+phase)%keys.length+keys.length)%keys.length,idx=Math.floor(pos),mix=pos-idx;
  if(el.dataset.motionSheet==='1'){const fps=mode==='walk'?(el.dataset.job==='warrior'?14:18):mode==='attack'?16:7,frame=Math.floor((((time*fps)+(phase*3))%12+12)%12);motionSprite(art,frame,mode,pose.row,pose.mirror);}
@@ -676,7 +702,8 @@ window.addEventListener('keydown',ev=>{if(ev.target.closest('input,textarea'))re
 for(const n of npcs)$(n.id).onclick=()=>distance(view,n)<115?talk(n.id):seekNpc(n.id);$('contextBtn').onclick=()=>nearNpc&&talk(nearNpc.id);$('attackBtn').onclick=()=>attack();$('potionBtn').onclick=()=>command({type:'potion'});$('autoBtn').onclick=()=>{path=[];npcIntent=null;skillQueue.clear();remoteSkillPending=null;const on=!auto;auto=on;state.auto=on;command({type:'auto',on});toast(on?'자동사냥 ON · 스킬 자동 시전 · 직접 스킬도 함께 사용':'자동 사냥 OFF');hud();};$('homeBtn').onclick=()=>{stopMovement();selected=null;command({type:'home'});};$('questToggle').onclick=()=>{$('quest').classList.toggle('collapsed');$('questToggle').textContent=$('quest').classList.contains('collapsed')?'+':'−';};$('questAction').onclick=()=>{if(state.rank>=PROMOTIONS.length){ascensionWindow();return;}if(ascensionGuide(state)){followAscensionQuest();return;}if(ASCENSION_CHAPTERS[state.zone]&&!state.ascensionStories?.[state.zone]?.claimed){followAscensionQuest(state.zone);return;}const oq=state.originStory||{};if(state.zone==='origin'&&oq.stage>0&&!oq.claimed){if(oq.stage===1)go(768,820);else if(oq.stage===2)go(768,1330);else if(oq.stage===3){const e=[...enemies.values()].find(e=>e.boss&&!e.named);if(e?.alive)select(e.id);else toast('수문신 재출현을 기다리는 중입니다.');}else if(oq.stage===4)bossWindowUI();else if(oq.stage===5)regionalNpcWindow('origin-scribe');return;}if(['available','ready','complete','bossReady'].includes(state.quest))seekNpc('elder');else if(state.quest==='bossActive'){const e=[...enemies.values()].find(e=>e.boss);if(e?.alive)select(e.id);else toast('왕꼬리 재출현까지 '+Math.max(0,Math.ceil((e?.respawn||0)-now()))+'초');}else go(768,720);};$('bagBtn').onclick=bagWindow;$('boostBtn').onclick=boostWindow;$('jobBtn').onclick=jobWindow;$('ascensionBtn').onclick=ascensionWindow;$('onlineBtn').onclick=onlineWindow;$('chatBtn').onclick=chatWindow;$('helpBtn').onclick=()=>modal('모험 안내','<p><b>몬스터를 터치하면 자동으로 추적해 사거리에 들어온 뒤 공격합니다.</b> 공격·스킬 버튼도 대상이 없으면 가까운 몬스터를 자동으로 찾습니다. 빈 곳 터치로 이동하고, 화면 드래그로 방향 이동합니다. PC: WASD / 방향키, Space 공격, Q 첫 스킬, 1~9 스킬, E 대화.</p><p><b>다른 지역 이동:</b> 지도·이동에서 연결된 지역을 누르면 즉시 순간이동합니다. 필드 포탈을 직접 눌러도 바로 이동합니다.</p><p><b>전투:</b> 몬스터 터치는 타겟을 고정해 현재 위치를 추적·공격합니다. 스킬은 위력에 따라 서로 다른 쿨타임과 마나를 사용합니다.</p><p><b>자동 물약:</b> 장비·가방 → 자동 물약 설정에서 HP/MP 각각 OFF·30%·50%·70%를 선택할 수 있습니다.</p><p>촌장 임무 → 다람쥐 10마리 → 왕꼬리 → 정예·던전 → Lv.100 첫 전직. 직업에 따라 공격 범위·스킬이 달라집니다.</p><p><b>3차 전직 스킬:</b> 공허의 인장 100개 · <b>4차 전직 스킬:</b> 태초의 성흔 100개 · 5차 균열의 핵 120개 · 6차 월식의 문장 150개를 모아 촌장에게 전수받습니다. 재료는 해당 고레벨 던전의 정예·지역보스·일일 레이드에서 획득합니다.</p><p>가방에서 장비를 장착하고 강화소에서 강화하세요. +6부터 실패 시 단계가 내려가며, 빛나는 강화석은 성공 시 +2입니다.</p><p>신화와 기존 초월 장비 위에 태초 등급을 추가했습니다. 천룡 드롭 확률은 0.0001%. Lv.200부터 일일 임무 보상을 모두 받으면 하루 1개의 인장을 획득하며, 60개를 모아 Lv.700부터 최종 태초 장비 제작·착용이 가능합니다.</p><p>성장은 계정에 저장됩니다. 같은 아이디의 동시 접속은 마지막 접속만 유지됩니다.</p>');$('modalClose').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal();};
 let hudAt=0;
 function frame(time){
- const dt=Math.min(.04,(time-last)/1000||.016);last=time;clock+=dt;
+ // On 30fps mobile frames do not discard half the elapsed movement time.
+ const dt=Math.min(.075,(time-last)/1000||.016);last=time;clock+=dt;
  if(connected){
   flushManualCombo();
   let dx=0,dy=0,manualMove=false;
@@ -702,7 +729,7 @@ function frame(time){
   if(attacking){const duration=Number(hero.dataset.attackDuration)||.44,started=Number(hero.dataset.attackStarted)||attackUntil-duration;attackPose(hero,heroArt,face,flip,started,duration,state.job,Number(hero.dataset.attackSkill??-1),Number(hero.dataset.attackVariant||0),headingX,headingY);}
   else motion(hero,heroArt,steps.walking?'walk':'idle',face,flip,steps.walking?walkClock:clock,0,headingX,headingY);
   placeEntity(hero,view.x,view.y);hero.style.zIndex=Math.round(view.y);hero.classList.toggle('attacking',attacking);hero.classList.toggle('guarded',(state.guard||0)>now());
-  const perfNow=performance.now()/1000,vw=$('viewport').clientWidth/scale,vh=$('viewport').clientHeight/scale,pad=innerWidth<700?180:260,left=cam.x-pad,right=cam.x+vw+pad,top=cam.y-pad,bottom=cam.y+vh+pad;
+  const perfNow=performance.now()/1000,vw=viewportWorldW||$('viewport').clientWidth/scale,vh=viewportWorldH||$('viewport').clientHeight/scale,pad=innerWidth<700?180:260,left=cam.x-pad,right=cam.x+vw+pad,top=cam.y-pad,bottom=cam.y+vh+pad;
   for(const e of enemies.values()){
    const age=Math.min(.12,Math.max(0,perfNow-(e.sampleAt||perfNow))),tx=e.x+(e.netVx||0)*age,ty=e.y+(e.netVy||0)*age,onScreen=tx>=left&&tx<=right&&ty>=top&&ty<=bottom;
    if(!onScreen){e.vx=tx;e.vy=ty;if(e.renderVisible!==false){e.el.style.visibility='hidden';e.renderVisible=false;}continue;}
