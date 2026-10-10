@@ -1,0 +1,70 @@
+/* iOS Safari / Kakao in-app browser: mobile fixed viewport + safe HUD fit.
+   No change to game-world coordinates, character animation, server input or
+   nine-skill actions. This override must load LAST after visual-phase2. */
+html,body{
+ margin:0!important;
+ width:100%;max-width:100%;height:100%;
+ overflow:hidden!important;
+ overscroll-behavior:none;
+ -webkit-text-size-adjust:100%;
+ text-size-adjust:100%;
+}
+#game{
+ position:fixed!important;inset:0!important;
+ width:100%!important;min-width:0!important;max-width:100%!important;
+ height:100dvh!important;max-height:100dvh!important;
+ overflow:hidden!important;overscroll-behavior:none;
+}
+#viewport{inset:0;touch-action:none;overscroll-behavior:none}
+@media(max-width:900px){
+ #game>header{
+  left:0!important;right:0!important;top:0!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  display:flex!important;flex-wrap:nowrap!important;
+  justify-content:space-between!important;gap:6px!important;
+  box-sizing:border-box;
+ }
+ #game>header>.profile{
+  flex:1 1 0!important;min-width:0!important;
+  max-width:calc(67% - 3px)!important;
+  overflow:hidden;
+ }
+ #game>header>.profile .portrait{flex-shrink:0}
+ #game>header>.profile .stats{
+  flex:1 1 auto!important;min-width:0!important;
+  width:auto!important;max-width:100%!important;overflow:hidden;
+ }
+ #game>header>.profile #playerName,
+ #game>header>.profile #level{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+ #game>header>.zone{
+  flex:0 1 33%!important;width:33%!important;
+  min-width:0!important;max-width:33%!important;
+  overflow:hidden;
+ }
+ #game>header>.zone #gold{
+  font-size:clamp(10px,3vw,13px)!important;
+  max-width:100%;overflow:hidden;white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+ }
+ #skillbar{
+  left:auto!important;
+  right:max(6px,env(safe-area-inset-right,0px))!important;
+  width:min(365px,calc(100% - 12px))!important;
+  max-width:calc(100% - 12px)!important;
+  min-width:0!important;
+ }
+ #skillbar button{min-width:0!important}
+ #fieldShortcuts{max-width:calc(100% - 12px)}
+ #utilityNav{max-width:calc(100% - 16px)!important}
+ #minimapWrap,#onlineBtn{max-width:calc(100% - 14px)}
+ /* iPhone focuses inputs smaller than 16px by zooming the entire page.
+    Do not alter checkbox size or canvas world scale. */
+ input:not([type="checkbox"]),textarea,select{
+  font-size:16px!important;
+  -webkit-text-size-adjust:100%;
+ }
+}
+@media(max-width:380px){
+ #game>header>.profile{max-width:calc(65% - 3px)!important}
+ #game>header>.zone{flex-basis:35%!important;width:35%!important;max-width:35%!important}
+}
