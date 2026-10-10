@@ -1,0 +1,29 @@
+/* iOS field readability and frame-stability pass.
+   Keep all original terrain/NPC/monster illustrations and server movement. */
+@media(max-width:900px){
+  /* Existing two multiply-blended, near-black overlays hide the forest scene
+     and enlarge the amount of background work on Safari composited layers. */
+  #world[data-zone="grove"]{
+    background-image:
+      linear-gradient(180deg,rgba(24,75,52,.24),rgba(13,53,37,.38)),
+      url('./assets/world.png')!important;
+    background-size:100% 2048px,100% 1024px!important;
+    background-position:center top,center top!important;
+    background-repeat:no-repeat,repeat-y!important;
+    background-blend-mode:normal,normal!important;
+    background-color:#376d47!important;
+  }
+  #world[data-zone="grove"]::before{
+    background-color:rgba(12,43,27,.10)!important;
+    animation:none!important;
+  }
+  #world[data-zone="grove"]::after{
+    background:radial-gradient(ellipse at 50% 52%,transparent 55%,rgba(8,31,24,.20))!important;
+    animation:none!important;
+  }
+  #world[data-zone="grove"] .region-terrain{opacity:.38!important}
+  /* Heavy decorative pulses are optional; gameplay attack/skill effects remain intact. */
+  #world[data-zone="grove"] .zone-decor{
+    animation:none!important;
+  }
+}
