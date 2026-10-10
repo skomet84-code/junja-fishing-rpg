@@ -1,0 +1,23 @@
+/* Restore dedicated NPC portrait atlas instead of reusing playable
+   healer/rogue characters. Keep the original saved NPC identities unchanged. */
+#game .npc{
+  width:80px;
+  height:105px;
+  filter:none;
+}
+#game .npc .npc-art,
+#game .npc#merchant .npc-art{
+  background-image:url('./assets/npcs.png')!important;
+  background-size:200% 100%!important;
+  background-repeat:no-repeat!important;
+  background-position:0% 0%!important;
+  filter:none!important;
+  animation:none!important;
+  image-rendering:auto!important;
+}
+#game .npc#merchant .npc-art{background-position:100% 0%!important}
+@media(max-width:900px){
+  #game .npc{width:78px;height:103px}
+}
+/* Avoid expensive static-NPC effects during field movement. */
+#game .npc::after{display:none}
