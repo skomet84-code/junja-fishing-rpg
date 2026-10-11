@@ -54,12 +54,15 @@ try{
    console.log('WEBKIT_GAME_PROBE '+JSON.stringify({label,...values}));
    return values;
   }
+  const counts=await page.evaluate(()=>({enemies:window.__adventure?.snapshot?.().enemies?.length,peers:window.__adventure?.snapshot?.().peers?.length,worldNodes:document.querySelectorAll('#world *').length,allNodes:document.querySelectorAll('*').length,hidden:document.hidden}));
+  console.log('WEBKIT_GAME_DOM '+JSON.stringify(counts));
   await probe('original-game');
+  const display=await page.addStyleTag({content:'#world{display:none!important}'});
+  await probe('world-display-none');
+  await display.evaluate(el=>el.remove());
   const low=await page.addStyleTag({content:'#world *,#effects *,#game .entity,#game .entity *{animation:none!important;transition:none!important;filter:none!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}'});
   await probe('effects-disabled');
-  const hidden=await page.addStyleTag({content:'#world{visibility:hidden!important}'});
-  await probe('world-hidden');
-  await hidden.evaluate(el=>el.remove());await low.evaluate(el=>el.remove());
+  await low.evaluate(el=>el.remove());
  }
 
  const stream=page.evaluate(()=>new Promise(resolve=>{
@@ -81,6 +84,13 @@ try{
  await sleep(250);
  console.log('MOTION_FRAME_DIAGNOSTIC '+JSON.stringify({frames:entries.length,span:entries.length?entries.at(-1).t-entries[0].t:0,xStart:entries[0]?.x,xEnd:entries.at(-1)?.x,walkFrames:entries.filter(x=>x.motion==='walk').length}));
  console.log('MOTION_TRANSFORM_DIAGNOSTIC '+await page.locator('#hero').evaluate(el=>el.style.transform));
+ if(process.env.BROWSER_ENGINE==='webkit'&&entries.length<14){
+  // Distinguish slow static WebKit compositing from runaway client frame work.
+  await page.evaluate(()=>{const native=requestAnimationFrame.bind(window);window.requestAnimationFrame=fn=>fn?.name==='frame'?0:native(fn);});
+  await sleep(1500);
+  const paused=await page.evaluate(()=>new Promise(resolve=>{let c=0,active=true;function spin(){if(!active)return;c++;requestAnimationFrame(spin);}requestAnimationFrame(spin);setTimeout(()=>{active=false;resolve({frames:c,hidden:document.hidden});},1250);}));
+  console.log('WEBKIT_FRAME_PAUSED_PROBE '+JSON.stringify(paused));
+ }
  assert.ok(entries.length>=14,'animation frames failed to render regularly: '+entries.length);
  const xs=entries.map(x=>x.x),travel=Math.max(...xs)-Math.min(...xs);
  const framesWalking=entries.filter(x=>x.motion==='walk').length;
