@@ -33,14 +33,14 @@ export function createSafariMobPainter(viewport){
   if(lastSize!==size){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);lastSize=size;}
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);painted=0;
   for(const e of enemies.values()){
-   if(e.boss||!e.alive)continue;
+   if(!e.alive)continue;
    const age=Math.min(.12,Math.max(0,nowSeconds-(e.sampleAt||nowSeconds)));
    const tx=e.x+(e.netVx||0)*age,ty=e.y+(e.netVy||0)*age;
    const previousX=Number.isFinite(e.canvasX)?e.canvasX:tx,previousY=Number.isFinite(e.canvasY)?e.canvasY:ty;
    const distance=Math.hypot(tx-previousX,ty-previousY),mix=distance>170?1:1-Math.exp(-17*dt);
    e.canvasX=previousX+(tx-previousX)*mix;e.canvasY=previousY+(ty-previousY)*mix;
    const x=(e.canvasX-cam.x)*scale,y=(e.canvasY-cam.y)*scale;
-   const sw=(e.mmo?125:80)*scale,sh=(e.mmo?84:78)*scale;
+   const sw=(e.boss?(e.mmo?190:115):e.mmo?125:80)*scale,sh=(e.boss?(e.mmo?128:108):e.mmo?84:78)*scale;
    if(x+sw<-30||x-sw>w+30||y+sh<0||y-sh>h)continue;
    const asset=imageFor(sourceOf(e));
    if(!asset.ready||!asset.image.naturalWidth)continue;
