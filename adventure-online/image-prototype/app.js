@@ -805,7 +805,9 @@ const mobileFrames=typeof matchMedia==='function'&&matchMedia('(hover:none) and 
 // WebKit on touch devices repaints transformed illustrated mobs significantly
 // more expensively than Chromium. Stagger remote-only DOM paint work; keep
 // player movement, hit logic, and camera full refresh-rate.
+let webkitActorCursor=0;
 const mobileWebKit=mobileFrames&&/AppleWebKit/i.test(navigator.userAgent)&&!/(Chrome|CriOS|Edg|FxiOS|OPR)/i.test(navigator.userAgent);
+if(mobileWebKit)$('game').classList.add('webkit-actor-lite');
 
 const perfDiagnostics=new URL(location.href).searchParams.get('perf')==='1';
 let perfFrames=0,perfElapsed=0,perfStalls=0,perfSlowWindows=0,perfRecoveryWindows=0,perfFps=0,perfPeakSnapshotMs=0,perfLatestSnapshotMs=0;
@@ -880,20 +882,23 @@ function frame(time){
   // style recalculations in crowded late-game zones without hiding art.
   const actorInterval=innerWidth<701?(mobileWebKit?.018:state.zone==='surface'?.032:($('game').classList.contains('mobile-lite')||perfFps>0&&perfFps<40)?.041:.034):0;
   if(!__frameDebug?.skipActors&&(!actorInterval||clock-actorRenderAt>=actorInterval)){
-   // Bound how many expensive ordinary enemy DOM layers WebKit mutates in
-   // one display frame. Pick the earliest due monsters; no mob is starved.
-   let ordinaryMobPaints=0;
+   // A bounded rotating queue prevents one mobile frame from repainting
+   // 29 ordinary enemy layers. Every visible mob gets a turn, including
+   // those later in the encounter list.
+   let mobilePaintTargets=null;
+   if(mobileWebKit){
+    const visible=[...enemies.values()].filter(e=>!e.boss&&e.alive&&e.x>=left-70&&e.x<=right+70&&e.y>=top-90&&e.y<=bottom+90);
+    mobilePaintTargets=new Set();
+    if(visible.length){for(let n=0;n<Math.min(2,visible.length);n++)mobilePaintTargets.add(visible[(webkitActorCursor+n)%visible.length]);webkitActorCursor=(webkitActorCursor+2)%visible.length;}
+    else webkitActorCursor=0;
+   }
    const actorDt=Math.min(.2,actorRenderAt?clock-actorRenderAt:dt);actorRenderAt=clock;
   for(const e of enemies.values()){
    const age=Math.min(.12,Math.max(0,perfNow-(e.sampleAt||perfNow))),tx=e.x+(e.netVx||0)*age,ty=e.y+(e.netVy||0)*age,onScreen=tx>=left&&tx<=right&&ty>=top&&ty<=bottom;
    if((__frameDebug?.skipBosses&&e.boss)||(__frameDebug?.skipNonBosses&&!e.boss))continue;
    if(!onScreen){e.vx=tx;e.vy=ty;if(e.renderVisible!==false){e.el.style.visibility='hidden';e.renderVisible=false;}continue;}
    if(e.renderVisible===false){e.el.style.visibility='';e.renderVisible=true;}
-   if(mobileWebKit&&!e.boss){
-    if(ordinaryMobPaints>=2||clock<(e.nextMobilePaintAt||0))continue;
-    ordinaryMobPaints++;
-    e.nextMobilePaintAt=clock+.06;
-   }
+   if(mobilePaintTargets&&!e.boss&&!mobilePaintTargets.has(e))continue;
    const pos=smoothRemotePosition({x:e.vx,y:e.vy},{x:tx,y:ty},actorDt,170,19);e.vx=pos.x;e.vy=pos.y;if(!__frameDebug?.skipActorMoves)placeEntity(e.el,e.vx,e.vy);const depth=Math.round(e.vy);if(e.renderDepth!==depth){e.el.style.zIndex=depth;e.renderDepth=depth;}
    if(!e.illustrated){if(__frameDebug?.skipActorSprites)continue;const col=e.tellAt?3:1+Math.floor(clock*8)%2,row=e.mmo?({stoneking:0,shadowking:1,dragon:2}[e.named]??e.skin??3):(e.boss?1:0),rows=e.mmo?4:2,key=col+'|'+row+'|'+rows;
    if(e.renderSpriteKey!==key){sprite(e.art,col,row,rows);e.renderSpriteKey=key;}}
