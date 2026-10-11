@@ -10,7 +10,7 @@ export function predictServerPosition(state,velocity,ageSeconds,moving){
 // While steering locally, preserve immediate input and only reconcile severe divergence.
 // Tap navigation and auto hunt ease toward extrapolated snapshots without hard stepping.
 export function reconcileVisualPosition(view,target,dt,localSteering=false){
- const seconds=clamp(Number(dt)||0,0,.05);
+ const seconds=clamp(Number(dt)||0,0,.2);
  const x=target.x-view.x,y=target.y-view.y,d=Math.hypot(x,y);
  if(!Number.isFinite(d)||!seconds||d<.35)return{x:view.x,y:view.y};
  if(d>320)return{x:target.x,y:target.y}; // genuine warp/respawn; caller handles zone changes
@@ -26,7 +26,7 @@ export function reconcileVisualPosition(view,target,dt,localSteering=false){
 // Walking uses real world-distance rather than an unrelated frame-based timer.
 // No steps are generated if blocked by an obstacle or stopped in combat.
 export function advanceFootsteps(previous,current,dt,walkTime,speed=0){
- const seconds=clamp(Number(dt)||0,0,.05),distance=Math.hypot(current.x-previous.x,current.y-previous.y);
+ const seconds=clamp(Number(dt)||0,0,.2),distance=Math.hypot(current.x-previous.x,current.y-previous.y);
  const valid=seconds>0&&distance<=WALK_SPEED*seconds+12;
  const actual=valid?Math.min(WALK_SPEED,distance/Math.max(.001,seconds)):0;
  const blended=speed+(actual-speed)*(1-Math.exp(-22*seconds));
@@ -48,4 +48,20 @@ export function estimateNetworkVelocity(previous,next,serverDt,previousVelocity=
  const vx=dx/dt,vy=dy/dt,speed=Math.hypot(vx,vy),max=Math.max(1,Number(limit)||WALK_SPEED);
  const ratio=speed>max?max/speed:1;
  return{x:oldX*.28+vx*ratio*.72,y:oldY*.28+vy*ratio*.72};
+}
+
+// A long iOS frame must not lose its movement budget. Keep each collision
+// probe small so catch-up motion cannot cut across narrow path edges.
+export function advanceLocalMovement(view,input,elapsed,canWalk,speed=WALK_SPEED){
+ const seconds=clamp(Number(elapsed)||0,0,.2),dx=Number(input?.x)||0,dy=Number(input?.y)||0;
+ const length=Math.hypot(dx,dy);if(!seconds||length<.001)return{x:view.x,y:view.y};
+ const steps=Math.max(1,Math.ceil(seconds/.025)),distancePerStep=speed*seconds/steps;
+ const stepX=dx/length*distancePerStep,stepY=dy/length*distancePerStep;
+ let x=view.x,y=view.y;
+ for(let i=0;i<steps;i++){
+  const nx=x+stepX,ny=y+stepY;
+  if(canWalk(nx,y))x=nx;
+  if(canWalk(x,ny))y=ny;
+ }
+ return{x,y};
 }
