@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {WALK_SPEED,predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement,smoothRemotePosition,shouldSendMovement} from '../movement-feel.js';
+import {WALK_SPEED,predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement,smoothRemotePosition,shouldSendMovement,tapDestination,movementHeading} from '../movement-feel.js';
 
 test('server extrapolation uses a bounded time horizon and never grants extra movement speed',()=>{
  const state={x:100,y:200};
@@ -120,4 +120,17 @@ test('joystick direction changes send only after minimum safe interval',()=>{
  assert.equal(shouldSendMovement(prev,{x:0,y:1,manual:true},5.04),false);
  assert.equal(shouldSendMovement(prev,{x:0,y:1,manual:true},5.13),true);
  assert.equal(shouldSendMovement(prev,{x:1,y:0,manual:true},5.25),true);
+});
+
+test('tap and small swipe navigate to the release point without virtual joystick',()=>{
+ assert.deepEqual(tapDestination({x:220,y:340}),{x:220,y:340});
+ assert.deepEqual(tapDestination({x:415,y:355}),{x:415,y:355});
+ assert.equal(tapDestination({x:220,y:340},true),null,'cancelled gesture must not navigate');
+ assert.equal(tapDestination({x:NaN,y:340}),null);
+});
+test('network-guided walking faces measured displacement rather than a stale heading',()=>{
+ assert.deepEqual(movementHeading({x:110,y:180},{x:110,y:184}),{x:0,y:1});
+ assert.deepEqual(movementHeading({x:110,y:180},{x:107,y:180}),{x:-1,y:0});
+ assert.equal(movementHeading({x:110,y:180},{x:110.1,y:180.1}),null,'jitter does not turn an idle character');
+ assert.equal(movementHeading({x:110,y:180},{x:Infinity,y:200}),null);
 });
