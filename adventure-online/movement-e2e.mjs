@@ -57,8 +57,8 @@ try{
   const counts=await page.evaluate(()=>({enemies:window.__adventure?.snapshot?.().enemies?.length,worldNodes:document.querySelectorAll('#world *').length}));
   console.log('WEBKIT_GAME_DOM '+JSON.stringify(counts));
   await probe('original-game');
-  for(const k of ['skipHero','skipActors','skipUI','skipAll']){
-   await page.evaluate(key=>{window.__frameDebug.skipHero=false;window.__frameDebug.skipActors=false;window.__frameDebug.skipUI=false;window.__frameDebug.skipAll=false;window.__frameDebug[key]=true;},k);
+  for(const k of ['skipActorMoves','skipActorSprites','skipBosses','skipNonBosses','skipHero','skipActors','skipUI','skipAll']){
+   await page.evaluate(key=>{for(const key of Object.keys(window.__frameDebug))window.__frameDebug[key]=false;window.__frameDebug[key]=true;},k);
    await probe(k);
   }
   await page.evaluate(()=>{for(const key of Object.keys(window.__frameDebug))window.__frameDebug[key]=false;});
