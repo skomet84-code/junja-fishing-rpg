@@ -1,0 +1,89 @@
+{
+  "version": "2026-10-12-art-lab-alpha",
+  "status": "preview-only",
+  "mergeToProduction": false,
+  "liveServerChanges": false,
+  "viewportReference": [
+    390,
+    844
+  ],
+  "style": "Unified Korean fantasy SD 2D quarter view, top-left warm diffuse lighting",
+  "assetSpecs": [
+    {
+      "id": "hero-warrior",
+      "size": [
+        64,
+        73
+      ],
+      "anchor": [
+        0.5,
+        1
+      ],
+      "requiredStates": [
+        "idle",
+        "walk",
+        "attack",
+        "skill"
+      ]
+    },
+    {
+      "id": "forest-boar",
+      "size": [
+        71,
+        62
+      ],
+      "anchor": [
+        0.5,
+        1
+      ],
+      "requiredStates": [
+        "idle",
+        "walk",
+        "hit",
+        "death"
+      ]
+    },
+    {
+      "id": "stone-golem",
+      "size": [
+        86,
+        83
+      ],
+      "anchor": [
+        0.5,
+        1
+      ],
+      "requiredStates": [
+        "idle",
+        "walk",
+        "hit",
+        "death"
+      ]
+    },
+    {
+      "id": "shadow-slime",
+      "size": [
+        72,
+        75
+      ],
+      "anchor": [
+        0.5,
+        1
+      ],
+      "requiredStates": [
+        "idle",
+        "walk",
+        "hit",
+        "death"
+      ]
+    }
+  ],
+  "acceptance": [
+    "PNG transparent edges with no black square",
+    "Profile and field artwork consistent",
+    "Correct layer/z-order at real in-game size",
+    "iPhone Safari and Kakao browser verified",
+    "No player data, class skills or movement logic regression"
+  ],
+  "note": "Source PNG and standalone HTML supplied separately as a downloadable artifact, not yet present in this branch."
+}
