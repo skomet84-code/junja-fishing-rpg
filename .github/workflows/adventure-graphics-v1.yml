@@ -1,0 +1,38 @@
+name: Adventure in-game art integration
+on:
+  push:
+    branches: [feat/adventure-v1-in-game-sprites-20261012]
+  pull_request:
+    branches: [railway-recovery]
+permissions:
+  contents: read
+jobs:
+  graphics-and-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript and art mapping regression
+        run: |
+          node --check adventure-online/image-prototype/app.js
+          node --check adventure-online/image-prototype/graphics-v1.js
+          node --test adventure-online/image-prototype/tests/graphics-v1.test.mjs adventure-online/image-prototype/tests/movement-feel.test.mjs adventure-online/image-prototype/tests/performance-budget.test.mjs
+      - name: Install mobile browser
+        run: |
+          npm install --no-save playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Verify PNG art actually paints in desktop and touch browser
+        run: |
+          python3 -m http.server 4173 >/tmp/junja-art.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for i in {1..25}; do
+            if curl -fsS http://127.0.0.1:4173/adventure-online/image-prototype/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node adventure-online/image-prototype/tests/graphics-v1-browser.mjs
+      - name: Existing live mobile movement regression
+        run: node adventure-online/movement-e2e.mjs
