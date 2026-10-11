@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {WALK_SPEED,predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity} from '../movement-feel.js';
+import {WALK_SPEED,predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement} from '../movement-feel.js';
 
 test('server extrapolation uses a bounded time horizon and never grants extra movement speed',()=>{
  const state={x:100,y:200};
@@ -68,4 +68,19 @@ test('distant zone warp does not get interpreted as high-speed walking',()=>{
 test('subpixel client quantization does not joggle standing hero',()=>{
  const origin={x:500.2,y:320.4};
  assert.deepEqual(reconcileVisualPosition(origin,{x:500.4,y:320.5},1/60),origin);
+});
+
+test('slower 10 fps render frames preserve the full walking distance',()=>{
+ const moved=advanceLocalMovement({x:500,y:500},{x:1,y:0},.12,()=>true);
+ assert.ok(Math.abs(moved.x-530)<.001,'120 ms must advance 30 px, not a clipped 75 ms');
+ const gait=advanceFootsteps({x:500,y:500},moved,.12,0);
+ assert.equal(gait.walking,true);
+ assert.ok(gait.time>.11);
+});
+test('lag recovery respects collision and slides along obstacles',()=>{
+ const canWalk=(x,y)=>x<=510&&y>=400&&y<=600;
+ const result=advanceLocalMovement({x:500,y:500},{x:1,y:1},.16,canWalk);
+ assert.ok(result.x<=510,'horizontal position must not tunnel through a wall');
+ assert.ok(result.y>500,'unblocked vertical axis can still move');
+ assert.deepEqual(advanceLocalMovement(result,{x:0,y:0},.16,canWalk),result);
 });
