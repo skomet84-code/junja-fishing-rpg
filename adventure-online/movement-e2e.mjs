@@ -43,6 +43,24 @@ try{
  await page.waitForFunction(()=>window.__adventure?.snapshot()?.connected===true,{timeout:25000});
  await page.locator('#loading').waitFor({state:'hidden',timeout:12000});
  await page.locator('#viewport').focus();
+ if(process.env.BROWSER_ENGINE==='webkit'){
+  async function probe(label){
+   const values=await page.evaluate(()=>new Promise(resolve=>{
+    let count=0,active=true;const t=performance.now();
+    const next=()=>{if(!active)return;count++;requestAnimationFrame(next);};
+    requestAnimationFrame(next);
+    setTimeout(()=>{active=false;resolve({frames:count,elapsed:Math.round(performance.now()-t),hidden:document.hidden,visible:document.visibilityState});},1250);
+   }));
+   console.log('WEBKIT_GAME_PROBE '+JSON.stringify({label,...values}));
+   return values;
+  }
+  await probe('original-game');
+  const low=await page.addStyleTag({content:'#world *,#effects *,#game .entity,#game .entity *{animation:none!important;transition:none!important;filter:none!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}'});
+  await probe('effects-disabled');
+  const hidden=await page.addStyleTag({content:'#world{visibility:hidden!important}'});
+  await probe('world-hidden');
+  await hidden.evaluate(el=>el.remove());await low.evaluate(el=>el.remove());
+ }
 
  const stream=page.evaluate(()=>new Promise(resolve=>{
   const entries=[],start=performance.now();
