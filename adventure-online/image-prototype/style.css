@@ -1680,3 +1680,10 @@ button.region-node.current:disabled{opacity:1;background:#384632;border-color:#f
  .entity.hero[data-motion='idle']>.gear-layers,
  .entity.hero[data-motion='idle']>.weapon-rig {transition:none!important;}
 }
+
+/* WebKit mobile monster layer budget */
+/* 29 promoted transformed layers with CSS filters can starve Safari's rAF.
+   Keep the sprites and nameplates, but remove the speculative compositing
+   layers and expensive filters on ordinary (not boss) enemy art only. */
+#game.webkit-actor-lite .entity.enemy:not(.boss){will-change:auto!important;backface-visibility:visible!important;-webkit-backface-visibility:visible!important}
+#game.webkit-actor-lite .entity.enemy:not(.boss)>.sprite{will-change:auto!important;filter:none!important;backface-visibility:visible!important;-webkit-backface-visibility:visible!important}
