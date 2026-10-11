@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {WALK_SPEED,predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement} from '../movement-feel.js';
+import {WALK_SPEED,predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement,smoothRemotePosition} from '../movement-feel.js';
 
 test('server extrapolation uses a bounded time horizon and never grants extra movement speed',()=>{
  const state={x:100,y:200};
@@ -83,4 +83,19 @@ test('lag recovery respects collision and slides along obstacles',()=>{
  assert.ok(result.x<=510,'horizontal position must not tunnel through a wall');
  assert.ok(result.y>500,'unblocked vertical axis can still move');
  assert.deepEqual(advanceLocalMovement(result,{x:0,y:0},.16,canWalk),result);
+});
+
+test('remote enemies and peers snap on respawn or far position correction',()=>{
+ const old={x:160,y:300};
+ assert.deepEqual(smoothRemotePosition(old,{x:650,y:840},1/30),{x:650,y:840});
+ assert.deepEqual(smoothRemotePosition(old,{x:160.1,y:300},1/30),{x:160.1,y:300});
+ const near=smoothRemotePosition(old,{x:220,y:300},1/30);
+ assert.ok(near.x>160&&near.x<220,'ordinary motion must still interpolate');
+ const later=smoothRemotePosition(near,{x:220,y:300},1/30);
+ assert.ok(later.x>near.x,'remote animation should advance toward the new sample');
+});
+test('remote interpolation ignores malformed network targets rather than poisoning transforms',()=>{
+ const stable={x:12,y:34};
+ assert.deepEqual(smoothRemotePosition(stable,{x:Infinity,y:3},.1),stable);
+ assert.deepEqual(smoothRemotePosition(stable,{x:60,y:40},0),stable);
 });

@@ -18,3 +18,17 @@ test('optional one-touch performance diagnostics are available without clutterin
  assert.match(app,/searchParams\.get\('perf'\)==='1'/);
  assert.match(app,/performance:\(\)=>\(\{fps:perfFps/);
 });
+
+test('painted monster families default to one-time rasterization with low FPS escape hatch',()=>{
+ assert.match(app,/monsterArtSetting==='legacy'\?'legacy':monsterArtSetting==='svg'\?'svg':'raster'/);
+ assert.match(app,/const simplifyMonsterArt=/);
+ assert.match(app,/monsterArtMode==='raster'&&\$\('game'\)\.classList\.contains\('mobile-lite'\)/);
+ assert.match(app,/MONSTER_FAMILIES\.map\(rasterizeMonsterArt\)/);
+ assert.match(app,/const artwork=simplifyMonsterArt\(\)\?null:monsterIllustration\(e\.name\)/);
+});
+test('remote character repaints cap mobile cadence without sacrificing hero camera frequency',()=>{
+ assert.match(app,/smoothRemotePosition\(\{x:e\.vx,y:e\.vy\}/);
+ assert.match(app,/smoothRemotePosition\(\{x:p\.vx,y:p\.vy\}/);
+ assert.match(app,/placeEntity\(hero,view\.x,view\.y\)/);
+ assert.match(app,/camera\(false,dt\)/);
+});

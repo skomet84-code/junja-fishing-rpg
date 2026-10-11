@@ -5,7 +5,7 @@ import {BOOSTS,WEAPON_FAMILIES,MATERIALS,RECIPES,ENDGAME_TIERS,ZONES,TRAVEL_PORT
 import {API_URL} from './config.js';
 import {createCombatQueue} from './combat-queue.js?v=20261009-primordial-motion1';
 import {monsterIllustration} from './monster-art.js?v=20261010-monster1';
-import {predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement} from './movement-feel.js?v=20261011-motion3';
+import {predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement,smoothRemotePosition} from './movement-feel.js?v=20261011-motion4';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 const endgameStyle=document.createElement('style');endgameStyle.textContent="#world[data-zone=void]:after{background:radial-gradient(ellipse at 50% 70%,transparent 22%,#160b2670 72%,#06030bcc 100%)!important}#world[data-zone=origin]:after{background:radial-gradient(ellipse at 50% 70%,transparent 25%,#473a1360 72%,#100c04bb 100%)!important}";document.head.append(endgameStyle);
@@ -175,7 +175,10 @@ const motionArt=new Set(),characterArt=['hero','rogue','mage','healer'];
 // Render each of the four new name-matched SVG families into one shared bitmap
 // at load time; preserve the original art rather than reverting the monster types.
 const monsterArtSetting=new URL(location.href).searchParams.get('monsterArt');
-const monsterArtMode=monsterArtSetting==='raster'?'raster':monsterArtSetting==='svg'?'svg':'legacy';
+// Painted monster families are pre-rasterized on startup to avoid WebKit
+// repeatedly decoding SVG backgrounds as moving monsters transform.
+const monsterArtMode=monsterArtSetting==='legacy'?'legacy':monsterArtSetting==='svg'?'svg':'raster';
+const simplifyMonsterArt=()=>monsterArtMode==='legacy'||(monsterArtMode==='raster'&&$('game').classList.contains('mobile-lite'));
 const monsterRasterArt=new Map();
 const MONSTER_FAMILIES=['mushroom','boar','wolf','treant'];
 function rasterizeMonsterArt(family){
@@ -350,6 +353,12 @@ function motion(el,art,mode,row,mirror,time,phase=0,dx=0,dy=0){
  el.style.setProperty('--attack-power','0');el.style.setProperty('--arm-angle','0deg');el.style.setProperty('--trail-angle','0deg');el.style.setProperty('--trail-scale','.76');el.style.setProperty('--lunge-x','0px');el.style.setProperty('--lunge-y','0px');el.style.setProperty('--coat-sway',(stride*5.5*coatScale)+'deg');el.style.setProperty('--cape-lag',(stride*-3.2*(heavy?.5:agile?1.35:1))+'deg');el.style.setProperty('--shoulder-lift',(foot*(heavy?.75:agile?1.6:1.2))+'px');el.style.setProperty('--offhand-angle',(stride*(agile?9:4))+'deg');paintProductionSprite(el,mode,time,pose.nx,pose.ny,null);
 }
 function attackPose(el,art,row,mirror,started,duration=.44,job='warrior',skill=-1,variant=0,dx=0,dy=0){
+  // Render attack poses at 30 Hz on touch devices, while authoritative
+  // damage, skill timing and visual effects retain their original timing.
+  if(innerWidth<701){const stamp=performance.now(),key=started+'|'+skill+'|'+variant+'|'+row+'|'+mirror;const prev=el._attackPoseStamp;
+   if(prev&&prev.key===key&&stamp-prev.at<30)return;
+   el._attackPoseStamp={at:stamp,key};
+  }
  const pose=applyHeading(el,dx,dy,row,mirror),p=Math.max(0,Math.min(1,(clock-started)/duration));
  const warrior=job==='warrior';
  if(warrior){el.dataset.warriorPhase=p<.24?'windup':p<.64?'strike':'recover';el.dataset.warriorSkill=String(skill);}
@@ -427,7 +436,7 @@ function updateSnapshot(data){
   if(wasKnown&&previousAt){const v=estimateNetworkVelocity({x:previousX,y:previousY},e,Number(data.now)-previousAt,{x:entry.netVx,y:entry.netVy},260);entry.netVx=v.x;entry.netVy=v.y;}
   entry.sampleAt=sampleAt;entry.serverAt=Number(data.now);Object.assign(entry,e);
   if(wasKnown&&wasAlive&&e.hp<previousHp&&distance(view,e)<580)damageNumber(entry,previousHp-e.hp);
-  if(wasKnown&&wasAlive&&!e.alive){spawnLootFx(e);if(e.boss)bossIntroSeen.delete(state.zone+':'+e.id);}if(wasKnown&&wasAlive===false&&e.alive&&e.boss&&bossSector)showBossIntro(e);entry.mmo=!!e.atlas;entry.el.classList.toggle('mmo-monster',entry.mmo);const artwork=monsterArtMode==='legacy'?null:monsterIllustration(e.name),artKey=artwork||('atlas:'+entry.mmo);entry.illustrated=!!artwork;if(entry.renderArtKey!==artKey){entry.renderArtKey=artKey;entry.el.classList.toggle('illustrated-monster',!!artwork);entry.el.dataset.artFamily=artwork||'';entry.art.style.backgroundImage=artwork?monsterBackground(artwork):entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=artwork?'contain':entry.mmo?'400% 400%':'';entry.art.style.backgroundPosition=artwork?'center bottom':'';entry.art.style.backgroundRepeat=artwork?'no-repeat':'';entry.renderSpriteKey='';}const mobLabel=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);if(entry.lastMobLabel!==mobLabel){entry.label.textContent=mobLabel;entry.lastMobLabel=mobLabel;}entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('summoned',!!e.summoned);entry.el.classList.toggle('dead',!e.alive);const hpPercent=(e.max>0?Math.max(0,e.hp/e.max*100):0).toFixed(1)+'%';if(entry.lastHpPercent!==hpPercent){entry.life.style.width=hpPercent;entry.lastHpPercent=hpPercent;}entry.tell.hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);const phase=String(e.phase||1),variant=String(e.variant??((e.skin||0)%5));if(entry.el.dataset.phase!==phase)entry.el.dataset.phase=phase;if(entry.el.dataset.variant!==variant)entry.el.dataset.variant=variant;if(entry.el.dataset.zone!==state.zone)entry.el.dataset.zone=state.zone;syncBossPattern(e);
+  if(wasKnown&&wasAlive&&!e.alive){spawnLootFx(e);if(e.boss)bossIntroSeen.delete(state.zone+':'+e.id);}if(wasKnown&&wasAlive===false&&e.alive&&e.boss&&bossSector)showBossIntro(e);entry.mmo=!!e.atlas;entry.el.classList.toggle('mmo-monster',entry.mmo);const artwork=simplifyMonsterArt()?null:monsterIllustration(e.name),artKey=artwork||('atlas:'+entry.mmo);entry.illustrated=!!artwork;if(entry.renderArtKey!==artKey){entry.renderArtKey=artKey;entry.el.classList.toggle('illustrated-monster',!!artwork);entry.el.dataset.artFamily=artwork||'';entry.art.style.backgroundImage=artwork?monsterBackground(artwork):entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=artwork?'contain':entry.mmo?'400% 400%':'';entry.art.style.backgroundPosition=artwork?'center bottom':'';entry.art.style.backgroundRepeat=artwork?'no-repeat':'';entry.renderSpriteKey='';}const mobLabel=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);if(entry.lastMobLabel!==mobLabel){entry.label.textContent=mobLabel;entry.lastMobLabel=mobLabel;}entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('summoned',!!e.summoned);entry.el.classList.toggle('dead',!e.alive);const hpPercent=(e.max>0?Math.max(0,e.hp/e.max*100):0).toFixed(1)+'%';if(entry.lastHpPercent!==hpPercent){entry.life.style.width=hpPercent;entry.lastHpPercent=hpPercent;}entry.tell.hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);const phase=String(e.phase||1),variant=String(e.variant??((e.skin||0)%5));if(entry.el.dataset.phase!==phase)entry.el.dataset.phase=phase;if(entry.el.dataset.variant!==variant)entry.el.dataset.variant=variant;if(entry.el.dataset.zone!==state.zone)entry.el.dataset.zone=state.zone;syncBossPattern(e);
  }
  for(const [id,e] of enemies)if(!mobIds.has(id)){e.el.remove();bossPatternEls.get(id)?.remove();bossPatternEls.delete(id);enemies.delete(id);if(selected===id){selected=null;targetIntent=null;}}
  const peerIds=new Set();for(const p of data.players){
@@ -807,14 +816,14 @@ function frame(time){
   // Keep the protagonist and camera at full display rate. On iPhone, remote
   // actors need only 25-30 updates/sec; this removes hundreds of costly DOM
   // style recalculations in crowded late-game zones without hiding art.
-  const actorInterval=innerWidth<701?(state.zone==='surface'?.032:$('game').classList.contains('mobile-lite')?.04:.034):0;
+  const actorInterval=innerWidth<701?(state.zone==='surface'?.032:($('game').classList.contains('mobile-lite')||perfFps>0&&perfFps<40)?.041:.034):0;
   if(!actorInterval||clock-actorRenderAt>=actorInterval){
    const actorDt=Math.min(.2,actorRenderAt?clock-actorRenderAt:dt);actorRenderAt=clock;
   for(const e of enemies.values()){
    const age=Math.min(.12,Math.max(0,perfNow-(e.sampleAt||perfNow))),tx=e.x+(e.netVx||0)*age,ty=e.y+(e.netVy||0)*age,onScreen=tx>=left&&tx<=right&&ty>=top&&ty<=bottom;
    if(!onScreen){e.vx=tx;e.vy=ty;if(e.renderVisible!==false){e.el.style.visibility='hidden';e.renderVisible=false;}continue;}
    if(e.renderVisible===false){e.el.style.visibility='';e.renderVisible=true;}
-   const f=1-Math.exp(-19*actorDt);e.vx+=(tx-e.vx)*f;e.vy+=(ty-e.vy)*f;placeEntity(e.el,e.vx,e.vy);const depth=Math.round(e.vy);if(e.renderDepth!==depth){e.el.style.zIndex=depth;e.renderDepth=depth;}
+   const pos=smoothRemotePosition({x:e.vx,y:e.vy},{x:tx,y:ty},actorDt,170,19);e.vx=pos.x;e.vy=pos.y;placeEntity(e.el,e.vx,e.vy);const depth=Math.round(e.vy);if(e.renderDepth!==depth){e.el.style.zIndex=depth;e.renderDepth=depth;}
    if(!e.illustrated){const col=e.tellAt?3:1+Math.floor(clock*8)%2,row=e.mmo?({stoneking:0,shadowking:1,dragon:2}[e.named]??e.skin??3):(e.boss?1:0),rows=e.mmo?4:2,key=col+'|'+row+'|'+rows;
    if(e.renderSpriteKey!==key){sprite(e.art,col,row,rows);e.renderSpriteKey=key;}}
   }
@@ -822,7 +831,7 @@ function frame(time){
    const age=Math.min(.12,Math.max(0,perfNow-(p.sampleAt||perfNow))),tx=p.x+(p.netVx||0)*age,ty=p.y+(p.netVy||0)*age,onScreen=tx>=left&&tx<=right&&ty>=top&&ty<=bottom;
    if(!onScreen){p.vx=tx;p.vy=ty;if(p.renderVisible!==false){p.el.style.visibility='hidden';p.renderVisible=false;}continue;}
    if(p.renderVisible===false){p.el.style.visibility='';p.renderVisible=true;}
-   const f=1-Math.exp(-17*actorDt);p.vx+=(tx-p.vx)*f;p.vy+=(ty-p.vy)*f;placeEntity(p.el,p.vx,p.vy);const depth=Math.round(p.vy);if(p.renderDepth!==depth){p.el.style.zIndex=depth;p.renderDepth=depth;}p.el.classList.toggle('attacking',!!p.attacking);
+   const pos=smoothRemotePosition({x:p.vx,y:p.vy},{x:tx,y:ty},actorDt,175,17);p.vx=pos.x;p.vy=pos.y;placeEntity(p.el,p.vx,p.vy);const depth=Math.round(p.vy);if(p.renderDepth!==depth){p.el.style.zIndex=depth;p.renderDepth=depth;}p.el.classList.toggle('attacking',!!p.attacking);
    if(p.attacking){if(!p.localAttackStarted||clock-p.localAttackStarted>.55){p.localAttackStarted=clock;const target=fxTarget(p.attackTarget),origin={x:p.vx,y:p.vy};if((p.attackSkill??-1)>=0)skillEffect(p.job,p.attackSkill,target,origin);else if(target)combatContact(p.job,-1,target,origin);}attackPose(p.el,p.art,p.face,p.flip,p.localAttackStarted,.44,p.job,p.attackSkill??-1,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)%3,p.dirX??0,p.dirY??0);}
    else{p.localAttackStarted=0;motion(p.el,p.art,p.moving?'walk':'idle',p.face,p.flip,clock,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)*.13,p.dirX??0,p.dirY??0);}
   }
@@ -854,7 +863,7 @@ if(utility&&utilityToggle){utilityToggle.onclick=()=>{const expanded=utility.cla
  utility.querySelectorAll('button:not(#utilityToggle)').forEach(b=>b.addEventListener('click',()=>{if(innerWidth<701){utility.classList.remove('expanded');utilityToggle.textContent='메뉴 +';utilityToggle.setAttribute('aria-expanded','false');}}));
 }
 if(innerWidth<600){$('quest').classList.add('collapsed');$('questToggle').textContent='+';}resize();makeSkills();requestAnimationFrame(frame);if(token)showSelection();
-window.__adventure={build:BUILD,performance:()=>({fps:perfFps,lastSnapshotMs:perfLatestSnapshotMs,peakSnapshotMs:perfPeakSnapshotMs,lite:$('game').classList.contains('mobile-lite'),zone:state.zone}),snapshot:()=>({...state,systems:structuredClone(systems),connected,paused,auto,selected,pendingCombo:skillQueue.snapshot(now()),peers:[...peers.values()].map(({id,name,x,y,job,equipment})=>({id,name,x,y,job,equipment})),enemies:[...enemies.values()].map(({id,x,y,hp,alive,boss})=>({id,x,y,hp,alive,boss}))})};
+window.__adventure={build:BUILD,performance:()=>({fps:perfFps,lastSnapshotMs:perfLatestSnapshotMs,peakSnapshotMs:perfPeakSnapshotMs,lite:$('game').classList.contains('mobile-lite'),monsterArt:simplifyMonsterArt()?'legacy':monsterArtMode,zone:state.zone}),snapshot:()=>({...state,systems:structuredClone(systems),connected,paused,auto,selected,pendingCombo:skillQueue.snapshot(now()),peers:[...peers.values()].map(({id,name,x,y,job,equipment})=>({id,name,x,y,job,equipment})),enemies:[...enemies.values()].map(({id,x,y,hp,alive,boss})=>({id,x,y,hp,alive,boss}))})};
 let partyHudEl=null;
 function syncPartyHud(){if(!partyHudEl){partyHudEl=document.createElement('div');partyHudEl.id='partyHud';$('game').append(partyHudEl);}const party=systems.party;if(!party){partyHudEl.hidden=true;return;}const raid=systems.raidContribution,role={warrior:'🛡',rogue:'🗡',mage:'🔮',healer:'✚'};partyHudEl.hidden=false;const partyMarkup='<b>PARTY '+party.members.length+'/4'+(raid?' · '+esc(raid.name):'')+'</b>'+party.members.map(m=>{const me=m.id===state.id,leader=m.id===party.leader,pct=Math.max(0,Math.min(100,m.maxHp?m.hp/m.maxHp*100:0)),r=raid?.rows?.find(x=>x.id===m.id),contrib=r?(r.support?' · ✚지원':' · ⚔'+r.percent+'%'):'';return '<div class="party-member '+(me?'me':'')+'"><span><strong>'+(leader?'★ ':'')+(role[m.job]||'•')+' '+esc(m.name)+'</strong><small>'+esc(jobName({job:m.job,rank:m.rank}))+' · Lv.'+m.level+contrib+(m.zone!==state.zone?' · '+esc(ZONES[m.zone]?.name||m.zone):'')+'</small></span><i><em style="width:'+pct+'%"></em></i></div>';}).join('');if(partyHudEl.dataset.partyMarkup!==partyMarkup){partyHudEl.innerHTML=partyMarkup;partyHudEl.dataset.partyMarkup=partyMarkup;}partyHudEl.onclick=partyWindow;}
 function syncMMO(){
