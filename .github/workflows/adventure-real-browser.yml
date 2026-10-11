@@ -3,7 +3,7 @@ on:
   push:
     branches: [fix/adventure-real-screen-verification-20261008, junja-adventure-preview, railway-recovery]
   pull_request:
-    branches: [junja-adventure-preview]
+    branches: [junja-adventure-preview, railway-recovery]
 permissions:
   contents: read
 jobs:

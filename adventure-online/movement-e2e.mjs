@@ -4,7 +4,7 @@ import {setTimeout as sleep} from 'node:timers/promises';
 import path from 'node:path';
 import {mkdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-import {chromium} from 'playwright';
+import {chromium,webkit} from 'playwright';
 
 const root=path.dirname(fileURLToPath(import.meta.url));
 const port=47000+Math.floor(Math.random()*1000),base='http://127.0.0.1:'+port;
@@ -21,10 +21,20 @@ try{
   await sleep(130);
  }
  assert.ok(ready,'movement test server did not start');
- browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ const webkitMode=process.env.BROWSER_ENGINE==='webkit';
+ browser=await (webkitMode?webkit:chromium).launch({headless:true,...(webkitMode?{}:{args:['--no-sandbox']})});
  const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto(base,{waitUntil:'domcontentloaded'});
+ if(process.env.BROWSER_ENGINE==='webkit'){
+  const baseline=await page.evaluate(()=>new Promise(resolve=>{
+   const start=performance.now();let count=0,active=true;
+   function next(){if(!active)return;count++;requestAnimationFrame(next);}
+   requestAnimationFrame(next);
+   setTimeout(()=>{active=false;resolve({frames:count,hidden:document.hidden,visibility:document.visibilityState,elapsed:performance.now()-start});},1350);
+  }));
+  console.log('WEBKIT_BLANK_PAGE_RAF '+JSON.stringify(baseline));
+ }
+ await page.goto(base+(process.env.BROWSER_ENGINE==='webkit'?'/?frameDebug=1':''),{waitUntil:'domcontentloaded'});
  await page.locator('#username').fill('movetest'+port);
  await page.locator('#password').fill('Movement-test-pass-2026!');
  await page.locator('#registerBtn').click();
@@ -33,6 +43,26 @@ try{
  await page.waitForFunction(()=>window.__adventure?.snapshot()?.connected===true,{timeout:25000});
  await page.locator('#loading').waitFor({state:'hidden',timeout:12000});
  await page.locator('#viewport').focus();
+ if(process.env.BROWSER_ENGINE==='webkit'){
+  async function probe(label){
+   const values=await page.evaluate(()=>new Promise(resolve=>{
+    let count=0,active=true;const t=performance.now();
+    const next=()=>{if(!active)return;count++;requestAnimationFrame(next);};
+    requestAnimationFrame(next);
+    setTimeout(()=>{active=false;resolve({frames:count,elapsed:Math.round(performance.now()-t),hidden:document.hidden,visible:document.visibilityState});},1250);
+   }));
+   console.log('WEBKIT_GAME_PROBE '+JSON.stringify({label,...values}));
+   return values;
+  }
+  const counts=await page.evaluate(()=>({enemies:window.__adventure?.snapshot?.().enemies?.length,worldNodes:document.querySelectorAll('#world *').length}));
+  console.log('WEBKIT_GAME_DOM '+JSON.stringify(counts));
+  await probe('original-game');
+  for(const k of ['skipActorMoves','skipActorSprites','skipBosses','skipNonBosses','skipHero','skipActors','skipUI','skipAll']){
+   await page.evaluate(key=>{for(const key of Object.keys(window.__frameDebug))window.__frameDebug[key]=false;window.__frameDebug[key]=true;},k);
+   await probe(k);
+  }
+  await page.evaluate(()=>{for(const key of Object.keys(window.__frameDebug))window.__frameDebug[key]=false;});
+ }
 
  const stream=page.evaluate(()=>new Promise(resolve=>{
   const entries=[],start=performance.now();
@@ -53,6 +83,13 @@ try{
  await sleep(250);
  console.log('MOTION_FRAME_DIAGNOSTIC '+JSON.stringify({frames:entries.length,span:entries.length?entries.at(-1).t-entries[0].t:0,xStart:entries[0]?.x,xEnd:entries.at(-1)?.x,walkFrames:entries.filter(x=>x.motion==='walk').length}));
  console.log('MOTION_TRANSFORM_DIAGNOSTIC '+await page.locator('#hero').evaluate(el=>el.style.transform));
+ if(process.env.BROWSER_ENGINE==='webkit'&&entries.length<14){
+  // Distinguish slow static WebKit compositing from runaway client frame work.
+  await page.evaluate(()=>{const native=requestAnimationFrame.bind(window);window.requestAnimationFrame=fn=>fn?.name==='frame'?0:native(fn);});
+  await sleep(1500);
+  const paused=await page.evaluate(()=>new Promise(resolve=>{let c=0,active=true;function spin(){if(!active)return;c++;requestAnimationFrame(spin);}requestAnimationFrame(spin);setTimeout(()=>{active=false;resolve({frames:c,hidden:document.hidden});},1250);}));
+  console.log('WEBKIT_FRAME_PAUSED_PROBE '+JSON.stringify(paused));
+ }
  assert.ok(entries.length>=14,'animation frames failed to render regularly: '+entries.length);
  const xs=entries.map(x=>x.x),travel=Math.max(...xs)-Math.min(...xs);
  const framesWalking=entries.filter(x=>x.motion==='walk').length;
@@ -64,6 +101,24 @@ try{
  assert.ok(distanceBack>-85,'server correction dragged the player sharply backward');
  const final=await page.evaluate(()=>({server:window.__adventure.snapshot().x,render:parseFloat((/translate3d\(\s*([-\d.]+)px/.exec(document.querySelector('#hero').style.transform)||[])[1])}));
  assert.ok(Math.abs(final.server-final.render)<80,'visual position diverged from authoritative server: '+JSON.stringify(final));
+ // Real mobile gesture regression: drag-release should navigate to the
+ // RELEASE coordinates (not stick steering, not the original touch point).
+ const actionRecords=[];
+ await page.route('**/api/action',async route=>{
+  try { const action=JSON.parse(route.request().postData()||'{}');actionRecords.push(action); }catch{}
+  await route.continue();
+ });
+ const viewportRect=await page.locator('#viewport').boundingBox();
+ assert.ok(viewportRect?.width>100&&viewportRect?.height>100,'game field has usable touch size');
+ const sx=viewportRect.x+viewportRect.width*.39,sy=viewportRect.y+viewportRect.height*.47;
+ const ex=viewportRect.x+viewportRect.width*.68,ey=viewportRect.y+viewportRect.height*.54;
+ await page.mouse.move(sx,sy);await page.mouse.down();
+ await page.mouse.move(ex,ey,{steps:12});await page.mouse.up();
+ await sleep(950);
+ const afterDrag=await page.evaluate(()=>({joystickHidden:document.querySelector('#joystick').hidden,hero:document.querySelector('#hero').dataset.motion}));
+ assert.equal(afterDrag.joystickHidden,true,'touch drag must not show virtual joystick');
+ assert.ok(actionRecords.some(a=>a.type==='navigate'),'release should request real server navigation: '+JSON.stringify(actionRecords.slice(0,8)));
+ assert.ok(!actionRecords.some(a=>a.type==='move'&&a.manual),'gesture must not turn into manual joystick movement');
  assert.deepEqual(errors,[],'browser errors in mobile motion loop');
  const folder=path.resolve(root,'../e2e-screenshots');await mkdir(folder,{recursive:true});
  await page.screenshot({path:path.join(folder,'junja-motion-mobile.png')});

@@ -94,3 +94,19 @@ export function shouldSendMovement(previous,next,at){
  const changed=Math.hypot(x-(Number(previous.x)||0),y-(Number(previous.y)||0))>.07;
  return age>=.24||(changed&&age>=.12);
 }
+
+// Release coordinates, not pointer-down coordinates, determine a tap or swipe
+// destination. Touch movement is server-routed; this helper never moves a player.
+export function tapDestination(release,cancelled=false){
+ if(cancelled||!Number.isFinite(release?.x)||!Number.isFinite(release?.y))return null;
+ return{x:release.x,y:release.y};
+}
+
+// For server-guided travel and auto-hunt, turn toward actual *rendered*
+// displacement. Otherwise the body can slide sideways with a stale heading.
+export function movementHeading(previous,current,minimum=.65){
+ const dx=Number(current?.x)-Number(previous?.x),dy=Number(current?.y)-Number(previous?.y);
+ if(!Number.isFinite(dx)||!Number.isFinite(dy))return null;
+ const length=Math.hypot(dx,dy);
+ return length>=minimum?{x:dx/length,y:dy/length}:null;
+}

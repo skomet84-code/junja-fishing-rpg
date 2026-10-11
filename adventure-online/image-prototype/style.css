@@ -1666,3 +1666,32 @@ button.region-node.current:disabled{opacity:1;background:#384632;border-color:#f
  max-width:70vw;padding:4px 7px;border-radius:5px;pointer-events:none;
  background:#0b1714e8;color:#e9ffce;font:11px/1.3 monospace;
 }
+
+/* One-pass mobile motion coherence: do not re-tween the transform between
+   successive walk sprite poses. This otherwise adds a delayed, rubbery
+   second animation on iOS on top of the actual server-guided steps. */
+@media (hover:none) and (pointer:coarse){
+ .entity.hero[data-motion='walk']>.sprite,
+ .entity.hero[data-motion='walk']>.sprite-b,
+ .entity.hero[data-motion='walk']>.gear-layers,
+ .entity.hero[data-motion='walk']>.weapon-rig,
+ .entity.hero[data-motion='idle']>.sprite,
+ .entity.hero[data-motion='idle']>.sprite-b,
+ .entity.hero[data-motion='idle']>.gear-layers,
+ .entity.hero[data-motion='idle']>.weapon-rig {transition:none!important;}
+}
+
+/* WebKit mobile monster layer budget */
+/* 29 promoted transformed layers with CSS filters can starve Safari's rAF.
+   Keep the sprites and nameplates, but remove the speculative compositing
+   layers and expensive filters on ordinary (not boss) enemy art only. */
+#game.webkit-actor-lite .entity.enemy:not(.boss){will-change:auto!important;backface-visibility:visible!important;-webkit-backface-visibility:visible!important}
+#game.webkit-actor-lite .entity.enemy:not(.boss)>.sprite{will-change:auto!important;filter:none!important;backface-visibility:visible!important;-webkit-backface-visibility:visible!important}
+
+/* Safari monsters are rendered in one transparent viewport canvas. */
+#game.webkit-canvas-mobs .enemy:not(.boss){visibility:hidden!important;pointer-events:none!important;will-change:auto!important}
+
+/* WebKit boss artwork shares the mob canvas; preserve hit target,
+   health bar, name, spell telegraph and selected ring in DOM. */
+#game.webkit-canvas-mobs .enemy.boss{will-change:auto!important;backface-visibility:visible!important;-webkit-backface-visibility:visible!important}
+#game.webkit-canvas-mobs .enemy.boss>.sprite{visibility:hidden!important;will-change:auto!important}

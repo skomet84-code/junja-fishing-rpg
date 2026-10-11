@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {World} from '../engine.mjs';
+import {advanceRoute} from '../route-motion.mjs';
 import {profile} from '../../../image-prototype/catalog.js';
 import {pathfind,clearPath,walkable,project,distance} from '../../../image-prototype/core.js';
 import {ascensionGuide,PROMOTIONS} from '../../../image-prototype/mmo-data.js';
@@ -57,4 +58,24 @@ test('sixth ascension quest guidance points to the correct region, enemies, boss
  assert.equal(claimed.action,'promote');
  assert.match(claimed.text,/650/);
  assert.match(claimed.text,/70회/);
+});
+
+test('server route spends a full movement tick across short waypoints without warps',()=>{
+ const waypoints=[{x:5,y:0},{x:9,y:0},{x:15,y:0},{x:40,y:0},{x:55,y:0}];
+ let position={x:0,y:0};const xs=[];
+ for(let i=0;i<3;i++){position=advanceRoute(position,waypoints,25,()=>true);xs.push(position.x);}
+ assert.deepEqual(xs,[25,50,55],'waypoint boundaries must not consume entire ticks');
+ assert.deepEqual(waypoints,[]);
+});
+test('server route respects collision and never swallows blocked waypoints',()=>{
+ const waypoints=[{x:30,y:0}];
+ const at=advanceRoute({x:0,y:0},waypoints,25,(x)=>x<=10);
+ assert.deepEqual(at,{x:0,y:0});
+ assert.equal(waypoints.length,1);
+});
+test('server route movement never exceeds the authoritative distance budget',()=>{
+ const waypoints=[{x:6,y:8},{x:60,y:80}];
+ const at=advanceRoute({x:0,y:0},waypoints,25,()=>true);
+ assert.ok(Math.hypot(at.x,at.y)<=25.0001);
+ assert.ok(Math.hypot(at.x,at.y)>=24.999);
 });

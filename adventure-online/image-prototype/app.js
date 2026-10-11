@@ -5,7 +5,8 @@ import {BOOSTS,WEAPON_FAMILIES,MATERIALS,RECIPES,ENDGAME_TIERS,ZONES,TRAVEL_PORT
 import {API_URL} from './config.js';
 import {createCombatQueue} from './combat-queue.js?v=20261009-primordial-motion1';
 import {monsterIllustration} from './monster-art.js?v=20261010-monster1';
-import {predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement,smoothRemotePosition,shouldSendMovement} from './movement-feel.js?v=20261012-audit1';
+import {predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement,smoothRemotePosition,shouldSendMovement,tapDestination,movementHeading} from './movement-feel.js?v=20261012-onepass1';
+import {createSafariMobPainter} from './safari-mob-canvas.js?v=20261012-mobs1';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 const endgameStyle=document.createElement('style');endgameStyle.textContent="#world[data-zone=void]:after{background:radial-gradient(ellipse at 50% 70%,transparent 22%,#160b2670 72%,#06030bcc 100%)!important}#world[data-zone=origin]:after{background:radial-gradient(ellipse at 50% 70%,transparent 25%,#473a1360 72%,#100c04bb 100%)!important}";document.head.append(endgameStyle);
@@ -207,9 +208,16 @@ function monsterBackground(family){
  return "url('./assets/monster-"+family+".svg?v=20261010-monster1')";
 }
 function preload(src,required=true,onload=()=>{}){return new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>{onload();resolve();};im.onerror=()=>required?reject(Error('캐릭터 이미지를 불러오지 못했어요. 다시 연결해 주세요.')):resolve();im.src=src;});}
+// Download only the chosen character's large motion sheet; do not transfer and
+// decode all four 12x9 WebP atlases before the user even enters the world.
+const motionRequests=new Map();
+function ensureMotionArt(art){
+ if(!characterArt.includes(art))return Promise.resolve();
+ if(!motionRequests.has(art))motionRequests.set(art,preload('./assets/'+art+'-motion.webp?v='+BUILD,false,()=>motionArt.add(art)));
+ return motionRequests.get(art);
+}
 const artReady=Promise.all([
  ...['hero','rogue','mage','healer','world','npcs','squirrel','monster-atlas'].map(name=>preload('./assets/'+name+'.png')),
- ...characterArt.map(name=>preload('./assets/'+name+'-motion.webp?v='+BUILD,false,()=>motionArt.add(name))),
  ...(monsterArtMode==='raster'?MONSTER_FAMILIES.map(rasterizeMonsterArt):[])
 ]);artReady.catch(()=>{});
 function toast(text,kind='notice'){const el=$('toast');el.textContent=text;el.classList.toggle('combat-toast',kind==='combat');el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),kind==='combat'?1150:2400);}
@@ -285,6 +293,7 @@ function applyHeading(el,dx,dy,fallbackRow=0,fallbackMirror=false){
 }
 
 function motionSprite(art,frame,state,row,mirror=false){
+ art._blendFrameKey=null;
  const stateIndex=state==='walk'?1:state==='attack'?2:0,r=stateIndex*3+row;
  const key=stateIndex+'|'+r+'|'+frame+'|'+(mirror?1:0);
  // A 12-frame sheet only changes 7-18 times a second: avoid rewriting its
@@ -297,10 +306,15 @@ function motionSprite(art,frame,state,row,mirror=false){
 }
 function blendSprite(art,a,b,mix,row,rows=3,mirror=false){
  art._motionFrameKey=null;
+ // Cross-fade only when a visible frame step changes. Unbounded CSS writes
+ // kept decoding/repainting two large sprites on every frame on WebKit.
+ const t=Math.round(smoothstep(Math.max(0,Math.min(1,mix)))*12)/12;
+ const key=[a,b,t,row,rows,mirror?1:0].join('|');
+ if(art._blendFrameKey===key)return;
+ art._blendFrameKey=key;
  const twin=art.parentElement?.querySelector('.sprite-b');
- if(!twin){sprite(art,mix<.5?a:b,row,rows,mirror);return;}
+ if(!twin){sprite(art,t<.5?a:b,row,rows,mirror);return;}
  art.style.backgroundSize='400% 300%';twin.style.backgroundSize='400% 300%';
- const t=smoothstep(Math.max(0,Math.min(1,mix)));
  sprite(art,a,row,rows,mirror);sprite(twin,b,row,rows,mirror);
  art.style.opacity=String(1-t);twin.style.opacity=String(t);
 }
@@ -388,9 +402,11 @@ function attackPose(el,art,row,mirror,started,duration=.44,job='warrior',skill=-
  el.style.setProperty('--bob',bob+'px');el.style.setProperty('--lean',lean+'deg');el.style.setProperty('--squash',p>.18&&p<.62?.958:1);el.style.setProperty('--weapon-angle',weapon+'deg');el.style.setProperty('--arm-angle',(weapon*armFactor)+'deg');el.style.setProperty('--trail-angle',(weapon*trailFactor)+'deg');el.style.setProperty('--trail-scale',String(.74+Math.max(0,power)*.28));el.style.setProperty('--attack-power',String(Math.max(0,power)));el.style.setProperty('--lunge-x',(lunge*pose.nx)+'px');el.style.setProperty('--lunge-y',(lunge*pose.ny*.38)+'px');el.style.setProperty('--coat-sway',(lean*.55-weapon*.045)+'deg');el.style.setProperty('--cape-lag',(lean*-.32-weapon*.025)+'deg');el.style.setProperty('--shoulder-lift',(Math.max(0,power)*-2.2)+'px');el.style.setProperty('--offhand-angle',(-weapon*.72)+'deg');paintProductionSprite(el,skill>=0?'skill':'attack',clock,pose.nx,pose.ny,p);
 }
 function actorArt(el,s){
- const art=JOBS[s.job]?.art||'hero',useMotion=motionArt.has(art),url=`url('./assets/${art}${useMotion?'-motion.webp':'.png'}?v=${BUILD}')`,parent=el.parentElement;
+ const art=JOBS[s.job]?.art||'hero';
+ ensureMotionArt(art).catch(()=>{});
+ const useMotion=motionArt.has(art),url=`url('./assets/${art}${useMotion?'-motion.webp':'.png'}?v=${BUILD}')`,parent=el.parentElement;
  if(parent&&parent.dataset.motionSheet!==(useMotion?'1':'0'))parent.dataset.motionSheet=useMotion?'1':'0';
- if(el.dataset.artSource!==url){el.style.backgroundImage=url;el.dataset.artSource=url;el.style.opacity='1';el._motionFrameKey=null;}
+ if(el.dataset.artSource!==url){el.style.backgroundImage=url;el.dataset.artSource=url;el.style.opacity='1';el._motionFrameKey=null;el._blendFrameKey=null;}
  const twin=parent?.querySelector('.sprite-b');
  if(twin&&twin.dataset.artSource!==url){twin.style.backgroundImage=url;twin.dataset.artSource=url;twin.style.opacity='0';}
 }
@@ -494,7 +510,7 @@ async function login(register=false){if(!$('authForm').reportValidity())return;c
  try{const r=await api(register?'register':'login',{username,password,...(register&&legacy&&$('legacyCheck').checked?{legacy}:{})});token=r.token;try{localStorage.setItem('junja-online-token',token);}catch{}$('password').value='';await showSelection();}catch(e){$('authMessage').textContent=e.message;}finally{$('loginBtn').disabled=$('registerBtn').disabled=false;}
 }
 $('authForm').onsubmit=e=>{e.preventDefault();login();};$('registerBtn').onclick=()=>login(true);$('switchAccount').onclick=()=>{token='';try{localStorage.removeItem('junja-online-token');}catch{}$('authPanel').hidden=false;$('selectPanel').hidden=true;$('authMessage').textContent='';};
-async function join(){$('joinBtn').disabled=true;$('loadMessage').textContent='준자마을에 접속 중…';try{await artReady;const r=await api('join',{slot:selectedSlot,channel:$('channelInput').value.trim()});connectionKey=r.connectionKey;wireSnapshot=null;lastSelfSampleAt=0;lastSelfServerAt=0;state=r.snapshot.self;view={x:state.x,y:state.y};selected=null;targetIntent=null;path=[];skillQueue.clear();remoteSkillPending=null;localActionLockUntil=0;lastLocalFx=null;pendingAttackAck=false;updateSnapshot(r.snapshot);resize();makeSkills();face=0;flip=false;headingX=0;headingY=1;placeEntity($('hero'),view.x,view.y);$('hero').style.zIndex=Math.round(view.y);motion($('hero'),$('heroArt'),'idle',0,false,clock);$('loading').hidden=true;last=performance.now();consumeStream(++streamGeneration);toast(state.channel+'에 접속했습니다. 친구에게 같은 채널을 알려 주세요.');}catch(e){$('loadMessage').textContent=e.message;}finally{$('joinBtn').disabled=false;}}
+async function join(){$('joinBtn').disabled=true;$('loadMessage').textContent='준자마을에 접속 중…';try{await artReady;const chosen=roster.find(c=>c.slot===selectedSlot);await ensureMotionArt(JOBS[chosen?.job]?.art||'hero');const r=await api('join',{slot:selectedSlot,channel:$('channelInput').value.trim()});connectionKey=r.connectionKey;wireSnapshot=null;lastSelfSampleAt=0;lastSelfServerAt=0;state=r.snapshot.self;view={x:state.x,y:state.y};selected=null;targetIntent=null;path=[];skillQueue.clear();remoteSkillPending=null;localActionLockUntil=0;lastLocalFx=null;pendingAttackAck=false;updateSnapshot(r.snapshot);resize();makeSkills();face=0;flip=false;headingX=0;headingY=1;placeEntity($('hero'),view.x,view.y);$('hero').style.zIndex=Math.round(view.y);motion($('hero'),$('heroArt'),'idle',0,false,clock);$('loading').hidden=true;last=performance.now();consumeStream(++streamGeneration);toast(state.channel+'에 접속했습니다. 친구에게 같은 채널을 알려 주세요.');}catch(e){$('loadMessage').textContent=e.message;}finally{$('joinBtn').disabled=false;}}
 $('joinBtn').onclick=join;$('retryBtn').onclick=()=>token?showSelection():location.reload();
 function nearestTarget(maxDistance=560){const safe=e=>(!e.boss&&!e.elite)||e.level<=state.level+(e.boss?5:3);return [...enemies.values()].filter(e=>e.alive&&distance(view,e)<=maxDistance&&safe(e)).sort((a,b)=>{const ad=distance(view,a)+(a.named?140:a.boss?90:a.elite?35:0),bd=distance(view,b)+(b.named?140:b.boss?90:b.elite?35:0);return ad-bd;})[0]||null;}
 function select(id,engage=false){const e=enemies.get(id);if(!e?.alive)return;skillQueue.clear();remoteSkillPending=null;selected=id;npcIntent=null;path=[];targetIntent=null;if(auto){command({type:'autoTarget',target:e.id});toast(e.name+' · 자동사냥 타겟 지정');}else if(engage){command({type:'engage',target:e.id,skill:-1});toast(e.name+' 타겟 고정 · 자동 추적/공격');}hud();}
@@ -762,20 +778,51 @@ function potionSettingsWindow(){
 function enhanceWindow(){const ids=[...new Set(state.bag)].filter(id=>id!=='training'&&ITEMS[id]);const rows=ids.map(id=>{const item=ITEMS[id],lvl=enhancementLevel(state,id),chance=Math.round(enhanceChance(lvl)*100),max=lvl>=MAX_ENHANCE;return `<div class="enhance-row ${item.rarity}"><div><b>${esc(item.name)} ${lvl?'+ '+lvl:''}</b><small>${enhanceGrade(lvl)} · ${SLOTS[item.slot]} · 성공 ${max?'MAX':chance+'%'}${lvl>=6?' · 실패 시 -1':''}</small></div><div><button data-forge="${id}" data-stone="normal" ${max||state.enhanceStones<=0?'disabled':''}>강화석 +1</button><button data-forge="${id}" data-stone="shining" ${max||state.shiningStones<=0?'disabled':''}>빛나는 +2</button></div></div>`;}).join('');modal('장비 강화',`<p>강화석 <b>${state.enhanceStones}</b>개 · 빛나는 강화석 <b>${state.shiningStones}</b>개</p><p><b>최대 +${MAX_ENHANCE}</b> · +1~5 단계당 7% · +6~10 9% · +11~13 12% · +14~15 18% 누적. +6부터 실패하면 현재 강화가 1단계 하락합니다. 빛나는 강화석은 성공 시 2단계 상승합니다.</p><p><b>강화 등급:</b> +3 단련 → +6 정예 → +9 명장 → +12 초월 → +15 신화강화</p><div class="enhance-list">${rows||'<p>강화할 장비가 없습니다.</p>'}</div>`,[['가방으로',bagWindow]]);document.querySelectorAll('[data-forge]').forEach(b=>b.onclick=async()=>{b.disabled=true;await command({type:'enhance',item:b.dataset.forge,stone:b.dataset.stone});setTimeout(enhanceWindow,260);});}
 function onlineWindow(){modal('함께 모험하기',`<p>현재 채널 <b>${esc(state.channel)}</b> · ${peers.size+1}명</p><p>친구에게 주소와 채널 이름을 알려 주세요. 같은 채널에서 이동·몬스터·보스 체력을 공유합니다.</p><p>접속: ${[state.name,...[...peers.values()].map(p=>p.name)].map(esc).join(', ')}</p><p>채널마다 최대 48명. 현재 같은 지역의 접속자입니다. 캐릭터 4종은 각각 기록이 저장됩니다.</p>`,[['초대 링크 복사',async()=>{const url=new URL(location.href);url.searchParams.set('channel',state.channel);try{await navigator.clipboard.writeText(url.href);toast('초대 링크를 복사했습니다.');}catch{modal('초대 링크','<p>'+esc(url.href)+'</p>');}}],['캐릭터·채널 변경',showSelection],['로그아웃',async()=>{await api('logout',{}).catch(()=>{});streamGeneration++;streamController?.abort();connected=false;token='';try{localStorage.removeItem('junja-online-token');}catch{}$('loading').hidden=false;$('selectPanel').hidden=true;$('authPanel').hidden=false;stopMovement();}]]);}
 function chatWindow(){modal('대화 풍선 선택',`<p>직접 입력 없이 아래 문구만 보낼 수 있습니다.</p><div class="quick-chat-grid">${QUICK_CHATS.map((text,i)=>`<button data-quick="${i}">${esc(text)}</button>`).join('')}</div>`);document.querySelectorAll('[data-quick]').forEach(b=>b.onclick=()=>{const quick=Number(b.dataset.quick);closeModal();command({type:'chat',quick});});}
-$('viewport').addEventListener('pointerdown',ev=>{if(paused||!connected||ev.target.closest('button,.enemy,.resource'))return;gesture={id:ev.pointerId,x:ev.clientX,y:ev.clientY,drag:false};$('viewport').setPointerCapture(ev.pointerId);});
-$('viewport').addEventListener('pointermove',ev=>{if(!gesture||ev.pointerId!==gesture.id)return;const dx=ev.clientX-gesture.x,dy=ev.clientY-gesture.y;if(Math.hypot(dx,dy)>(ev.pointerType==='touch'?23:12)&&!gesture.drag){gesture.drag=true;selected=null;npcIntent=null;path=[];navigationRequestedUntil=0;auto=false;command({type:'auto',on:false});}if(gesture.drag){stick={x:dx,y:dy};$('joystick').hidden=false;$('joystick').style.left=gesture.x+'px';$('joystick').style.top=gesture.y+'px';const d=Math.hypot(dx,dy),r=Math.min(27,d);$('joystick').querySelector('i').style.transform=d?`translate(${dx/d*r}px,${dy/d*r}px)`:'none';}});
-function release(ev){if(!gesture||ev.pointerId!==gesture.id)return;const wasDrag=gesture.drag,wasTap=ev.type==='pointerup'&&!wasDrag,x=gesture.x,y=gesture.y;gesture=null;stick={x:0,y:0};$('joystick').hidden=true;if(wasDrag){lastMoveSent={x:0,y:0,manual:false,at:clock};queueMove({type:'move',x:0,y:0,manual:true});}else if(wasTap&&connected&&!paused){selected=null;npcIntent=null;const target=screenToWorld(x,y);go(target.x,target.y);}}for(const event of ['pointerup','pointercancel','lostpointercapture'])$('viewport').addEventListener(event,release);
+// Mobile is tap/swipe-to-destination, never a surprise virtual joystick.
+// The server remains authoritative for navigation, collision and velocity.
+$('viewport').addEventListener('pointerdown',ev=>{
+ if(paused||!connected||ev.target.closest('button,.enemy,.resource'))return;
+ gesture={id:ev.pointerId};
+ $('viewport').setPointerCapture(ev.pointerId);
+});
+function release(ev){
+ if(!gesture||ev.pointerId!==gesture.id)return;
+ const cancelled=ev.type!=='pointerup';gesture=null;
+ stick={x:0,y:0};$('joystick').hidden=true;
+ if(!connected||paused)return;
+ const point=tapDestination({x:ev.clientX,y:ev.clientY},cancelled);
+ if(!point)return;
+ selected=null;npcIntent=null;
+ const target=screenToWorld(point.x,point.y);
+ if(safariMobPainter){
+  const hit=[...enemies.values()].filter(e=>!e.boss&&e.alive&&distance(target,e)<Math.max(40,e.mmo?64:44)).sort((a,b)=>distance(target,a)-distance(target,b))[0];
+  if(hit){select(hit.id,true);return;}
+ }
+ go(target.x,target.y);
+}
+for(const event of ['pointerup','pointercancel','lostpointercapture'])$('viewport').addEventListener(event,release);
 window.addEventListener('keydown',ev=>{if(ev.target.closest('input,textarea'))return;if(paused){if(ev.key==='Escape')closeModal();return;}const key=ev.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d'].includes(key)){ev.preventDefault();keys.add(key);path=[];npcIntent=null;if(auto)command({type:'auto',on:false});if(key===' '&&!ev.repeat)attack();}if(!ev.repeat&&['1','2','3','4','5','6','7','8','9'].includes(key))attack(Number(key)-1);if(key==='e'&&nearNpc)talk(nearNpc.id);if(key==='q'&&!ev.repeat)attack(0);});window.addEventListener('keyup',ev=>keys.delete(ev.key.toLowerCase()));window.addEventListener('blur',stopMovement);document.addEventListener('visibilitychange',()=>{stopMovement();last=performance.now();});window.addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);
 for(const n of npcs)$(n.id).onclick=()=>distance(view,n)<115?talk(n.id):seekNpc(n.id);$('contextBtn').onclick=()=>nearNpc&&talk(nearNpc.id);$('attackBtn').onclick=()=>attack();$('potionBtn').onclick=()=>command({type:'potion'});$('autoBtn').onclick=()=>{path=[];npcIntent=null;skillQueue.clear();remoteSkillPending=null;const on=!auto;auto=on;state.auto=on;command({type:'auto',on});toast(on?'자동사냥 ON · 스킬 자동 시전 · 직접 스킬도 함께 사용':'자동 사냥 OFF');hud();};$('homeBtn').onclick=()=>{stopMovement();selected=null;command({type:'home'});};$('questToggle').onclick=()=>{$('quest').classList.toggle('collapsed');$('questToggle').textContent=$('quest').classList.contains('collapsed')?'+':'−';};$('questAction').onclick=()=>{if(state.rank>=PROMOTIONS.length){ascensionWindow();return;}if(ascensionGuide(state)){followAscensionQuest();return;}if(ASCENSION_CHAPTERS[state.zone]&&!state.ascensionStories?.[state.zone]?.claimed){followAscensionQuest(state.zone);return;}const oq=state.originStory||{};if(state.zone==='origin'&&oq.stage>0&&!oq.claimed){if(oq.stage===1)go(768,820);else if(oq.stage===2)go(768,1330);else if(oq.stage===3){const e=[...enemies.values()].find(e=>e.boss&&!e.named);if(e?.alive)select(e.id);else toast('수문신 재출현을 기다리는 중입니다.');}else if(oq.stage===4)bossWindowUI();else if(oq.stage===5)regionalNpcWindow('origin-scribe');return;}if(['available','ready','complete','bossReady'].includes(state.quest))seekNpc('elder');else if(state.quest==='bossActive'){const e=[...enemies.values()].find(e=>e.boss);if(e?.alive)select(e.id);else toast('왕꼬리 재출현까지 '+Math.max(0,Math.ceil((e?.respawn||0)-now()))+'초');}else go(768,720);};$('bagBtn').onclick=bagWindow;$('boostBtn').onclick=boostWindow;$('jobBtn').onclick=jobWindow;$('ascensionBtn').onclick=ascensionWindow;$('onlineBtn').onclick=onlineWindow;$('chatBtn').onclick=chatWindow;$('helpBtn').onclick=()=>modal('모험 안내','<p><b>몬스터를 터치하면 자동으로 추적해 사거리에 들어온 뒤 공격합니다.</b> 공격·스킬 버튼도 대상이 없으면 가까운 몬스터를 자동으로 찾습니다. 빈 곳 터치로 이동하고, 화면 드래그로 방향 이동합니다. PC: WASD / 방향키, Space 공격, Q 첫 스킬, 1~9 스킬, E 대화.</p><p><b>다른 지역 이동:</b> 지도·이동에서 연결된 지역을 누르면 즉시 순간이동합니다. 필드 포탈을 직접 눌러도 바로 이동합니다.</p><p><b>전투:</b> 몬스터 터치는 타겟을 고정해 현재 위치를 추적·공격합니다. 스킬은 위력에 따라 서로 다른 쿨타임과 마나를 사용합니다.</p><p><b>자동 물약:</b> 장비·가방 → 자동 물약 설정에서 HP/MP 각각 OFF·30%·50%·70%를 선택할 수 있습니다.</p><p>촌장 임무 → 다람쥐 10마리 → 왕꼬리 → 정예·던전 → Lv.100 첫 전직. 직업에 따라 공격 범위·스킬이 달라집니다.</p><p><b>3차 전직 스킬:</b> 공허의 인장 100개 · <b>4차 전직 스킬:</b> 태초의 성흔 100개 · 5차 균열의 핵 120개 · 6차 월식의 문장 150개를 모아 촌장에게 전수받습니다. 재료는 해당 고레벨 던전의 정예·지역보스·일일 레이드에서 획득합니다.</p><p>가방에서 장비를 장착하고 강화소에서 강화하세요. +6부터 실패 시 단계가 내려가며, 빛나는 강화석은 성공 시 +2입니다.</p><p>신화와 기존 초월 장비 위에 태초 등급을 추가했습니다. 천룡 드롭 확률은 0.0001%. Lv.200부터 일일 임무 보상을 모두 받으면 하루 1개의 인장을 획득하며, 60개를 모아 Lv.700부터 최종 태초 장비 제작·착용이 가능합니다.</p><p>성장은 계정에 저장됩니다. 같은 아이디의 동시 접속은 마지막 접속만 유지됩니다.</p>');$('modalClose').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal();};
 let hudAt=0;
 // Record actual animation-frame gaps on the user's device. A short slow frame
 // never enables low-detail mode by itself; two sustained poor windows do.
 const mobileFrames=typeof matchMedia==='function'&&matchMedia('(hover:none) and (pointer:coarse)').matches;
+// WebKit on touch devices repaints transformed illustrated mobs significantly
+// more expensively than Chromium. Stagger remote-only DOM paint work; keep
+// player movement, hit logic, and camera full refresh-rate.
+let webkitActorCursor=0;
+const mobileWebKit=mobileFrames&&/AppleWebKit/i.test(navigator.userAgent)&&!/(Chrome|CriOS|Edg|FxiOS|OPR)/i.test(navigator.userAgent);
+if(mobileWebKit)$('game').classList.add('webkit-actor-lite','webkit-canvas-mobs');
+const safariMobPainter=mobileWebKit?createSafariMobPainter($('viewport')):null;
+
 const perfDiagnostics=new URL(location.href).searchParams.get('perf')==='1';
 let perfFrames=0,perfElapsed=0,perfStalls=0,perfSlowWindows=0,perfRecoveryWindows=0,perfFps=0,perfPeakSnapshotMs=0,perfLatestSnapshotMs=0;
 let perfMeter=null;
 if(perfDiagnostics){perfMeter=document.createElement('output');perfMeter.id='adventurePerfMeter';perfMeter.setAttribute('aria-label','게임 성능 진단');perfMeter.textContent='FPS 측정 중';$('game').append(perfMeter);}
+const __frameDebug=new URL(location.href).searchParams.has('frameDebug')?{skipAll:false,skipHero:false,skipActors:false,skipUI:false,skipActorMoves:false,skipActorSprites:false,skipBosses:false,skipNonBosses:false}:null;
+if(__frameDebug)window.__frameDebug=__frameDebug;
 function frame(time){
+ if(__frameDebug?.skipAll){requestAnimationFrame(frame);return;}
  // On 30fps mobile frames do not discard half the elapsed movement time.
  const gapMs=last?Math.max(0,time-last):16,elapsed=Math.min(.2,gapMs/1000||.016),dt=elapsed;last=time;clock+=elapsed;
  if(connected&&!paused&&!document.hidden&&gapMs<600){
@@ -816,6 +863,12 @@ function frame(time){
   // Animation cadence comes from distance actually traveled, never from the auto-hunt toggle.
   const steps=advanceFootsteps(beforeMove,view,dt,walkClock,walkSpeed);
   walkClock=steps.time;walkSpeed=steps.speed;
+  // Navigating and auto-hunting are controlled by server snapshots. Face
+  // actual on-screen travel so the feet do not walk sideways or backwards.
+  if(!locallySteering&&clock>=attackUntil&&steps.walking){
+   const heading=movementHeading(beforeMove,view);
+   if(heading){headingX=heading.x;headingY=heading.y;const pose=headingPose(heading.x,heading.y,face,flip);face=pose.row;flip=pose.mirror;}
+  }
   // The server keeps a motion vector for 600 ms; send only while steering.
    // One stop command replaces repeated idle POSTs (previously ~12.5/s).
    const maySend=manualMove||(!auto&&!state.navMoving&&performance.now()>navigationRequestedUntil);
@@ -824,41 +877,63 @@ function frame(time){
     queueMove({type:'move',x:dx,y:dy,manual:manualMove});
    }
   const attacking=clock<attackUntil,hero=$('hero'),heroArt=$('heroArt');
+  if(!__frameDebug?.skipHero){
   if(attacking){const duration=Number(hero.dataset.attackDuration)||.44,started=Number(hero.dataset.attackStarted)||attackUntil-duration;attackPose(hero,heroArt,face,flip,started,duration,state.job,Number(hero.dataset.attackSkill??-1),Number(hero.dataset.attackVariant||0),headingX,headingY);}
   else motion(hero,heroArt,steps.walking?'walk':'idle',face,flip,steps.walking?walkClock:clock,0,headingX,headingY);
   placeEntity(hero,view.x,view.y);const heroDepth=Math.round(view.y);if(hero._renderDepth!==heroDepth){hero.style.zIndex=heroDepth;hero._renderDepth=heroDepth;}hero.classList.toggle('attacking',attacking);hero.classList.toggle('guarded',(state.guard||0)>now());
+  }
   const perfNow=performance.now()/1000,vw=viewportWorldW,vh=viewportWorldH,pad=$('game').classList.contains('mobile-lite')?80:innerWidth<700?180:260,left=cam.x-pad,right=cam.x+vw+pad,top=cam.y-pad,bottom=cam.y+vh+pad;
   // Keep the protagonist and camera at full display rate. On iPhone, remote
   // actors need only 25-30 updates/sec; this removes hundreds of costly DOM
   // style recalculations in crowded late-game zones without hiding art.
-  const actorInterval=innerWidth<701?(state.zone==='surface'?.032:($('game').classList.contains('mobile-lite')||perfFps>0&&perfFps<40)?.041:.034):0;
-  if(!actorInterval||clock-actorRenderAt>=actorInterval){
+  const actorInterval=innerWidth<701?(mobileWebKit?.09:state.zone==='surface'?.032:($('game').classList.contains('mobile-lite')||perfFps>0&&perfFps<40)?.041:.034):0;
+  if(!__frameDebug?.skipActors&&(!actorInterval||clock-actorRenderAt>=actorInterval)){
+   // A bounded rotating queue prevents one mobile frame from repainting
+   // 29 ordinary enemy layers. Every visible mob gets a turn, including
+   // those later in the encounter list.
+   let mobilePaintTargets=null;
+   if(mobileWebKit){
+    const visible=[...enemies.values()].filter(e=>!e.boss&&e.alive&&e.x>=left-70&&e.x<=right+70&&e.y>=top-90&&e.y<=bottom+90);
+    mobilePaintTargets=new Set();
+    if(visible.length){for(let n=0;n<Math.min(2,visible.length);n++)mobilePaintTargets.add(visible[(webkitActorCursor+n)%visible.length]);webkitActorCursor=(webkitActorCursor+2)%visible.length;}
+    else webkitActorCursor=0;
+   }
    const actorDt=Math.min(.2,actorRenderAt?clock-actorRenderAt:dt);actorRenderAt=clock;
   for(const e of enemies.values()){
    const age=Math.min(.12,Math.max(0,perfNow-(e.sampleAt||perfNow))),tx=e.x+(e.netVx||0)*age,ty=e.y+(e.netVy||0)*age,onScreen=tx>=left&&tx<=right&&ty>=top&&ty<=bottom;
+   if(mobileWebKit&&!e.boss)continue; // drawn in one canvas, not separate compositor layers
+   if((__frameDebug?.skipBosses&&e.boss)||(__frameDebug?.skipNonBosses&&!e.boss))continue;
    if(!onScreen){e.vx=tx;e.vy=ty;if(e.renderVisible!==false){e.el.style.visibility='hidden';e.renderVisible=false;}continue;}
    if(e.renderVisible===false){e.el.style.visibility='';e.renderVisible=true;}
-   const pos=smoothRemotePosition({x:e.vx,y:e.vy},{x:tx,y:ty},actorDt,170,19);e.vx=pos.x;e.vy=pos.y;placeEntity(e.el,e.vx,e.vy);const depth=Math.round(e.vy);if(e.renderDepth!==depth){e.el.style.zIndex=depth;e.renderDepth=depth;}
-   if(!e.illustrated){const col=e.tellAt?3:1+Math.floor(clock*8)%2,row=e.mmo?({stoneking:0,shadowking:1,dragon:2}[e.named]??e.skin??3):(e.boss?1:0),rows=e.mmo?4:2,key=col+'|'+row+'|'+rows;
+   if(mobilePaintTargets&&!e.boss&&!mobilePaintTargets.has(e))continue;
+   const pos=smoothRemotePosition({x:e.vx,y:e.vy},{x:tx,y:ty},actorDt,170,19);e.vx=pos.x;e.vy=pos.y;if(!__frameDebug?.skipActorMoves)placeEntity(e.el,e.vx,e.vy);const depth=Math.round(e.vy);if(e.renderDepth!==depth){e.el.style.zIndex=depth;e.renderDepth=depth;}
+   if(!e.illustrated){if(mobileWebKit&&e.boss)continue; // boss paint is handled by the shared canvas
+   if(__frameDebug?.skipActorSprites)continue;const col=e.tellAt?3:1+Math.floor(clock*8)%2,row=e.mmo?({stoneking:0,shadowking:1,dragon:2}[e.named]??e.skin??3):(e.boss?1:0),rows=e.mmo?4:2,key=col+'|'+row+'|'+rows;
    if(e.renderSpriteKey!==key){sprite(e.art,col,row,rows);e.renderSpriteKey=key;}}
   }
   for(const p of peers.values()){
    const age=Math.min(.12,Math.max(0,perfNow-(p.sampleAt||perfNow))),tx=p.x+(p.netVx||0)*age,ty=p.y+(p.netVy||0)*age,onScreen=tx>=left&&tx<=right&&ty>=top&&ty<=bottom;
    if(!onScreen){p.vx=tx;p.vy=ty;if(p.renderVisible!==false){p.el.style.visibility='hidden';p.renderVisible=false;}continue;}
    if(p.renderVisible===false){p.el.style.visibility='';p.renderVisible=true;}
-   const pos=smoothRemotePosition({x:p.vx,y:p.vy},{x:tx,y:ty},actorDt,175,17);p.vx=pos.x;p.vy=pos.y;placeEntity(p.el,p.vx,p.vy);const depth=Math.round(p.vy);if(p.renderDepth!==depth){p.el.style.zIndex=depth;p.renderDepth=depth;}p.el.classList.toggle('attacking',!!p.attacking);
+   if(mobileWebKit&&!p.attacking&&clock<(p.nextMobilePaintAt||0))continue;
+   if(mobileWebKit)p.nextMobilePaintAt=clock+.05;
+   const pos=smoothRemotePosition({x:p.vx,y:p.vy},{x:tx,y:ty},actorDt,175,17);p.vx=pos.x;p.vy=pos.y;if(!__frameDebug?.skipActorMoves)placeEntity(p.el,p.vx,p.vy);const depth=Math.round(p.vy);if(p.renderDepth!==depth){p.el.style.zIndex=depth;p.renderDepth=depth;}p.el.classList.toggle('attacking',!!p.attacking);
    if(p.attacking){if(!p.localAttackStarted||clock-p.localAttackStarted>.55){p.localAttackStarted=clock;const target=fxTarget(p.attackTarget),origin={x:p.vx,y:p.vy};if((p.attackSkill??-1)>=0)skillEffect(p.job,p.attackSkill,target,origin);else if(target)combatContact(p.job,-1,target,origin);}attackPose(p.el,p.art,p.face,p.flip,p.localAttackStarted,.44,p.job,p.attackSkill??-1,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)%3,p.dirX??0,p.dirY??0);}
    else{p.localAttackStarted=0;motion(p.el,p.art,p.moving?'walk':'idle',p.face,p.flip,clock,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)*.13,p.dirX??0,p.dirY??0);}
   }
   }
+  if(!__frameDebug?.skipUI){
   if(targetIntent){targetIntent=null;}
   nearNpc=state.zone==='surface'?npcs.find(n=>distance(view,n)<115)||null:null;
   if(gatherIntent){const n=systems.nodes.find(n=>n.id===gatherIntent);if(n&&distance(state,n)<95){gatherIntent=null;command({type:'gather',node:n.id});}}
   if(npcIntent&&nearNpc?.id===npcIntent&&!path.length){const id=npcIntent;npcIntent=null;talk(id);}
   for(const el of portalEls.values()){const p=el.portal,d=p?distance(view,p):9999;el.classList.toggle('near',d<190);el.classList.toggle('very-near',d<105);}
   if(travelIntent)travelIntent=null;
-  syncBossSector();camera(false,dt);const lite=$('game').classList.contains('mobile-lite');if(clock-hudAt>(lite?.34:innerWidth<701?.22:.12)){hud();hudAt=clock;}
+  syncBossSector();camera(false,dt);
+  if(safariMobPainter)safariMobPainter.draw(enemies,cam,scale,clock,performance.now()/1000,$('viewport').clientWidth,$('viewport').clientHeight,selected);
+  const lite=$('game').classList.contains('mobile-lite');if(clock-hudAt>(mobileWebKit?.48:lite?.34:innerWidth<701?.22:.12)){hud();hudAt=clock;}
    if(clock-minimapAt>(lite?.8:innerWidth<701?.45:.18)&&!document.hidden&&($('minimapWrap')?.classList.contains('open')||innerWidth>=701)){renderMinimap();minimapAt=clock;}
+ }
  }
  requestAnimationFrame(frame);
 }

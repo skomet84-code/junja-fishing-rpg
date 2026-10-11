@@ -26,9 +26,13 @@ jobs:
       - name: Install server dependency and test game rules
         run: |
           npm install --prefix adventure-online/server/online --omit=dev
-          node --test adventure-online/server/online/tests/ascension.test.mjs adventure-online/server/online/tests/primordial.test.mjs adventure-online/server/online/tests/map-travel.test.mjs
+          node --test adventure-online/server/online/tests/ascension.test.mjs adventure-online/server/online/tests/primordial.test.mjs adventure-online/server/online/tests/map-travel.test.mjs adventure-online/server/online/tests/navigation-guide.test.mjs
       - name: Check real mobile movement and render cadence in Chromium
         run: |
           npm install --no-save playwright@1.58.2
           npx playwright install --with-deps chromium
           node adventure-online/movement-e2e.mjs
+      - name: Check touch travel and motion in WebKit (Safari engine)
+        run: |
+          npx playwright install --with-deps webkit
+          BROWSER_ENGINE=webkit node adventure-online/movement-e2e.mjs

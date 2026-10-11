@@ -3,6 +3,7 @@ import {clamp,distance,walkable,pathfind} from '../../image-prototype/core.js';
 import {profile,JOBS,ITEMS,stats,gainXp,rollLoot,equip,claim,RARE_POOL,CRYSTAL_POOL,RUIN_POOL,LEGENDARY_POOL,MYTHIC_POOL,PRIMORDIAL_POOL,CREATION_PRIMORDIAL_POOL,RAID_POOL,RIFT_POOL,ECLIPSE_POOL,ETERNAL_POOL,itemSellPrice,promotionSkillLearned,promotionSkillKey,CONQUEST_CAP,conquestNeed,MAX_ENHANCE,enhanceChance,enhancementLevel,basicAttackDelay,skillCastDelay,skillMpCost} from '../../image-prototype/catalog.js';
 import {CHANNEL_CAP,WORLD_CAP,LEVEL_CAP,NAMED,bossWindow,PROMOTIONS,PROMOTION_MATERIALS,ZONES,QUICK_CHATS,ASCENSION_CHAPTERS,classWeapon,WEAPON_FAMILIES,BOOSTS,ASCENSION_GEAR_POOLS} from '../../image-prototype/mmo-data.js';
 import {initSystems,mmoAction,tickSystems,snapshotSystems,progress,onPartyDungeonKill,removeSocial,socialId,partyOf,partyMembers} from './systems.mjs';
+import {advanceRoute} from './route-motion.mjs';
 const canAggro=(p,e)=>{if(e.tags?.has(p.id))return true;const gap=(e.level||1)-(p.state.level||1);if(e.named)return gap<=10;if(e.boss)return gap<=5;if(e.elite)return gap<=4;return gap<=6;};
 const enemyDamage=e=>Math.max(2,Math.round(Number.isFinite(e.damage)?e.damage:e.boss?18+e.level*4.2:e.elite?8+e.level*3.2:4+e.level*2.2));
 const lateGameDamage=(enemy,st,level)=>{const raw=Math.max(2,enemyDamage(enemy)-st.def);if(!ASCENSION_GEAR_POOLS[enemy.zone])return raw;const ratio=Math.min(1.3,Math.max(.6,enemy.level/Math.max(1,level))),floor=st.hp*(enemy.boss?.055:enemy.elite?.03:.012)*ratio;return Math.max(raw,Math.round(floor));};
@@ -213,7 +214,9 @@ export class World{
   }e.tags.clear();}
  tick(dt=.1){const now=this.now();tickSystems(this);for(const p of this.players.values()){if(p.exchangeBusy)continue;
   let {x:dx,y:dy}=p.input;const s=p.state,st=stats(s);s.mp=Math.min(st.mp,Math.max(0,Number(s.mp)||0)+st.mp*(p.auto?.025:.004)*dt);if(!socialId(this,p)&&s.autoHpPct&&s.potions>0&&now>=p.nextHpPotion&&s.hp/st.hp*100<=s.autoHpPct){s.potions--;s.hp=Math.min(st.hp,s.hp+st.hp*.5);p.nextHpPotion=now+1.25;this.dirty(p);}if(!socialId(this,p)&&s.autoMpPct&&s.manaPotions>0&&now>=p.nextMpPotion&&s.mp/st.mp*100<=s.autoMpPct){s.manaPotions--;s.mp=Math.min(st.mp,s.mp+st.mp*.45);p.nextMpPotion=now+1.25;this.dirty(p);}if(now-p.lastInput>.6)dx=dy=0;
-  if(p.navPath.length&&!p.auto){const point=p.navPath[0],d=distance(s,point);if(d<=Math.max(7,250*dt)){s.x=point.x;s.y=point.y;p.navPath.shift();dx=dy=0;}else{dx=point.x-s.x;dy=point.y-s.y;}}
+  // Path travel is advanced below using the remaining movement budget across
+  // *multiple* waypoints. Never teleport to the next point or pause a tick.
+  if(p.navPath.length&&!p.auto){dx=dy=0;}
   if(p.combatTarget!=null&&!p.auto){const e=this.channel(p.channel,p.state.zone).find(e=>e.id===p.combatTarget&&e.alive);if(!e){p.combatTarget=null;p.combatSkill=-1;}else if(distance(s,e)<=st.range*.9){if(now>=p.nextAttack){const skill=p.combatSkill;p.combatSkill=-1;this.attack(p,skill,e.id);}dx=dy=0;}else if(distance(s,e)<1100){const direction=this.chase(p,e,now);dx=direction.x;dy=direction.y;}else{p.combatTarget=null;p.combatSkill=-1;}}
   if(p.auto){const mobs=this.channel(p.channel,p.state.zone),safe=e=>{const gap=e.level-s.level;if(e.summoned)return true;if(e.named)return gap<=10;if(e.boss)return gap<=6;if(e.elite)return gap<=3;return true; /* Regular mobs on higher hunting floors remain targetable. */},candidates=mobs.filter(e=>e.alive&&safe(e)),current=candidates.find(e=>e.id===p.autoTarget&&distance(e,s)<950),score=e=>distance(e,s)-(e.named?110:e.boss?80:e.elite?20:0),e=current||candidates.sort((a,b)=>score(a)-score(b))[0];p.autoTarget=e?.id??null;if(e){if(distance(s,e)<=st.range*.86){
     let manual=p.autoSkillQueue?.[0];
@@ -226,7 +229,19 @@ export class World{
     if(ready&&p.cooldowns[skill]>before)p.autoSkillQueue.shift();
     dx=dy=0;
    }else{const direction=this.chase(p,e,now);dx=direction.x;dy=direction.y;}}}
-  if(now>=p.attackUntil){const d=Math.hypot(dx,dy);if(d>.01){const nx=dx/d,ny=dy/d,x=s.x+nx*250*dt,y=s.y+ny*250*dt;if(walkable(x,s.y))s.x=x;if(walkable(s.x,y))s.y=y;p.dirX=nx;p.dirY=ny;p.face=Math.abs(dx)>Math.abs(dy)?2:dy<0?1:0;p.flip=p.face===2&&dx<0;}}
+  if(now>=p.attackUntil){
+   const stepNavActiveForThisTick=p.navPath.length>0&&!p.auto;
+   if(stepNavActiveForThisTick){
+    const ox=s.x,oy=s.y,step=advanceRoute(s,p.navPath,250*dt,walkable);
+    s.x=step.x;s.y=step.y;dx=s.x-ox;dy=s.y-oy;
+   }
+   const d=Math.hypot(dx,dy);
+   if(d>.01){
+    const nx=dx/d,ny=dy/d;
+    if(!stepNavActiveForThisTick){const x=s.x+nx*250*dt,y=s.y+ny*250*dt;if(walkable(x,s.y))s.x=x;if(walkable(s.x,y))s.y=y;}
+    p.dirX=nx;p.dirY=ny;p.face=Math.abs(dx)>Math.abs(dy)?2:dy<0?1:0;p.flip=p.face===2&&dx<0;
+   }
+  }
  }
  for(const [key,mobs] of this.channels){const [channel,zone]=key.split('|');const players=[...this.players.values()].filter(p=>p.channel===channel&&p.state.zone===zone&&!p.exchangeBusy);if(!players.length){continue;}for(const e of mobs){if(e.named){const config=NAMED.find(b=>b.id===e.named),window=bossWindow(config,now);if(!window.active){e.alive=false;e.tags.clear();e.tellAt=0;for(const add of mobs)if(add.summoned&&add.summonOwner===e.id){add.alive=false;add.hp=add.max;add.summonOwner=null;add.tags.clear();}continue;}if(e.window!==window.key){e.window=window.key;e.alive=true;e.hp=e.max;e.x=e.homeX;e.y=e.homeY;e.tags.clear();e.phase=1;e.pattern='';e.patternAt=0;e.patternNext=now+4;e.patternSerial=0;}e.respawn=window.next;}if(!e.alive){if(!e.named&&!e.summoned&&now>=e.respawn){e.alive=true;e.hp=e.max;e.x=e.homeX;e.y=e.homeY;e.slow=0;e.stun=0;e.phase=1;e.pattern='';e.patternAt=0;e.patternNext=now+4;e.patternSerial=0;}continue;}if((e.stun||0)>now)continue;const p=players.filter(p=>p.state.y>590&&canAggro(p,e)&&distance(p.state,e)<(e.named?420:e.boss?300:e.elite?185:165)).sort((a,b)=>distance(a.state,e)-distance(b.state,e))[0];const d=p?distance(p.state,e):Infinity;
    if(['void','origin','rift','eclipse','sanctum'].includes(zone)&&e.boss){
