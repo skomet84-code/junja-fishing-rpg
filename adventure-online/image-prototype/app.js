@@ -811,7 +811,7 @@ const perfDiagnostics=new URL(location.href).searchParams.get('perf')==='1';
 let perfFrames=0,perfElapsed=0,perfStalls=0,perfSlowWindows=0,perfRecoveryWindows=0,perfFps=0,perfPeakSnapshotMs=0,perfLatestSnapshotMs=0;
 let perfMeter=null;
 if(perfDiagnostics){perfMeter=document.createElement('output');perfMeter.id='adventurePerfMeter';perfMeter.setAttribute('aria-label','게임 성능 진단');perfMeter.textContent='FPS 측정 중';$('game').append(perfMeter);}
-const __frameDebug=new URL(location.href).searchParams.has('frameDebug')?{skipAll:false,skipHero:false,skipActors:false,skipUI:false}:null;
+const __frameDebug=new URL(location.href).searchParams.has('frameDebug')?{skipAll:false,skipHero:false,skipActors:false,skipUI:false,skipActorMoves:false,skipActorSprites:false,skipBosses:false,skipNonBosses:false}:null;
 if(__frameDebug)window.__frameDebug=__frameDebug;
 function frame(time){
  if(__frameDebug?.skipAll){requestAnimationFrame(frame);return;}
@@ -885,11 +885,12 @@ function frame(time){
    const actorDt=Math.min(.2,actorRenderAt?clock-actorRenderAt:dt);actorRenderAt=clock;
   for(const e of enemies.values()){
    const age=Math.min(.12,Math.max(0,perfNow-(e.sampleAt||perfNow))),tx=e.x+(e.netVx||0)*age,ty=e.y+(e.netVy||0)*age,onScreen=tx>=left&&tx<=right&&ty>=top&&ty<=bottom;
+   if((__frameDebug?.skipBosses&&e.boss)||(__frameDebug?.skipNonBosses&&!e.boss))continue;
    if(!onScreen){e.vx=tx;e.vy=ty;if(e.renderVisible!==false){e.el.style.visibility='hidden';e.renderVisible=false;}continue;}
    if(e.renderVisible===false){e.el.style.visibility='';e.renderVisible=true;}
    if(mobileWebKit&&!e.boss&&(webkitVisibleActorIndex++%webkitBatchSize)!==webkitPaintGroup)continue;
-   const pos=smoothRemotePosition({x:e.vx,y:e.vy},{x:tx,y:ty},actorDt,170,19);e.vx=pos.x;e.vy=pos.y;placeEntity(e.el,e.vx,e.vy);const depth=Math.round(e.vy);if(e.renderDepth!==depth){e.el.style.zIndex=depth;e.renderDepth=depth;}
-   if(!e.illustrated){const col=e.tellAt?3:1+Math.floor(clock*8)%2,row=e.mmo?({stoneking:0,shadowking:1,dragon:2}[e.named]??e.skin??3):(e.boss?1:0),rows=e.mmo?4:2,key=col+'|'+row+'|'+rows;
+   const pos=smoothRemotePosition({x:e.vx,y:e.vy},{x:tx,y:ty},actorDt,170,19);e.vx=pos.x;e.vy=pos.y;if(!__frameDebug?.skipActorMoves)placeEntity(e.el,e.vx,e.vy);const depth=Math.round(e.vy);if(e.renderDepth!==depth){e.el.style.zIndex=depth;e.renderDepth=depth;}
+   if(!e.illustrated&&!__frameDebug?.skipActorSprites){const col=e.tellAt?3:1+Math.floor(clock*8)%2,row=e.mmo?({stoneking:0,shadowking:1,dragon:2}[e.named]??e.skin??3):(e.boss?1:0),rows=e.mmo?4:2,key=col+'|'+row+'|'+rows;
    if(e.renderSpriteKey!==key){sprite(e.art,col,row,rows);e.renderSpriteKey=key;}}
   }
   for(const p of peers.values()){
@@ -897,7 +898,7 @@ function frame(time){
    if(!onScreen){p.vx=tx;p.vy=ty;if(p.renderVisible!==false){p.el.style.visibility='hidden';p.renderVisible=false;}continue;}
    if(p.renderVisible===false){p.el.style.visibility='';p.renderVisible=true;}
    if(mobileWebKit&&!p.attacking&&(webkitVisibleActorIndex++%webkitBatchSize)!==webkitPaintGroup)continue;
-   const pos=smoothRemotePosition({x:p.vx,y:p.vy},{x:tx,y:ty},actorDt,175,17);p.vx=pos.x;p.vy=pos.y;placeEntity(p.el,p.vx,p.vy);const depth=Math.round(p.vy);if(p.renderDepth!==depth){p.el.style.zIndex=depth;p.renderDepth=depth;}p.el.classList.toggle('attacking',!!p.attacking);
+   const pos=smoothRemotePosition({x:p.vx,y:p.vy},{x:tx,y:ty},actorDt,175,17);p.vx=pos.x;p.vy=pos.y;if(!__frameDebug?.skipActorMoves)placeEntity(p.el,p.vx,p.vy);const depth=Math.round(p.vy);if(p.renderDepth!==depth){p.el.style.zIndex=depth;p.renderDepth=depth;}p.el.classList.toggle('attacking',!!p.attacking);
    if(p.attacking){if(!p.localAttackStarted||clock-p.localAttackStarted>.55){p.localAttackStarted=clock;const target=fxTarget(p.attackTarget),origin={x:p.vx,y:p.vy};if((p.attackSkill??-1)>=0)skillEffect(p.job,p.attackSkill,target,origin);else if(target)combatContact(p.job,-1,target,origin);}attackPose(p.el,p.art,p.face,p.flip,p.localAttackStarted,.44,p.job,p.attackSkill??-1,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)%3,p.dirX??0,p.dirY??0);}
    else{p.localAttackStarted=0;motion(p.el,p.art,p.moving?'walk':'idle',p.face,p.flip,clock,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)*.13,p.dirX??0,p.dirY??0);}
   }
