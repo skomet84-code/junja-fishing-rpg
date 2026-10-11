@@ -32,3 +32,22 @@ test('remote character repaints cap mobile cadence without sacrificing hero came
  assert.match(app,/placeEntity\(hero,view\.x,view\.y\)/);
  assert.match(app,/camera\(false,dt\)/);
 });
+
+
+test('server snapshots do not force expensive world UI render every 100ms',()=>{
+ assert.match(app,/sampleAt-lastMMOSyncAt>=\.25/);
+ assert.match(app,/oldSystems\.party!==systems\.party/);
+ assert.match(app,/oldSystems\.nodes!==systems\.nodes/);
+});
+test('mobile lite automatically recovers after sustained healthy frame windows',()=>{
+ assert.match(app,/perfRecoveryWindows>=4/);
+ assert.match(app,/classList\.remove\('mobile-lite'\)/);
+ assert.match(app,/perfSlowWindows>=2/);
+});
+test('stationary camera does not rewrite entire world transform every frame',()=>{
+ assert.match(app,/worldEl\._cameraTransform!==nextTransform/);
+});
+test('manual movement is only transmitted on change or cadence, not each frame',()=>{
+ assert.match(app,/shouldSendMovement\(lastMoveSent/);
+ assert.doesNotMatch(app,/clock-lastSend>=\.08/);
+});
