@@ -26,7 +26,7 @@ export function createSafariMobPainter(viewport){
  if(!ctx)return{canvas,draw:()=>{}};
  let lastAt=-Infinity,lastSize='',painted=0;
  function draw(enemies,cam,scale,time,nowSeconds,viewportW,viewportH,selected){
-  if(time-lastAt<.048)return;
+  if(time-lastAt<.10)return;
   const dt=Math.min(.15,Math.max(.016,time-lastAt||.05));lastAt=time;
   const w=Math.max(1,Math.round(viewportW)),h=Math.max(1,Math.round(viewportH)),dpr=Math.min(2,Math.max(1,window.devicePixelRatio||1));
   const size=w+'x'+h+'x'+dpr;
