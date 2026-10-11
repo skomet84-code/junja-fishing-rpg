@@ -1687,3 +1687,6 @@ button.region-node.current:disabled{opacity:1;background:#384632;border-color:#f
    layers and expensive filters on ordinary (not boss) enemy art only. */
 #game.webkit-actor-lite .entity.enemy:not(.boss){will-change:auto!important;backface-visibility:visible!important;-webkit-backface-visibility:visible!important}
 #game.webkit-actor-lite .entity.enemy:not(.boss)>.sprite{will-change:auto!important;filter:none!important;backface-visibility:visible!important;-webkit-backface-visibility:visible!important}
+
+/* Safari monsters are rendered in one transparent viewport canvas. */
+#game.webkit-canvas-mobs .enemy:not(.boss){visibility:hidden!important;pointer-events:none!important;will-change:auto!important}
