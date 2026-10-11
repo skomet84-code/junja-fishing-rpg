@@ -5,14 +5,9 @@ import {BOOSTS,WEAPON_FAMILIES,MATERIALS,RECIPES,ENDGAME_TIERS,ZONES,TRAVEL_PORT
 import {API_URL} from './config.js';
 import {createCombatQueue} from './combat-queue.js?v=20261009-primordial-motion1';
 import {monsterIllustration} from './monster-art.js?v=20261010-monster1';
-import {CHARACTERS_V1,MONSTERS_V1,characterCell,monsterCell,newArtRequested} from './graphics-v1.js?v=20261012-graphics1';
 import {predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement,smoothRemotePosition,shouldSendMovement} from './movement-feel.js?v=20261012-audit1';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
-// New illustration assets are opt-out via ?graphics=legacy (safe instant rollback).
-const graphicsV1Requested=newArtRequested(location.search);
-let graphicsV1CharactersReady=false,graphicsV1MonstersReady=false;
-const graphicsVersion='20261012-graphics1';
 const endgameStyle=document.createElement('style');endgameStyle.textContent="#world[data-zone=void]:after{background:radial-gradient(ellipse at 50% 70%,transparent 22%,#160b2670 72%,#06030bcc 100%)!important}#world[data-zone=origin]:after{background:radial-gradient(ellipse at 50% 70%,transparent 25%,#473a1360 72%,#100c04bb 100%)!important}";document.head.append(endgameStyle);
 let wireSnapshot=null;
 let token='',connectionKey='',legacy=null,roster=[],selectedSlot=0,state=profile(),view={x:768,y:355},connected=false,paused=false,serverNow=0,receivedAt=0,last=0,clock=0,lastSend=0,moveSending=false,pendingMove=null,streamController=null,streamGeneration=0,lastSelfSampleAt=0,lastSelfServerAt=0,lastSelfX=768,lastSelfY=355,serverVelocity={x:0,y:0},walkClock=0,walkSpeed=0;
@@ -215,11 +210,7 @@ function preload(src,required=true,onload=()=>{}){return new Promise((resolve,re
 const artReady=Promise.all([
  ...['hero','rogue','mage','healer','world','npcs','squirrel','monster-atlas'].map(name=>preload('./assets/'+name+'.png')),
  ...characterArt.map(name=>preload('./assets/'+name+'-motion.webp?v='+BUILD,false,()=>motionArt.add(name))),
- ...(monsterArtMode==='raster'?MONSTER_FAMILIES.map(rasterizeMonsterArt):[]),
- ...(graphicsV1Requested?[
-  preload('./assets/'+CHARACTERS_V1+'?v='+graphicsVersion,false,()=>{graphicsV1CharactersReady=true;}),
-  preload('./assets/'+MONSTERS_V1+'?v='+graphicsVersion,false,()=>{graphicsV1MonstersReady=true;})
- ]:[])
+ ...(monsterArtMode==='raster'?MONSTER_FAMILIES.map(rasterizeMonsterArt):[])
 ]);artReady.catch(()=>{});
 function toast(text,kind='notice'){const el=$('toast');el.textContent=text;el.classList.toggle('combat-toast',kind==='combat');el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),kind==='combat'?1150:2400);}
 function now(){return serverNow+(performance.now()-receivedAt)/1000;}
@@ -293,18 +284,6 @@ function applyHeading(el,dx,dy,fallbackRow=0,fallbackMirror=false){
  return p;
 }
 
-function graphicsV1Sprite(art,job,mode,time,phase=0,progress=null){
- const frame=progress===null?(mode==='walk'?Math.floor(time*7+phase*3)%2:0):(progress>=.22?1:0);
- const cell=characterCell(job,mode,frame);if(!cell)return;
- const key='graphics-v1:'+job+':'+cell.row+':'+frame;
- if(art._motionFrameKey===key)return;
- art._motionFrameKey=key;
- art.style.backgroundSize=cell.backgroundSize;
- art.style.backgroundPosition=cell.backgroundPosition;
- art.style.backgroundRepeat='no-repeat';
- art.style.opacity='1';
- const twin=art.parentElement?.querySelector('.sprite-b');if(twin)twin.style.opacity='0';
-}
 function motionSprite(art,frame,state,row,mirror=false){
  const stateIndex=state==='walk'?1:state==='attack'?2:0,r=stateIndex*3+row;
  const key=stateIndex+'|'+r+'|'+frame+'|'+(mirror?1:0);
@@ -361,8 +340,7 @@ function motion(el,art,mode,row,mirror,time,phase=0,dx=0,dy=0){
  }
  const pose=applyHeading(el,dx,dy,row,mirror),cfg=MOTION[mode]||MOTION.idle,keys=cfg.keys;
  const pos=((time*cfg.speed+phase)%keys.length+keys.length)%keys.length,idx=Math.floor(pos),mix=pos-idx;
- if(el.dataset.motionSheet==='v1')graphicsV1Sprite(art,el.dataset.job,mode,time,phase);
- else if(el.dataset.motionSheet==='1'){const fps=mode==='walk'?(el.dataset.job==='warrior'?14:18):mode==='attack'?16:7,frame=Math.floor((((time*fps)+(phase*3))%12+12)%12);motionSprite(art,frame,mode,pose.row,pose.mirror);}
+ if(el.dataset.motionSheet==='1'){const fps=mode==='walk'?(el.dataset.job==='warrior'?14:18):mode==='attack'?16:7,frame=Math.floor((((time*fps)+(phase*3))%12+12)%12);motionSprite(art,frame,mode,pose.row,pose.mirror);}
  else blendSprite(art,keys[idx],keys[(idx+1)%keys.length],mix,pose.row,3,pose.mirror);
  el.dataset.motion=mode;if(el.dataset.job==='warrior')el.dataset.warriorPhase=mode;
  const stride=mode==='walk'?Math.sin((pos/keys.length)*Math.PI*2):Math.sin(time*Math.PI*1.4+phase);
@@ -387,8 +365,7 @@ function attackPose(el,art,row,mirror,started,duration=.44,job='warrior',skill=-
 
  const cast=job==='mage'||job==='healer',rogue=job==='rogue',keys=cast?[0,1,3,1,0]:rogue?[0,1,3,2,3,0]:[0,1,3,3,2,0];
  const z=p*(keys.length-1),i=Math.min(keys.length-2,Math.floor(z)),mix=z-i;
- if(el.dataset.motionSheet==='v1')graphicsV1Sprite(art,job,'attack',clock,0,p);
- else if(el.dataset.motionSheet==='1'){
+ if(el.dataset.motionSheet==='1'){
   // A brief readable wind-up, fast impact frames, and longer recovery.
   const sequence=warrior?(p<.25?p/.25*3:p<.66?3+(p-.25)/.41*7:10+(p-.66)/.34*1):p*11;
   motionSprite(art,Math.min(11,Math.floor(sequence)),'attack',pose.row,pose.mirror);
@@ -411,11 +388,8 @@ function attackPose(el,art,row,mirror,started,duration=.44,job='warrior',skill=-
  el.style.setProperty('--bob',bob+'px');el.style.setProperty('--lean',lean+'deg');el.style.setProperty('--squash',p>.18&&p<.62?.958:1);el.style.setProperty('--weapon-angle',weapon+'deg');el.style.setProperty('--arm-angle',(weapon*armFactor)+'deg');el.style.setProperty('--trail-angle',(weapon*trailFactor)+'deg');el.style.setProperty('--trail-scale',String(.74+Math.max(0,power)*.28));el.style.setProperty('--attack-power',String(Math.max(0,power)));el.style.setProperty('--lunge-x',(lunge*pose.nx)+'px');el.style.setProperty('--lunge-y',(lunge*pose.ny*.38)+'px');el.style.setProperty('--coat-sway',(lean*.55-weapon*.045)+'deg');el.style.setProperty('--cape-lag',(lean*-.32-weapon*.025)+'deg');el.style.setProperty('--shoulder-lift',(Math.max(0,power)*-2.2)+'px');el.style.setProperty('--offhand-angle',(-weapon*.72)+'deg');paintProductionSprite(el,skill>=0?'skill':'attack',clock,pose.nx,pose.ny,p);
 }
 function actorArt(el,s){
- const art=JOBS[s.job]?.art||'hero',useMotion=motionArt.has(art),useV1=graphicsV1Requested&&graphicsV1CharactersReady&&characterCell(s.job)!==null,
-  url=useV1?`url('./assets/${CHARACTERS_V1}?v=${graphicsVersion}')`:`url('./assets/${art}${useMotion?'-motion.webp':'.png'}?v=${BUILD}')`,parent=el.parentElement;
- const mode=useV1?'v1':useMotion?'1':'0';
- if(parent&&parent.dataset.motionSheet!==mode)parent.dataset.motionSheet=mode;
- if(parent)parent.classList.toggle('graphics-v1',useV1);
+ const art=JOBS[s.job]?.art||'hero',useMotion=motionArt.has(art),url=`url('./assets/${art}${useMotion?'-motion.webp':'.png'}?v=${BUILD}')`,parent=el.parentElement;
+ if(parent&&parent.dataset.motionSheet!==(useMotion?'1':'0'))parent.dataset.motionSheet=useMotion?'1':'0';
  if(el.dataset.artSource!==url){el.style.backgroundImage=url;el.dataset.artSource=url;el.style.opacity='1';el._motionFrameKey=null;}
  const twin=parent?.querySelector('.sprite-b');
  if(twin&&twin.dataset.artSource!==url){twin.style.backgroundImage=url;twin.dataset.artSource=url;twin.style.opacity='0';}
@@ -465,20 +439,7 @@ function updateSnapshot(data){
   if(wasKnown&&previousAt){const v=estimateNetworkVelocity({x:previousX,y:previousY},e,Number(data.now)-previousAt,{x:entry.netVx,y:entry.netVy},260);entry.netVx=v.x;entry.netVy=v.y;}
   entry.sampleAt=sampleAt;entry.serverAt=Number(data.now);Object.assign(entry,e);
   if(wasKnown&&wasAlive&&e.hp<previousHp&&distance(view,e)<580)damageNumber(entry,previousHp-e.hp);
-  if(wasKnown&&wasAlive&&!e.alive){spawnLootFx(e);if(e.boss)bossIntroSeen.delete(state.zone+':'+e.id);}if(wasKnown&&wasAlive===false&&e.alive&&e.boss&&bossSector)showBossIntro(e);entry.mmo=!!e.atlas;entry.el.classList.toggle('mmo-monster',entry.mmo);
-  const v1Monster=graphicsV1Requested&&graphicsV1MonstersReady?monsterCell(e.name,state.zone,!!e.boss):null;
-  const artwork=v1Monster?null:simplifyMonsterArt()?null:monsterIllustration(e.name),artKey=v1Monster?'graphics-v1:'+v1Monster.index:artwork||('atlas:'+entry.mmo);
-  entry.illustrated=!!v1Monster||!!artwork;
-  if(entry.renderArtKey!==artKey){entry.renderArtKey=artKey;
-   entry.el.classList.toggle('illustrated-monster',entry.illustrated);
-   entry.el.classList.toggle('graphics-v1',!!v1Monster);
-   entry.el.dataset.artFamily=v1Monster?'v1-'+v1Monster.index:artwork||'';
-   entry.art.style.backgroundImage=v1Monster?`url('./assets/${MONSTERS_V1}?v=${graphicsVersion}')`:artwork?monsterBackground(artwork):entry.mmo?"url('./assets/monster-atlas.png')":'';
-   entry.art.style.backgroundSize=v1Monster?v1Monster.backgroundSize:artwork?'contain':entry.mmo?'400% 400%':'';
-   entry.art.style.backgroundPosition=v1Monster?v1Monster.backgroundPosition:artwork?'center bottom':'';
-   entry.art.style.backgroundRepeat=v1Monster||artwork?'no-repeat':'';
-   entry.renderSpriteKey='';
-  }const mobLabel=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);if(entry.lastMobLabel!==mobLabel){entry.label.textContent=mobLabel;entry.lastMobLabel=mobLabel;}entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('summoned',!!e.summoned);entry.el.classList.toggle('dead',!e.alive);const hpPercent=(e.max>0?Math.max(0,e.hp/e.max*100):0).toFixed(1)+'%';if(entry.lastHpPercent!==hpPercent){entry.life.style.width=hpPercent;entry.lastHpPercent=hpPercent;}entry.tell.hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);const phase=String(e.phase||1),variant=String(e.variant??((e.skin||0)%5));if(entry.el.dataset.phase!==phase)entry.el.dataset.phase=phase;if(entry.el.dataset.variant!==variant)entry.el.dataset.variant=variant;if(entry.el.dataset.zone!==state.zone)entry.el.dataset.zone=state.zone;syncBossPattern(e);
+  if(wasKnown&&wasAlive&&!e.alive){spawnLootFx(e);if(e.boss)bossIntroSeen.delete(state.zone+':'+e.id);}if(wasKnown&&wasAlive===false&&e.alive&&e.boss&&bossSector)showBossIntro(e);entry.mmo=!!e.atlas;entry.el.classList.toggle('mmo-monster',entry.mmo);const artwork=simplifyMonsterArt()?null:monsterIllustration(e.name),artKey=artwork||('atlas:'+entry.mmo);entry.illustrated=!!artwork;if(entry.renderArtKey!==artKey){entry.renderArtKey=artKey;entry.el.classList.toggle('illustrated-monster',!!artwork);entry.el.dataset.artFamily=artwork||'';entry.art.style.backgroundImage=artwork?monsterBackground(artwork):entry.mmo?"url('./assets/monster-atlas.png')":'';entry.art.style.backgroundSize=artwork?'contain':entry.mmo?'400% 400%':'';entry.art.style.backgroundPosition=artwork?'center bottom':'';entry.art.style.backgroundRepeat=artwork?'no-repeat':'';entry.renderSpriteKey='';}const mobLabel=(e.name||'숲 다람쥐')+' · Lv.'+(e.level||1);if(entry.lastMobLabel!==mobLabel){entry.label.textContent=mobLabel;entry.lastMobLabel=mobLabel;}entry.el.classList.toggle('elite',!!e.elite);entry.el.classList.toggle('named',!!e.named);entry.el.classList.toggle('summoned',!!e.summoned);entry.el.classList.toggle('dead',!e.alive);const hpPercent=(e.max>0?Math.max(0,e.hp/e.max*100):0).toFixed(1)+'%';if(entry.lastHpPercent!==hpPercent){entry.life.style.width=hpPercent;entry.lastHpPercent=hpPercent;}entry.tell.hidden=!e.tellAt;entry.el.classList.toggle('selected',selected===e.id);const phase=String(e.phase||1),variant=String(e.variant??((e.skin||0)%5));if(entry.el.dataset.phase!==phase)entry.el.dataset.phase=phase;if(entry.el.dataset.variant!==variant)entry.el.dataset.variant=variant;if(entry.el.dataset.zone!==state.zone)entry.el.dataset.zone=state.zone;syncBossPattern(e);
  }
  for(const [id,e] of enemies)if(!mobIds.has(id)){e.el.remove();bossPatternEls.get(id)?.remove();bossPatternEls.delete(id);enemies.delete(id);if(selected===id){selected=null;targetIntent=null;}}
  const peerIds=new Set();for(const p of data.players){

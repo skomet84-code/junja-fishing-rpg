@@ -24,8 +24,7 @@ test('painted monster families default to one-time rasterization with low FPS es
  assert.match(app,/const simplifyMonsterArt=/);
  assert.match(app,/monsterArtMode==='raster'&&\$\('game'\)\.classList\.contains\('mobile-lite'\)/);
  assert.match(app,/MONSTER_FAMILIES\.map\(rasterizeMonsterArt\)/);
- assert.match(app,/const artwork=v1Monster\?null:simplifyMonsterArt\(\)\?null:monsterIllustration\(e\.name\)/);
- assert.match(app,/graphicsV1Requested&&graphicsV1MonstersReady\?monsterCell\(e\.name,state\.zone,!!e\.boss\)/);
+ assert.match(app,/const artwork=simplifyMonsterArt\(\)\?null:monsterIllustration\(e\.name\)/);
 });
 test('remote character repaints cap mobile cadence without sacrificing hero camera frequency',()=>{
  assert.match(app,/smoothRemotePosition\(\{x:e\.vx,y:e\.vy\}/);
