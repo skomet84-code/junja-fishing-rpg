@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {WALK_SPEED,predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement,smoothRemotePosition} from '../movement-feel.js';
+import {WALK_SPEED,predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement,smoothRemotePosition,shouldSendMovement} from '../movement-feel.js';
 
 test('server extrapolation uses a bounded time horizon and never grants extra movement speed',()=>{
  const state={x:100,y:200};
@@ -98,4 +98,26 @@ test('remote interpolation ignores malformed network targets rather than poisoni
  const stable={x:12,y:34};
  assert.deepEqual(smoothRemotePosition(stable,{x:Infinity,y:3},.1),stable);
  assert.deepEqual(smoothRemotePosition(stable,{x:60,y:40},0),stable);
+});
+
+
+test('idle movement does not spam POSTs on every frame',()=>{
+ assert.equal(shouldSendMovement(null,{x:0,y:0,manual:false},1),false);
+ const last={x:0,y:0,manual:false,at:1};
+ for(let i=0;i<500;i++)assert.equal(shouldSendMovement(last,{x:0,y:0,manual:false},1+i/60),false);
+});
+test('manual steering stays below server 600ms expiration and stops exactly once',()=>{
+ const start={x:1,y:0,manual:true};
+ assert.equal(shouldSendMovement(null,start,0),true);
+ let previous={...start,at:0},sent=0;
+ for(let i=1;i<=120;i++){const at=i/60;if(shouldSendMovement(previous,start,at)){previous={...start,at};sent++;}}
+ assert.ok(sent>=6&&sent<=10,'two seconds should send only 6-10 movement refreshes, not 25');
+ assert.equal(shouldSendMovement(previous,{x:0,y:0,manual:false},2.1),true);
+ assert.equal(shouldSendMovement({x:0,y:0,manual:false,at:2.1},{x:0,y:0,manual:false},2.2),false);
+});
+test('joystick direction changes send only after minimum safe interval',()=>{
+ const prev={x:1,y:0,manual:true,at:5};
+ assert.equal(shouldSendMovement(prev,{x:0,y:1,manual:true},5.04),false);
+ assert.equal(shouldSendMovement(prev,{x:0,y:1,manual:true},5.13),true);
+ assert.equal(shouldSendMovement(prev,{x:1,y:0,manual:true},5.25),true);
 });
