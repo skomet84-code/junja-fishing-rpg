@@ -1690,3 +1690,8 @@ button.region-node.current:disabled{opacity:1;background:#384632;border-color:#f
 
 /* Safari monsters are rendered in one transparent viewport canvas. */
 #game.webkit-canvas-mobs .enemy:not(.boss){visibility:hidden!important;pointer-events:none!important;will-change:auto!important}
+
+/* WebKit boss artwork shares the mob canvas; preserve hit target,
+   health bar, name, spell telegraph and selected ring in DOM. */
+#game.webkit-canvas-mobs .enemy.boss{will-change:auto!important;backface-visibility:visible!important;-webkit-backface-visibility:visible!important}
+#game.webkit-canvas-mobs .enemy.boss>.sprite{visibility:hidden!important;will-change:auto!important}
