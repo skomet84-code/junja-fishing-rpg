@@ -1666,3 +1666,17 @@ button.region-node.current:disabled{opacity:1;background:#384632;border-color:#f
  max-width:70vw;padding:4px 7px;border-radius:5px;pointer-events:none;
  background:#0b1714e8;color:#e9ffce;font:11px/1.3 monospace;
 }
+
+/* One-pass mobile motion coherence: do not re-tween the transform between
+   successive walk sprite poses. This otherwise adds a delayed, rubbery
+   second animation on iOS on top of the actual server-guided steps. */
+@media (hover:none) and (pointer:coarse){
+ .entity.hero[data-motion='walk']>.sprite,
+ .entity.hero[data-motion='walk']>.sprite-b,
+ .entity.hero[data-motion='walk']>.gear-layers,
+ .entity.hero[data-motion='walk']>.weapon-rig,
+ .entity.hero[data-motion='idle']>.sprite,
+ .entity.hero[data-motion='idle']>.sprite-b,
+ .entity.hero[data-motion='idle']>.gear-layers,
+ .entity.hero[data-motion='idle']>.weapon-rig {transition:none!important;}
+}
