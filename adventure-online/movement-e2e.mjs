@@ -34,7 +34,7 @@ try{
   }));
   console.log('WEBKIT_BLANK_PAGE_RAF '+JSON.stringify(baseline));
  }
- await page.goto(base,{waitUntil:'domcontentloaded'});
+ await page.goto(base+(process.env.BROWSER_ENGINE==='webkit'?'/?frameDebug=1':''),{waitUntil:'domcontentloaded'});
  await page.locator('#username').fill('movetest'+port);
  await page.locator('#password').fill('Movement-test-pass-2026!');
  await page.locator('#registerBtn').click();
@@ -54,15 +54,14 @@ try{
    console.log('WEBKIT_GAME_PROBE '+JSON.stringify({label,...values}));
    return values;
   }
-  const counts=await page.evaluate(()=>({enemies:window.__adventure?.snapshot?.().enemies?.length,peers:window.__adventure?.snapshot?.().peers?.length,worldNodes:document.querySelectorAll('#world *').length,allNodes:document.querySelectorAll('*').length,hidden:document.hidden}));
+  const counts=await page.evaluate(()=>({enemies:window.__adventure?.snapshot?.().enemies?.length,worldNodes:document.querySelectorAll('#world *').length}));
   console.log('WEBKIT_GAME_DOM '+JSON.stringify(counts));
   await probe('original-game');
-  const display=await page.addStyleTag({content:'#world{display:none!important}'});
-  await probe('world-display-none');
-  await display.evaluate(el=>el.remove());
-  const low=await page.addStyleTag({content:'#world *,#effects *,#game .entity,#game .entity *{animation:none!important;transition:none!important;filter:none!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}'});
-  await probe('effects-disabled');
-  await low.evaluate(el=>el.remove());
+  for(const k of ['skipHero','skipActors','skipUI','skipAll']){
+   await page.evaluate(key=>{window.__frameDebug.skipHero=false;window.__frameDebug.skipActors=false;window.__frameDebug.skipUI=false;window.__frameDebug.skipAll=false;window.__frameDebug[key]=true;},k);
+   await probe(k);
+  }
+  await page.evaluate(()=>{for(const key of Object.keys(window.__frameDebug))window.__frameDebug[key]=false;});
  }
 
  const stream=page.evaluate(()=>new Promise(resolve=>{
