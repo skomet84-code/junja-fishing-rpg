@@ -64,6 +64,24 @@ try{
  assert.ok(distanceBack>-85,'server correction dragged the player sharply backward');
  const final=await page.evaluate(()=>({server:window.__adventure.snapshot().x,render:parseFloat((/translate3d\(\s*([-\d.]+)px/.exec(document.querySelector('#hero').style.transform)||[])[1])}));
  assert.ok(Math.abs(final.server-final.render)<80,'visual position diverged from authoritative server: '+JSON.stringify(final));
+ // Real mobile gesture regression: drag-release should navigate to the
+ // RELEASE coordinates (not stick steering, not the original touch point).
+ const actionRecords=[];
+ await page.route('**/api/action',async route=>{
+  try { const action=JSON.parse(route.request().postData()||'{}');actionRecords.push(action); }catch{}
+  await route.continue();
+ });
+ const viewportRect=await page.locator('#viewport').boundingBox();
+ assert.ok(viewportRect?.width>100&&viewportRect?.height>100,'game field has usable touch size');
+ const sx=viewportRect.x+viewportRect.width*.39,sy=viewportRect.y+viewportRect.height*.47;
+ const ex=viewportRect.x+viewportRect.width*.68,ey=viewportRect.y+viewportRect.height*.54;
+ await page.mouse.move(sx,sy);await page.mouse.down();
+ await page.mouse.move(ex,ey,{steps:12});await page.mouse.up();
+ await sleep(950);
+ const afterDrag=await page.evaluate(()=>({joystickHidden:document.querySelector('#joystick').hidden,hero:document.querySelector('#hero').dataset.motion}));
+ assert.equal(afterDrag.joystickHidden,true,'touch drag must not show virtual joystick');
+ assert.ok(actionRecords.some(a=>a.type==='navigate'),'release should request real server navigation: '+JSON.stringify(actionRecords.slice(0,8)));
+ assert.ok(!actionRecords.some(a=>a.type==='move'&&a.manual),'gesture must not turn into manual joystick movement');
  assert.deepEqual(errors,[],'browser errors in mobile motion loop');
  const folder=path.resolve(root,'../e2e-screenshots');await mkdir(folder,{recursive:true});
  await page.screenshot({path:path.join(folder,'junja-motion-mobile.png')});
