@@ -4,7 +4,7 @@ import {setTimeout as sleep} from 'node:timers/promises';
 import path from 'node:path';
 import {mkdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-import {chromium} from 'playwright';
+import {chromium,webkit} from 'playwright';
 
 const root=path.dirname(fileURLToPath(import.meta.url));
 const port=47000+Math.floor(Math.random()*1000),base='http://127.0.0.1:'+port;
@@ -21,7 +21,8 @@ try{
   await sleep(130);
  }
  assert.ok(ready,'movement test server did not start');
- browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ const webkitMode=process.env.BROWSER_ENGINE==='webkit';
+ browser=await (webkitMode?webkit:chromium).launch({headless:true,...(webkitMode?{}:{args:['--no-sandbox']})});
  const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base,{waitUntil:'domcontentloaded'});
