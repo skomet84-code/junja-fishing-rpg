@@ -1,8 +1,8 @@
 // Generated 2D graphics v1 — presentation-only. Server identity, damage, and drops stay authoritative.
 // Character sheet: 4 jobs x 2 frames (8 columns), idle/walk/attack (3 rows).
 // Monster sheet: 9 illustrated families (3 columns x 3 rows).
-export const CHARACTERS_V1='characters-v1.webp';
-export const MONSTERS_V1='monsters-v1.webp';
+export const CHARACTERS_V1='characters-v1.png';
+export const MONSTERS_V1='monsters-v1.png';
 export function characterColumn(job){return {warrior:0,rogue:1,mage:2,healer:3}[job]??-1;}
 export function characterCell(job,mode='idle',frame=0){
  const column=characterColumn(job);if(column<0)return null;
