@@ -1,0 +1,34 @@
+name: Adventure motion stability regression
+on:
+  push:
+    branches: [fix/adventure-motion-stability-20261011]
+  pull_request:
+    branches: [railway-recovery]
+permissions:
+  contents: read
+jobs:
+  movement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JS syntax
+        run: |
+          node --check adventure-online/image-prototype/app.js
+          node --check adventure-online/image-prototype/movement-feel.js
+          node --check adventure-online/server/online/engine.mjs
+      - name: Verify mobile motion, cache, asset preservation
+        run: |
+          node --test adventure-online/image-prototype/tests/movement-feel.test.mjs adventure-online/image-prototype/tests/zone-performance.test.mjs adventure-online/image-prototype/tests/performance-budget.test.mjs adventure-online/image-prototype/tests/ios-viewport-lock.test.mjs
+      - name: Install server dependency and test game rules
+        run: |
+          npm install --prefix adventure-online/server/online --omit=dev
+          node --test adventure-online/server/online/tests/ascension.test.mjs adventure-online/server/online/tests/primordial.test.mjs adventure-online/server/online/tests/map-travel.test.mjs
+      - name: Check real mobile movement and render cadence in Chromium
+        run: |
+          npm install --no-save playwright@1.58.2
+          npx playwright install --with-deps chromium
+          node adventure-online/movement-e2e.mjs

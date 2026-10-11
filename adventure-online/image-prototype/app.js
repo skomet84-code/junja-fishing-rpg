@@ -5,7 +5,7 @@ import {BOOSTS,WEAPON_FAMILIES,MATERIALS,RECIPES,ENDGAME_TIERS,ZONES,TRAVEL_PORT
 import {API_URL} from './config.js';
 import {createCombatQueue} from './combat-queue.js?v=20261009-primordial-motion1';
 import {monsterIllustration} from './monster-art.js?v=20261010-monster1';
-import {predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity} from './movement-feel.js?v=20261010-motion2';
+import {predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement} from './movement-feel.js?v=20261011-motion3';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 const endgameStyle=document.createElement('style');endgameStyle.textContent="#world[data-zone=void]:after{background:radial-gradient(ellipse at 50% 70%,transparent 22%,#160b2670 72%,#06030bcc 100%)!important}#world[data-zone=origin]:after{background:radial-gradient(ellipse at 50% 70%,transparent 25%,#473a1360 72%,#100c04bb 100%)!important}";document.head.append(endgameStyle);
@@ -13,7 +13,7 @@ let wireSnapshot=null;
 let token='',connectionKey='',legacy=null,roster=[],selectedSlot=0,state=profile(),view={x:768,y:355},connected=false,paused=false,serverNow=0,receivedAt=0,last=0,clock=0,lastSend=0,moveSending=false,pendingMove=null,streamController=null,streamGeneration=0,lastSelfSampleAt=0,lastSelfServerAt=0,lastSelfX=768,lastSelfY=355,serverVelocity={x:0,y:0},walkClock=0,walkSpeed=0;
 const skillQueue=createCombatQueue(6,2,3);
 let lastLocalFx=null,remoteSkillPending=null,pendingAttackAck=false;
-let navigationRequestedUntil=0;
+let navigationRequestedUntil=0,actorRenderAt=0;
 let path=[],selected=null,targetIntent=null,auto=false,cam={x:0,y:0},scale=1,face=0,flip=false,headingX=0,headingY=1,attackUntil=0,localActionLockUntil=0,attackSerial=0,lastServerAttackKey='',nearNpc=null,npcIntent=null,gesture=null,stick={x:0,y:0};
 let systems={nodes:[],bosses:[],trade:null,duel:null,party:null,partyInvite:null,raidContribution:null,daily:null},gatherIntent=null,travelIntent=null,mmoPanel='',bossSector=false,minimapAt=0;const resourceEls=new Map(),portalEls=new Map(),bossIntroSeen=new Set();
 const keys=new Set(),enemies=new Map(),peers=new Map(),seenEvents=new Set(),npcs=[{id:'elder',x:580,y:330},{id:'merchant',x:1000,y:330}];
@@ -273,8 +273,11 @@ function headingPose(dx,dy,fallbackRow=0,fallbackMirror=false){
 }
 function applyHeading(el,dx,dy,fallbackRow=0,fallbackMirror=false){
  const p=headingPose(dx,dy,fallbackRow,fallbackMirror);
- el.dataset.face=String(p.row);el.dataset.flip=p.mirror?'1':'0';el.dataset.diagonal=Math.abs(p.nx)>.28&&Math.abs(p.ny)>.28?'1':'0';
- el.style.setProperty('--dir-skew',p.skew+'deg');el.style.setProperty('--dir-depth',String(p.depth));el.style.setProperty('--flip',p.mirror?-1:1);
+ const key=[p.row,p.mirror,p.skew.toFixed(2),p.depth.toFixed(3)].join('|');
+ if(el._headingKey!==key){
+  el.dataset.face=String(p.row);el.dataset.flip=p.mirror?'1':'0';el.dataset.diagonal=Math.abs(p.nx)>.28&&Math.abs(p.ny)>.28?'1':'0';
+  el.style.setProperty('--dir-skew',p.skew+'deg');el.style.setProperty('--dir-depth',String(p.depth));el.style.setProperty('--flip',p.mirror?-1:1);el._headingKey=key;
+ }
  return p;
 }
 
@@ -762,7 +765,7 @@ let perfMeter=null;
 if(perfDiagnostics){perfMeter=document.createElement('output');perfMeter.id='adventurePerfMeter';perfMeter.setAttribute('aria-label','게임 성능 진단');perfMeter.textContent='FPS 측정 중';$('game').append(perfMeter);}
 function frame(time){
  // On 30fps mobile frames do not discard half the elapsed movement time.
- const gapMs=last?time-last:16,elapsed=Math.min(.25,gapMs/1000||.016),dt=Math.min(.075,elapsed);last=time;clock+=elapsed;
+ const gapMs=last?Math.max(0,time-last):16,elapsed=Math.min(.2,gapMs/1000||.016),dt=elapsed;last=time;clock+=elapsed;
  if(connected&&!paused&&!document.hidden&&gapMs<600){
   perfFrames++;perfElapsed+=Math.max(0,gapMs);if(gapMs>75)perfStalls++;
   if(perfElapsed>=3000){
@@ -786,7 +789,7 @@ function frame(time){
   const beforeMove={x:view.x,y:view.y},locallySteering=!!len&&!auto&&clock>=attackUntil;
   // First render the local input immediately. Do not pull the actor back on every 100 ms network tick.
   if(locallySteering){
-   const x=view.x+dx*250*dt,y=view.y+dy*250*dt;if(walkable(x,view.y))view.x=x;if(walkable(view.x,y))view.y=y;headingX=dx;headingY=dy;const pose=headingPose(dx,dy,face,flip);face=pose.row;flip=pose.mirror;
+   view=advanceLocalMovement(view,{x:dx,y:dy},elapsed,walkable);headingX=dx;headingY=dy;const pose=headingPose(dx,dy,face,flip);face=pose.row;flip=pose.mirror;
   }
   const sampleAge=(performance.now()-receivedAt)/1000,serverMoving=!!(locallySteering||state.navMoving||state.auto||state.combatTarget!=null);
   const predicted=predictServerPosition(state,serverVelocity,sampleAge,serverMoving);
@@ -801,11 +804,17 @@ function frame(time){
   else motion(hero,heroArt,steps.walking?'walk':'idle',face,flip,steps.walking?walkClock:clock,0,headingX,headingY);
   placeEntity(hero,view.x,view.y);const heroDepth=Math.round(view.y);if(hero._renderDepth!==heroDepth){hero.style.zIndex=heroDepth;hero._renderDepth=heroDepth;}hero.classList.toggle('attacking',attacking);hero.classList.toggle('guarded',(state.guard||0)>now());
   const perfNow=performance.now()/1000,vw=viewportWorldW,vh=viewportWorldH,pad=$('game').classList.contains('mobile-lite')?80:innerWidth<700?180:260,left=cam.x-pad,right=cam.x+vw+pad,top=cam.y-pad,bottom=cam.y+vh+pad;
+  // Keep the protagonist and camera at full display rate. On iPhone, remote
+  // actors need only 25-30 updates/sec; this removes hundreds of costly DOM
+  // style recalculations in crowded late-game zones without hiding art.
+  const actorInterval=innerWidth<701?(state.zone==='surface'?.032:$('game').classList.contains('mobile-lite')?.04:.034):0;
+  if(!actorInterval||clock-actorRenderAt>=actorInterval){
+   const actorDt=Math.min(.2,actorRenderAt?clock-actorRenderAt:dt);actorRenderAt=clock;
   for(const e of enemies.values()){
    const age=Math.min(.12,Math.max(0,perfNow-(e.sampleAt||perfNow))),tx=e.x+(e.netVx||0)*age,ty=e.y+(e.netVy||0)*age,onScreen=tx>=left&&tx<=right&&ty>=top&&ty<=bottom;
    if(!onScreen){e.vx=tx;e.vy=ty;if(e.renderVisible!==false){e.el.style.visibility='hidden';e.renderVisible=false;}continue;}
    if(e.renderVisible===false){e.el.style.visibility='';e.renderVisible=true;}
-   const f=1-Math.exp(-19*dt);e.vx+=(tx-e.vx)*f;e.vy+=(ty-e.vy)*f;placeEntity(e.el,e.vx,e.vy);const depth=Math.round(e.vy);if(e.renderDepth!==depth){e.el.style.zIndex=depth;e.renderDepth=depth;}
+   const f=1-Math.exp(-19*actorDt);e.vx+=(tx-e.vx)*f;e.vy+=(ty-e.vy)*f;placeEntity(e.el,e.vx,e.vy);const depth=Math.round(e.vy);if(e.renderDepth!==depth){e.el.style.zIndex=depth;e.renderDepth=depth;}
    if(!e.illustrated){const col=e.tellAt?3:1+Math.floor(clock*8)%2,row=e.mmo?({stoneking:0,shadowking:1,dragon:2}[e.named]??e.skin??3):(e.boss?1:0),rows=e.mmo?4:2,key=col+'|'+row+'|'+rows;
    if(e.renderSpriteKey!==key){sprite(e.art,col,row,rows);e.renderSpriteKey=key;}}
   }
@@ -813,9 +822,10 @@ function frame(time){
    const age=Math.min(.12,Math.max(0,perfNow-(p.sampleAt||perfNow))),tx=p.x+(p.netVx||0)*age,ty=p.y+(p.netVy||0)*age,onScreen=tx>=left&&tx<=right&&ty>=top&&ty<=bottom;
    if(!onScreen){p.vx=tx;p.vy=ty;if(p.renderVisible!==false){p.el.style.visibility='hidden';p.renderVisible=false;}continue;}
    if(p.renderVisible===false){p.el.style.visibility='';p.renderVisible=true;}
-   const f=1-Math.exp(-17*dt);p.vx+=(tx-p.vx)*f;p.vy+=(ty-p.vy)*f;placeEntity(p.el,p.vx,p.vy);const depth=Math.round(p.vy);if(p.renderDepth!==depth){p.el.style.zIndex=depth;p.renderDepth=depth;}p.el.classList.toggle('attacking',!!p.attacking);
+   const f=1-Math.exp(-17*actorDt);p.vx+=(tx-p.vx)*f;p.vy+=(ty-p.vy)*f;placeEntity(p.el,p.vx,p.vy);const depth=Math.round(p.vy);if(p.renderDepth!==depth){p.el.style.zIndex=depth;p.renderDepth=depth;}p.el.classList.toggle('attacking',!!p.attacking);
    if(p.attacking){if(!p.localAttackStarted||clock-p.localAttackStarted>.55){p.localAttackStarted=clock;const target=fxTarget(p.attackTarget),origin={x:p.vx,y:p.vy};if((p.attackSkill??-1)>=0)skillEffect(p.job,p.attackSkill,target,origin);else if(target)combatContact(p.job,-1,target,origin);}attackPose(p.el,p.art,p.face,p.flip,p.localAttackStarted,.44,p.job,p.attackSkill??-1,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)%3,p.dirX??0,p.dirY??0);}
    else{p.localAttackStarted=0;motion(p.el,p.art,p.moving?'walk':'idle',p.face,p.flip,clock,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)*.13,p.dirX??0,p.dirY??0);}
+  }
   }
   if(targetIntent){targetIntent=null;}
   nearNpc=state.zone==='surface'?npcs.find(n=>distance(view,n)<115)||null:null;
