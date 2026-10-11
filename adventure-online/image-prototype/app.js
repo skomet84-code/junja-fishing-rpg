@@ -806,7 +806,10 @@ const perfDiagnostics=new URL(location.href).searchParams.get('perf')==='1';
 let perfFrames=0,perfElapsed=0,perfStalls=0,perfSlowWindows=0,perfRecoveryWindows=0,perfFps=0,perfPeakSnapshotMs=0,perfLatestSnapshotMs=0;
 let perfMeter=null;
 if(perfDiagnostics){perfMeter=document.createElement('output');perfMeter.id='adventurePerfMeter';perfMeter.setAttribute('aria-label','게임 성능 진단');perfMeter.textContent='FPS 측정 중';$('game').append(perfMeter);}
+const __frameDebug=new URL(location.href).searchParams.has('frameDebug')?{skipAll:false,skipHero:false,skipActors:false,skipUI:false}:null;
+if(__frameDebug)window.__frameDebug=__frameDebug;
 function frame(time){
+ if(__frameDebug?.skipAll){requestAnimationFrame(frame);return;}
  // On 30fps mobile frames do not discard half the elapsed movement time.
  const gapMs=last?Math.max(0,time-last):16,elapsed=Math.min(.2,gapMs/1000||.016),dt=elapsed;last=time;clock+=elapsed;
  if(connected&&!paused&&!document.hidden&&gapMs<600){
@@ -861,15 +864,17 @@ function frame(time){
     queueMove({type:'move',x:dx,y:dy,manual:manualMove});
    }
   const attacking=clock<attackUntil,hero=$('hero'),heroArt=$('heroArt');
+  if(!__frameDebug?.skipHero){
   if(attacking){const duration=Number(hero.dataset.attackDuration)||.44,started=Number(hero.dataset.attackStarted)||attackUntil-duration;attackPose(hero,heroArt,face,flip,started,duration,state.job,Number(hero.dataset.attackSkill??-1),Number(hero.dataset.attackVariant||0),headingX,headingY);}
   else motion(hero,heroArt,steps.walking?'walk':'idle',face,flip,steps.walking?walkClock:clock,0,headingX,headingY);
   placeEntity(hero,view.x,view.y);const heroDepth=Math.round(view.y);if(hero._renderDepth!==heroDepth){hero.style.zIndex=heroDepth;hero._renderDepth=heroDepth;}hero.classList.toggle('attacking',attacking);hero.classList.toggle('guarded',(state.guard||0)>now());
+  }
   const perfNow=performance.now()/1000,vw=viewportWorldW,vh=viewportWorldH,pad=$('game').classList.contains('mobile-lite')?80:innerWidth<700?180:260,left=cam.x-pad,right=cam.x+vw+pad,top=cam.y-pad,bottom=cam.y+vh+pad;
   // Keep the protagonist and camera at full display rate. On iPhone, remote
   // actors need only 25-30 updates/sec; this removes hundreds of costly DOM
   // style recalculations in crowded late-game zones without hiding art.
   const actorInterval=innerWidth<701?(state.zone==='surface'?.032:($('game').classList.contains('mobile-lite')||perfFps>0&&perfFps<40)?.041:.034):0;
-  if(!actorInterval||clock-actorRenderAt>=actorInterval){
+  if(!__frameDebug?.skipActors&&(!actorInterval||clock-actorRenderAt>=actorInterval)){
    const actorDt=Math.min(.2,actorRenderAt?clock-actorRenderAt:dt);actorRenderAt=clock;
   for(const e of enemies.values()){
    const age=Math.min(.12,Math.max(0,perfNow-(e.sampleAt||perfNow))),tx=e.x+(e.netVx||0)*age,ty=e.y+(e.netVy||0)*age,onScreen=tx>=left&&tx<=right&&ty>=top&&ty<=bottom;
@@ -888,6 +893,7 @@ function frame(time){
    else{p.localAttackStarted=0;motion(p.el,p.art,p.moving?'walk':'idle',p.face,p.flip,clock,(Number(String(p.id).slice(-2).replace(/\D/g,''))||0)*.13,p.dirX??0,p.dirY??0);}
   }
   }
+  if(!__frameDebug?.skipUI){
   if(targetIntent){targetIntent=null;}
   nearNpc=state.zone==='surface'?npcs.find(n=>distance(view,n)<115)||null:null;
   if(gatherIntent){const n=systems.nodes.find(n=>n.id===gatherIntent);if(n&&distance(state,n)<95){gatherIntent=null;command({type:'gather',node:n.id});}}
@@ -896,6 +902,7 @@ function frame(time){
   if(travelIntent)travelIntent=null;
   syncBossSector();camera(false,dt);const lite=$('game').classList.contains('mobile-lite');if(clock-hudAt>(lite?.34:innerWidth<701?.22:.12)){hud();hudAt=clock;}
    if(clock-minimapAt>(lite?.8:innerWidth<701?.45:.18)&&!document.hidden&&($('minimapWrap')?.classList.contains('open')||innerWidth>=701)){renderMinimap();minimapAt=clock;}
+ }
  }
  requestAnimationFrame(frame);
 }
