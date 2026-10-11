@@ -65,3 +65,16 @@ export function advanceLocalMovement(view,input,elapsed,canWalk,speed=WALK_SPEED
  }
  return{x,y};
 }
+
+
+// Remote actors render between 10 Hz network snapshots. Teleports, respawns
+// and large server corrections must snap, not glide visibly across the map.
+export function smoothRemotePosition(current,target,elapsed,warpDistance=170,rate=19){
+ const tx=Number(target?.x),ty=Number(target?.y),cx=Number(current?.x),cy=Number(current?.y);
+ if(![tx,ty,cx,cy].every(Number.isFinite))return current;
+ const d=Math.hypot(tx-cx,ty-cy),dt=clamp(Number(elapsed)||0,0,.2);
+ if(d>warpDistance||d<.25)return{x:tx,y:ty};
+ if(!dt)return{x:cx,y:cy};
+ const blend=1-Math.exp(-rate*dt);
+ return{x:cx+(tx-cx)*blend,y:cy+(ty-cy)*blend};
+}
