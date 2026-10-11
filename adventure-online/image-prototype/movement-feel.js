@@ -78,3 +78,19 @@ export function smoothRemotePosition(current,target,elapsed,warpDistance=170,rat
  const blend=1-Math.exp(-rate*dt);
  return{x:cx+(tx-cx)*blend,y:cy+(ty-cy)*blend};
 }
+
+
+// Avoid POST /api/action duplicates while the character stands still.
+// Moving input is refreshed well inside the server's 600 ms input timeout;
+// changed joystick directions may be sent sooner, but never every frame.
+export function shouldSendMovement(previous,next,at){
+ const manual=!!next?.manual,oldManual=!!previous?.manual;
+ if(!previous)return manual;
+ if(manual!==oldManual)return true;
+ if(!manual)return false;
+ const age=Number(at)-Number(previous.at);
+ if(!Number.isFinite(age)||age<0)return true;
+ const x=Number(next?.x)||0,y=Number(next?.y)||0;
+ const changed=Math.hypot(x-(Number(previous.x)||0),y-(Number(previous.y)||0))>.07;
+ return age>=.24||(changed&&age>=.12);
+}
