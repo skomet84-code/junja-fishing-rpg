@@ -25,6 +25,15 @@ try{
  browser=await (webkitMode?webkit:chromium).launch({headless:true,...(webkitMode?{}:{args:['--no-sandbox']})});
  const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ if(process.env.BROWSER_ENGINE==='webkit'){
+  const baseline=await page.evaluate(()=>new Promise(resolve=>{
+   const start=performance.now();let count=0,active=true;
+   function next(){if(!active)return;count++;requestAnimationFrame(next);}
+   requestAnimationFrame(next);
+   setTimeout(()=>{active=false;resolve({frames:count,hidden:document.hidden,visibility:document.visibilityState,elapsed:performance.now()-start});},1350);
+  }));
+  console.log('WEBKIT_BLANK_PAGE_RAF '+JSON.stringify(baseline));
+ }
  await page.goto(base,{waitUntil:'domcontentloaded'});
  await page.locator('#username').fill('movetest'+port);
  await page.locator('#password').fill('Movement-test-pass-2026!');
