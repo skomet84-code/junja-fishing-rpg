@@ -26,10 +26,9 @@ test('legacy rollback switch available without touching player data',()=>{
  assert.equal(newArtRequested(''),true);
 });
 test('binary atlases and game HTML live together in one served assets folder',()=>{
- for(const name of ['characters-v1.webp','monsters-v1.webp']){
+ for(const name of ['characters-v1.png','monsters-v1.png']){
   const data=fs.readFileSync(path.join(root,'assets',name));
-  assert.equal(data.toString('ascii',0,4),'RIFF',name);
-  assert.equal(data.toString('ascii',8,12),'WEBP',name);
+  assert.equal(data.toString('hex',0,8),'89504e470d0a1a0a',name);
   assert.ok(data.byteLength<80_000,'mobile sheets must stay light');
  }
  const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
