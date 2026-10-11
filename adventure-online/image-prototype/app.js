@@ -6,6 +6,7 @@ import {API_URL} from './config.js';
 import {createCombatQueue} from './combat-queue.js?v=20261009-primordial-motion1';
 import {monsterIllustration} from './monster-art.js?v=20261010-monster1';
 import {predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement,smoothRemotePosition,shouldSendMovement,tapDestination,movementHeading} from './movement-feel.js?v=20261012-onepass1';
+import {createSafariMobPainter} from './safari-mob-canvas.js?v=20261012-mobs1';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 const endgameStyle=document.createElement('style');endgameStyle.textContent="#world[data-zone=void]:after{background:radial-gradient(ellipse at 50% 70%,transparent 22%,#160b2670 72%,#06030bcc 100%)!important}#world[data-zone=origin]:after{background:radial-gradient(ellipse at 50% 70%,transparent 25%,#473a1360 72%,#100c04bb 100%)!important}";document.head.append(endgameStyle);
@@ -793,6 +794,10 @@ function release(ev){
  if(!point)return;
  selected=null;npcIntent=null;
  const target=screenToWorld(point.x,point.y);
+ if(safariMobPainter){
+  const hit=[...enemies.values()].filter(e=>!e.boss&&e.alive&&distance(target,e)<Math.max(40,e.mmo?64:44)).sort((a,b)=>distance(target,a)-distance(target,b))[0];
+  if(hit){select(hit.id,true);return;}
+ }
  go(target.x,target.y);
 }
 for(const event of ['pointerup','pointercancel','lostpointercapture'])$('viewport').addEventListener(event,release);
@@ -807,7 +812,8 @@ const mobileFrames=typeof matchMedia==='function'&&matchMedia('(hover:none) and 
 // player movement, hit logic, and camera full refresh-rate.
 let webkitActorCursor=0;
 const mobileWebKit=mobileFrames&&/AppleWebKit/i.test(navigator.userAgent)&&!/(Chrome|CriOS|Edg|FxiOS|OPR)/i.test(navigator.userAgent);
-if(mobileWebKit)$('game').classList.add('webkit-actor-lite');
+if(mobileWebKit)$('game').classList.add('webkit-actor-lite','webkit-canvas-mobs');
+const safariMobPainter=mobileWebKit?createSafariMobPainter($('viewport')):null;
 
 const perfDiagnostics=new URL(location.href).searchParams.get('perf')==='1';
 let perfFrames=0,perfElapsed=0,perfStalls=0,perfSlowWindows=0,perfRecoveryWindows=0,perfFps=0,perfPeakSnapshotMs=0,perfLatestSnapshotMs=0;
@@ -895,6 +901,7 @@ function frame(time){
    const actorDt=Math.min(.2,actorRenderAt?clock-actorRenderAt:dt);actorRenderAt=clock;
   for(const e of enemies.values()){
    const age=Math.min(.12,Math.max(0,perfNow-(e.sampleAt||perfNow))),tx=e.x+(e.netVx||0)*age,ty=e.y+(e.netVy||0)*age,onScreen=tx>=left&&tx<=right&&ty>=top&&ty<=bottom;
+   if(mobileWebKit&&!e.boss)continue; // drawn in one canvas, not separate compositor layers
    if((__frameDebug?.skipBosses&&e.boss)||(__frameDebug?.skipNonBosses&&!e.boss))continue;
    if(!onScreen){e.vx=tx;e.vy=ty;if(e.renderVisible!==false){e.el.style.visibility='hidden';e.renderVisible=false;}continue;}
    if(e.renderVisible===false){e.el.style.visibility='';e.renderVisible=true;}
@@ -921,7 +928,9 @@ function frame(time){
   if(npcIntent&&nearNpc?.id===npcIntent&&!path.length){const id=npcIntent;npcIntent=null;talk(id);}
   for(const el of portalEls.values()){const p=el.portal,d=p?distance(view,p):9999;el.classList.toggle('near',d<190);el.classList.toggle('very-near',d<105);}
   if(travelIntent)travelIntent=null;
-  syncBossSector();camera(false,dt);const lite=$('game').classList.contains('mobile-lite');if(clock-hudAt>(lite?.34:innerWidth<701?.22:.12)){hud();hudAt=clock;}
+  syncBossSector();camera(false,dt);
+  if(safariMobPainter)safariMobPainter.draw(enemies,cam,scale,clock,performance.now()/1000,$('viewport').clientWidth,$('viewport').clientHeight,selected);
+  const lite=$('game').classList.contains('mobile-lite');if(clock-hudAt>(lite?.34:innerWidth<701?.22:.12)){hud();hudAt=clock;}
    if(clock-minimapAt>(lite?.8:innerWidth<701?.45:.18)&&!document.hidden&&($('minimapWrap')?.classList.contains('open')||innerWidth>=701)){renderMinimap();minimapAt=clock;}
  }
  }
