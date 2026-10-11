@@ -25,7 +25,7 @@ export function createSafariMobPainter(viewport){
  const ctx=canvas.getContext('2d',{alpha:true,desynchronized:true});
  if(!ctx)return{canvas,draw:()=>{}};
  let lastAt=-Infinity,lastSize='',painted=0;
- function draw(enemies,cam,scale,time,nowSeconds,viewportW,viewportH){
+ function draw(enemies,cam,scale,time,nowSeconds,viewportW,viewportH,selected){
   if(time-lastAt<.048)return;
   const dt=Math.min(.15,Math.max(.016,time-lastAt||.05));lastAt=time;
   const w=Math.max(1,Math.round(viewportW)),h=Math.max(1,Math.round(viewportH)),dpr=Math.min(2,Math.max(1,window.devicePixelRatio||1));
@@ -63,7 +63,7 @@ export function createSafariMobPainter(viewport){
    ctx.textAlign='center';ctx.textBaseline='bottom';
    ctx.lineWidth=3;ctx.strokeStyle='#101514';ctx.strokeText((e.name||'몬스터')+' Lv.'+(e.level||1),x,by-3);
    ctx.fillStyle='#fff0d6';ctx.fillText((e.name||'몬스터')+' Lv.'+(e.level||1),x,by-3);
-   if(e.canvasSelected){ctx.beginPath();ctx.ellipse(x,y-3,sw*.4,5,0,0,Math.PI*2);ctx.strokeStyle='#ffdd70';ctx.lineWidth=2;ctx.stroke();}
+   if(e.id===selected){ctx.beginPath();ctx.ellipse(x,y-3,sw*.4,5,0,0,Math.PI*2);ctx.strokeStyle='#ffdd70';ctx.lineWidth=2;ctx.stroke();}
    painted++;
   }
  }
