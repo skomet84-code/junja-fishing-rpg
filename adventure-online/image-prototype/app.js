@@ -890,7 +890,7 @@ function frame(time){
    if(e.renderVisible===false){e.el.style.visibility='';e.renderVisible=true;}
    if(mobileWebKit&&!e.boss&&(webkitVisibleActorIndex++%webkitBatchSize)!==webkitPaintGroup)continue;
    const pos=smoothRemotePosition({x:e.vx,y:e.vy},{x:tx,y:ty},actorDt,170,19);e.vx=pos.x;e.vy=pos.y;if(!__frameDebug?.skipActorMoves)placeEntity(e.el,e.vx,e.vy);const depth=Math.round(e.vy);if(e.renderDepth!==depth){e.el.style.zIndex=depth;e.renderDepth=depth;}
-   if(!e.illustrated&&!__frameDebug?.skipActorSprites){const col=e.tellAt?3:1+Math.floor(clock*8)%2,row=e.mmo?({stoneking:0,shadowking:1,dragon:2}[e.named]??e.skin??3):(e.boss?1:0),rows=e.mmo?4:2,key=col+'|'+row+'|'+rows;
+   if(!e.illustrated){if(__frameDebug?.skipActorSprites)continue;const col=e.tellAt?3:1+Math.floor(clock*8)%2,row=e.mmo?({stoneking:0,shadowking:1,dragon:2}[e.named]??e.skin??3):(e.boss?1:0),rows=e.mmo?4:2,key=col+'|'+row+'|'+rows;
    if(e.renderSpriteKey!==key){sprite(e.art,col,row,rows);e.renderSpriteKey=key;}}
   }
   for(const p of peers.values()){
