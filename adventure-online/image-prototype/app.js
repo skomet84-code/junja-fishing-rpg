@@ -886,7 +886,7 @@ function frame(time){
   // Keep the protagonist and camera at full display rate. On iPhone, remote
   // actors need only 25-30 updates/sec; this removes hundreds of costly DOM
   // style recalculations in crowded late-game zones without hiding art.
-  const actorInterval=innerWidth<701?(mobileWebKit?.018:state.zone==='surface'?.032:($('game').classList.contains('mobile-lite')||perfFps>0&&perfFps<40)?.041:.034):0;
+  const actorInterval=innerWidth<701?(mobileWebKit?.09:state.zone==='surface'?.032:($('game').classList.contains('mobile-lite')||perfFps>0&&perfFps<40)?.041:.034):0;
   if(!__frameDebug?.skipActors&&(!actorInterval||clock-actorRenderAt>=actorInterval)){
    // A bounded rotating queue prevents one mobile frame from repainting
    // 29 ordinary enemy layers. Every visible mob gets a turn, including
@@ -930,7 +930,7 @@ function frame(time){
   if(travelIntent)travelIntent=null;
   syncBossSector();camera(false,dt);
   if(safariMobPainter)safariMobPainter.draw(enemies,cam,scale,clock,performance.now()/1000,$('viewport').clientWidth,$('viewport').clientHeight,selected);
-  const lite=$('game').classList.contains('mobile-lite');if(clock-hudAt>(lite?.34:innerWidth<701?.22:.12)){hud();hudAt=clock;}
+  const lite=$('game').classList.contains('mobile-lite');if(clock-hudAt>(mobileWebKit?.48:lite?.34:innerWidth<701?.22:.12)){hud();hudAt=clock;}
    if(clock-minimapAt>(lite?.8:innerWidth<701?.45:.18)&&!document.hidden&&($('minimapWrap')?.classList.contains('open')||innerWidth>=701)){renderMinimap();minimapAt=clock;}
  }
  }
