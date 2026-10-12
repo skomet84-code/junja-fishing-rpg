@@ -9,6 +9,7 @@ import {World} from './engine.mjs';
 import {CHANNEL_CAP,WORLD_CAP} from '../../image-prototype/mmo-data.js';
 import {removeSocial} from './systems.mjs';
 import {profile,JOBS,BUILD,stats} from '../../image-prototype/catalog.js';
+import {initAdminPanel,handleAdminPanel} from './admin-panel.mjs';
 const scrypt=promisify(sc),hash=s=>createHash('sha256').update(s).digest('hex'),memory=process.env.TEST_MEMORY==='1';
 const adminUsername='admin_junja',adminClaimHash='840081fd87ad79c349181e2d20e47debab785b9c2e3b1dba892b4c0a65b52029';
 let operatorAccountId=null;
@@ -26,6 +27,7 @@ if(!memory){
  operatorAccountId=enrolled.rows[0]?.id||null;
  if(operatorAccountId)console.log('[ADMIN] Verified Adventure operator account loaded.');
 }
+if(!memory)await initAdminPanel(pool);
 function touch(p){const a=accounts.get(p.id.split(':')[0]);if(!a||a.locked)return;a.roster[p.slot]=structuredClone(p.state);a.dirty=true;a.rev++;a.saveError=false;}
 async function exchange(aPlayer,aState,bPlayer,bState){const a=accounts.get(aPlayer.id.split(':')[0]),b=accounts.get(bPlayer.id.split(':')[0]);if(!a||!b||a===b||a.locked||b.locked)throw Error('TRADE_BUSY');a.locked=b.locked=true;let client;try{while(a.saving||b.saving)await new Promise(r=>setTimeout(r,10));const ar=structuredClone(a.roster),br=structuredClone(b.roster);ar[aPlayer.slot]=aState;br[bPlayer.slot]=bState;if(pool){client=await pool.connect();await client.query('BEGIN');await client.query('SELECT id FROM junja_adventure_online.accounts WHERE id=ANY($1) ORDER BY id FOR UPDATE',[[a.id,b.id]]);for(const [account,roster] of [[a,ar],[b,br]])await client.query('UPDATE junja_adventure_online.accounts SET roster=$2,updated_at=now() WHERE id=$1',[account.id,JSON.stringify(roster)]);await client.query('COMMIT');}a.roster=ar;b.roster=br;a.rev++;b.rev++;a.dirty=b.dirty=false;}catch(e){if(client)await client.query('ROLLBACK').catch(()=>{});throw e;}finally{client?.release();a.locked=b.locked=false;}}
 const world=new World({onDirty:touch,onExchange:exchange,onUrgent:p=>urgentFlush(accounts.get(p.id.split(':')[0]))});
@@ -145,6 +147,16 @@ const server=http.createServer(async(req,res)=>{const url=new URL(req.url,'http:
    json(req,res,{token:await newSession(a),name:a.username,roster:publicRoster(a)});return;
   }
   const user=await auth(req);if(!user){json(req,res,{error:'로그인이 필요합니다.'},401);return;}const {a,session}=user;
+  if(url.pathname.startsWith('/api/admin/panel/')){
+   if(!isOperator(a.id)){json(req,res,{error:'등록된 운영자 계정만 사용할 수 있습니다.'},403);return;}
+   if(!allow('admin-panel:'+a.id,150,60)){json(req,res,{error:'관리자 요청이 너무 빠릅니다.'},429);return;}
+   if(url.pathname==='/api/admin/panel/logout'&&req.method==='POST'){
+    const token=(req.headers.authorization||'').replace(/^Bearer /,'');sessions.delete(hash(token));
+    if(pool)await pool.query('DELETE FROM junja_adventure_online.sessions WHERE token_hash=$1',[hash(token)]);
+    json(req,res,{ok:true});return;
+   }
+   await handleAdminPanel(req,res,url,{pool,accounts,world,disconnect,json,body,actor:a,build:BUILD});return;
+  }
   if(url.pathname==='/api/me'){json(req,res,{name:a.username,roster:publicRoster(a)});return;}
   if(url.pathname==='/api/ranking'&&req.method==='GET'){json(req,res,await ranking(a.id));return;}
   if(url.pathname==='/api/join'&&req.method==='POST'){
