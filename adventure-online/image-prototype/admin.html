@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
+<title>JUNJA · 운영자 관리센터</title>
+<link rel="stylesheet" href="/admin.css">
+<script src="/admin.js" defer></script>
+</head>
+<body>
+<div id="loginScreen" class="login-wrap">
+ <div class="login-card">
+  <div class="eyebrow">JUNJA ADVENTURE · PRIVATE CONSOLE</div>
+  <h1>👑 갓준자 <span>운영자 센터</span></h1>
+  <p class="muted">게임 계정과 별도로 새 비밀번호를 만들 필요 없이, 기존 운영자 <b>admin_junja</b> 계정으로 로그인하세요.</p>
+  <form id="loginForm">
+   <label>관리자 아이디<input id="loginUsername" autocomplete="username" value="admin_junja" readonly></label>
+   <label>관리자 비밀번호<input id="loginPassword" type="password" required autocomplete="current-password" placeholder="관리자 비밀번호"></label>
+   <button class="primary full" type="submit">관리자 로그인</button>
+  </form>
+  <p id="loginMessage" class="message" role="alert"></p>
+  <a class="back-link" href="/">← 게임으로 돌아가기</a>
+  <div class="secure">🔒 관리자 권한 서버 검증 · 암호화 로그인 · 작업 내역 기록</div>
+ </div>
+</div>
+<div id="app" hidden>
+ <aside class="sidebar">
+  <div class="logo">👑 JUNJA <small>ADVENTURE ADMIN</small></div>
+  <nav>
+   <button type="button" data-tab="overview" class="tab active">◈ 대시보드</button>
+   <button type="button" data-tab="users" class="tab">♙ 유저 관리</button>
+   <button type="button" data-tab="records" class="tab">▤ 운영 기록</button>
+  </nav>
+  <a href="/" class="side-link">↖ 게임 돌아가기</a>
+  <button type="button" id="logoutBtn" class="logout">로그아웃</button>
+ </aside>
+ <main class="main">
+  <header><div><div class="eyebrow">ADMINISTRATION / LIVE DATA</div><h1 id="viewTitle">운영 현황</h1><p class="muted">실제 서버 데이터와 연결된 운영 도구입니다.</p></div><button id="refreshBtn" class="ghost">↻ 새로고침</button></header>
+  <div id="notice" class="notice" hidden role="status"></div>
+  <section id="viewOverview" class="view">
+   <div class="metrics">
+    <div class="metric"><div class="meta">전체 계정</div><strong id="totalUsers">—</strong><span>등록 유저</span></div>
+    <div class="metric"><div class="meta">현재 접속 계정</div><strong id="onlineUsers">—</strong><span>실시간 접속</span></div>
+    <div class="metric"><div class="meta">접속 캐릭터</div><strong id="onlineCharacters">—</strong><span>모든 채널 합산</span></div>
+    <div class="metric"><div class="meta">서버 저장</div><strong class="status">PostgreSQL</strong><span>Railway 운영 서버</span></div>
+   </div>
+   <div class="two">
+    <section class="panel"><h2>빠른 작업</h2><p class="muted">닉네임을 검색해 캐릭터와 장비를 관리합니다.</p><div class="searchline"><input id="quickSearch" placeholder="유저 이름 (예: 키드)" maxlength="40"><button id="quickGo" class="primary">유저 찾기</button></div><div class="hint">유저 데이터 수정 전에 자동으로 백업을 남깁니다. 접속 중인 캐릭터는 안전한 저장을 위해 재접속됩니다.</div></section>
+    <section class="panel"><h2>운영 원칙</h2><div class="guide"><span>✓</span> 관리자는 사전 등록한 계정만 허용</div><div class="guide"><span>✓</span> 모든 지급·변경 작업 감사 기록</div><div class="guide"><span>✓</span> 수정 전 데이터 자동 백업</div><div class="guide"><span>✓</span> 운영자 본인 캐릭터 임의 수정 차단</div></section>
+   </div>
+   <section class="panel"><div class="panel-heading"><h2>최근 관리 내역</h2><button id="showRecords" class="link-button">전체 보기 →</button></div><div id="recentOverview" class="records"></div></section>
+  </section>
+  <section id="viewUsers" class="view" hidden>
+   <div class="two unequal">
+    <section class="panel">
+     <h2>유저 검색</h2><div class="searchline"><input id="userSearch" placeholder="닉네임 입력" maxlength="40"><button class="primary" id="searchBtn">검색</button></div>
+     <p class="hint">사용자 계정을 선택하면 캐릭터 4개 슬롯을 확인할 수 있습니다.</p>
+     <div id="usersList" class="user-list"><p class="muted">유저 목록을 불러오는 중…</p></div>
+    </section>
+    <section class="panel">
+     <h2 id="selectedTitle">유저 상세</h2>
+     <p id="selectedHint" class="muted">왼쪽에서 유저를 선택하세요.</p>
+     <div id="selectedInfo" hidden>
+      <label>대상 캐릭터
+       <select id="characterSlot"></select>
+      </label>
+      <div id="characterDetails" class="character-details"></div>
+      <div class="subpanel">
+       <h3>관리자 명령 실행</h3>
+       <label>작업 종류<select id="actionType">
+        <option value="grant-set">장비 7부위 세트 지급</option>
+        <option value="grant-item">개별 아이템 지급</option>
+        <option value="set-level">레벨 설정</option>
+        <option value="set-rank">전직 단계 설정</option>
+        <option value="add-gold">골드 추가</option>
+        <option value="set-gold">골드 설정</option>
+        <option value="grant-stones">강화석 지급</option>
+        <option value="reset-password">임시 비밀번호 재발급</option>
+       </select></label>
+       <div id="setFields"><label>장비 세트<select id="setKey"><option value="primordial">태초 700레벨 7부위</option><option value="primordialcreation">창세신 태초 1500레벨 7부위</option><option value="mythic">신화 7부위</option><option value="astral">전설 7부위</option></select></label></div>
+       <div id="itemFields" hidden><label>아이템<select id="itemId"></select></label><label>개수 (최대 20)<input id="itemQty" type="number" inputmode="numeric" min="1" max="20" value="1"></label></div>
+       <div id="valueFields" hidden><label id="valueLabel">숫자 입력<input id="actionValue" type="number" inputmode="numeric" min="0" step="1" value="1"></label></div>
+       <div id="stoneFields" hidden><label>강화석 종류<select id="stoneType"><option value="normal">일반 강화석</option><option value="shining">빛나는 강화석</option></select></label></div>
+       <p id="actionNote" class="hint">장비는 가방에 들어가며, 가방이 찬 경우 태초 장비는 수령함으로 지급됩니다.</p>
+       <button type="button" id="executeAction" class="primary full">선택한 유저에게 실행</button>
+      </div>
+      <div class="subpanel"><h3>변경 전 자동 백업</h3><p class="hint">복구는 캐릭터 레벨·가방·장비 등 저장 데이터를 이전 상태로 되돌립니다. 비밀번호는 복구하지 않습니다.</p><div id="backups"></div></div>
+     </div>
+    </section>
+   </div>
+  </section>
+  <section id="viewRecords" class="view" hidden><section class="panel"><div class="panel-heading"><h2>관리 작업 기록</h2><p class="muted">최근 30건</p></div><div id="allRecords" class="records"></div></section></section>
+ </main>
+</div>
+</body>
+</html>
