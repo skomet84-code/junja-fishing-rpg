@@ -1,5 +1,5 @@
 import {normalize} from './core.js';
-import {EXTRA_ITEMS,CLASS_WEAPON_ITEMS,classWeapon,BOOSTS,LEVEL_CAP,MMO_XP,MMO_HP,ZONES,ASCENSION_CHAPTERS,PROMOTION_MATERIALS,PROMOTIONS} from './mmo-data.js';
+import {EXTRA_ITEMS,CLASS_WEAPON_ITEMS,classWeapon,BOOSTS,LEVEL_CAP,MMO_XP,MMO_HP,ZONES,ASCENSION_CHAPTERS,PROMOTION_MATERIALS,PROMOTIONS} from './mmo-data.js?v=20261012-trade4';
 export {MMO_XP as needXp} from './mmo-data.js';
 export const BUILD='20261009-live-jobboost2';
 export const JOBS={
@@ -40,6 +40,20 @@ export const ETERNAL_POOL=['eternalblade','eternalarmor','eternalcape','eternalc
 export const MAX_ENHANCE=15;
 export function enhanceChance(level){return [1,1,1,.95,.90,.82,.70,.58,.45,.32,.22,.14,.08,.04,.02][Math.max(0,Math.min(MAX_ENHANCE-1,Math.floor(level)||0))]??0;}
 export function enhancementLevel(s,id){return Math.max(0,Math.min(MAX_ENHANCE,Math.floor(Number(s.enhancements?.[id])||0)));}
+// Trade only bag equipment not currently worn. Each equipped copy reserves one unit.
+export function availableTradeItems(s,limit=80){
+ const equipped=new Map();
+ for(const id of Object.values(s?.equipment||{}))equipped.set(id,(equipped.get(id)||0)+1);
+ const result=[];
+ for(const id of s?.bag||[]){
+  if(!Object.hasOwn(ITEMS,id)||id==='training'||id==='glowing')continue;
+  const reserved=equipped.get(id)||0;
+  if(reserved){equipped.set(id,reserved-1);continue;}
+  result.push(id);
+  if(result.length>=limit)break;
+ }
+ return result;
+}
 export function itemSellPrice(item){if(!item)return 0;if(item.price)return Math.max(1,Math.floor(item.price*.30));const perLevel={normal:100,uncommon:320,rare:1200,legendary:6000,mythic:15000,primordial:0}[item.rarity]||120;return Math.max(1,Math.floor(((item.level||1)*perLevel+(item.tier||0)*5000)*.35));}
 export function enhanceMultiplier(level){const n=Math.max(0,Math.min(MAX_ENHANCE,Math.floor(Number(level)||0)));return 1+Math.min(n,5)*.07+Math.min(Math.max(n-5,0),5)*.09+Math.min(Math.max(n-10,0),3)*.12+Math.min(Math.max(n-13,0),2)*.18;}
 export function enhanceGrade(level){const n=Math.max(0,Math.min(MAX_ENHANCE,Math.floor(Number(level)||0)));return n>=15?'신화강화':n>=12?'초월':n>=9?'명장':n>=6?'정예':n>=3?'단련':'기본';}
