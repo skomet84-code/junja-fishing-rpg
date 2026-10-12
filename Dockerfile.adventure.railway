@@ -4,6 +4,7 @@ COPY adventure-online/server/online/package*.json adventure-online/server/online
 RUN npm install --prefix adventure-online/server/online --omit=dev
 COPY adventure-online/image-prototype/ adventure-online/image-prototype/
 COPY adventure-online/server/online/ adventure-online/server/online/
+RUN node --check adventure-online/server/online/server.mjs && node --check adventure-online/server/online/admin-panel.mjs && node --check adventure-online/image-prototype/admin.js && node --test adventure-online/server/online/tests/admin-panel.test.mjs
 ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000
