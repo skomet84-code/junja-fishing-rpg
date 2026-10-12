@@ -51,6 +51,49 @@ async function ranking(accountId){
  return {ranking:top,selfRank:selfIndex>=0?selfIndex+1:null,total:all.length,updatedAt:Date.now()};
 }
 function disconnect(id,text='다른 창에서 접속했습니다.'){const stream=streams.get(id);if(stream){stream.write('data: '+JSON.stringify({disconnected:text})+'\n\n');stream.end();streams.delete(id);}const p=world.players.get(id);if(p){if(!p.exchangeBusy)removeSocial(world,p);touch(p);world.players.delete(id);}}
+// One-time owner-authorized gift. Kept transactional and receipted so restarts never duplicate it.
+async function deliverKidLevel700PrimordialGift(){
+ if(!pool)return;
+ const receipt='owner-gift-kid-primordial-warrior-700-20261012';
+ const items=['primordialblade','primordialarmor','primordialcape','primordialcrown','primordialboots','primordialring','primordialear'];
+ await pool.query("CREATE TABLE IF NOT EXISTS junja_adventure_online.owner_gift_receipts (receipt text PRIMARY KEY, account_id text NOT NULL REFERENCES junja_adventure_online.accounts(id), character_slot integer NOT NULL, delivered_at timestamptz NOT NULL DEFAULT now())");
+ const old=await pool.query('SELECT 1 FROM junja_adventure_online.owner_gift_receipts WHERE receipt=$1',[receipt]);
+ if(old.rowCount){console.log('[GIFT] kid level-700 primordial warrior set already delivered.');return;}
+ const cached=[...accounts.values()].find(a=>a.username==='키드')||null;
+ if(cached){
+  while(cached.saving||cached.locked)await new Promise(r=>setTimeout(r,20));
+  for(const id of [...world.players.keys()])if(id.startsWith(cached.id+':'))disconnect(id,'운영자 선물이 도착했습니다. 다시 입장해주세요.');
+  cached.locked=true;
+ }
+ let db;
+ try{
+  db=await pool.connect();await db.query('BEGIN');
+  const r=await db.query('SELECT id,roster FROM junja_adventure_online.accounts WHERE username=$1 FOR UPDATE',['키드']);
+  if(r.rowCount!==1){await db.query('ROLLBACK');console.warn('[GIFT] kid account not found; no modification.');return;}
+  const row=r.rows[0];
+  if(cached&&cached.id===row.id){
+   await db.query('UPDATE junja_adventure_online.accounts SET roster=$2,updated_at=now() WHERE id=$1',[row.id,JSON.stringify(cached.roster)]);
+   row.roster=structuredClone(cached.roster);
+  }
+  const exists=await db.query('SELECT 1 FROM junja_adventure_online.owner_gift_receipts WHERE receipt=$1',[receipt]);
+  if(exists.rowCount){await db.query('COMMIT');return;}
+  const roster=row.roster;
+  const slot=Array.isArray(roster)?roster.findIndex(s=>s?.job==='warrior'&&Number(s.rank)>=5):-1;
+  if(slot<0){await db.query('ROLLBACK');console.warn('[GIFT] kid warrior rank 5+ not found; no gift delivered.');return;}
+  const s=roster[slot];
+  s.bag=Array.isArray(s.bag)?s.bag:[];
+  s.primordialPending=Array.isArray(s.primordialPending)?s.primordialPending:[];
+  const bagFree=Math.max(0,80-s.bag.length),pendingFree=Math.max(0,80-s.primordialPending.length);
+  if(bagFree+pendingFree<items.length){await db.query('ROLLBACK');console.warn('[GIFT] kid inventory and primordial gift inbox are full; no gift delivered.');return;}
+  for(const id of items){if(s.bag.length<80)s.bag.push(id);else s.primordialPending.push(id);}
+  await db.query('UPDATE junja_adventure_online.accounts SET roster=$2,updated_at=now() WHERE id=$1',[row.id,JSON.stringify(roster)]);
+  await db.query('INSERT INTO junja_adventure_online.owner_gift_receipts(receipt,account_id,character_slot) VALUES($1,$2,$3)',[receipt,row.id,slot]);
+  await db.query('COMMIT');
+  if(cached&&cached.id===row.id){cached.roster=structuredClone(roster);cached.dirty=false;cached.rev++;cached.saveError=false;}
+  console.log('[GIFT] kid level-700 primordial warrior set delivered: seven pieces, slot '+slot+'.');
+ }catch(e){if(db)await db.query('ROLLBACK').catch(()=>{});console.error('[GIFT] delivery failed:',e.code||e.message);throw e;}
+ finally{db?.release();if(cached)cached.locked=false;}
+}
 const server=http.createServer(async(req,res)=>{const url=new URL(req.url,'http://localhost');try{
  if(req.method==='OPTIONS'){res.writeHead(204,headers(req));res.end();return;}
  if(url.pathname==='/health'){json(req,res,{ok:true,build:BUILD,online:world.players.size,capacity:{channel:CHANNEL_CAP,total:WORLD_CAP},storage:memory?'test':'postgres'});return;}
@@ -125,5 +168,7 @@ const server=http.createServer(async(req,res)=>{const url=new URL(req.url,'http:
 let tickCount=0;const tick=setInterval(()=>{world.tick(.1);tickCount++;for(const [id,res] of streams){if(!res.deltaWire&&tickCount%2)continue;const p=world.players.get(id);if(p&&!res.destroyed){if(res.writableLength>256000){res.end();continue;}const a=accounts.get(id.split(':')[0]);const snapshot={...world.snapshot(p),saveStatus:a?.saveError?'error':a?.dirty?'pending':'saved'};res.write('data: '+JSON.stringify(res.deltaWire?diffSnapshot(res.lastSnapshot,snapshot):snapshot)+'\n\n');res.lastSnapshot=snapshot;}}},100);
 const saveTimer=setInterval(async()=>{for(const a of accounts.values())await flush(a);for(const [key,v] of limits)if(Date.now()>v.until)limits.delete(key);for(const [key,s] of sessions)if(s.expires<Date.now())sessions.delete(key);if(pool)await pool.query('DELETE FROM junja_adventure_online.sessions WHERE expires_at<now()').catch(()=>{});},30000);
 server.listen(Number(process.env.PORT)||4174,'0.0.0.0',()=>console.log('JUNJA ONLINE',BUILD,'ready'));
+// Wait for the previous Railway instance to finish shutdown before altering persisted player data.
+if(!memory)setTimeout(()=>deliverKidLevel700PrimordialGift().catch(e=>console.error('[GIFT] scheduling failure:',e.code||e.message)),45000).unref();
 async function shutdown(){clearInterval(tick);clearInterval(saveTimer);for(const p of world.players.values())touch(p);for(const res of streams.values())res.end();for(const a of accounts.values()){while(a.saving||a.locked)await new Promise(r=>setTimeout(r,20));await flush(a);}server.close();if(pool)await pool.end();process.exit(0);}
 process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
