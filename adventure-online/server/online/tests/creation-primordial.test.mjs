@@ -7,7 +7,7 @@ test('Lv.1500 primordial top rank remains separate from Lv.700 primordial and Lv
  assert.equal(LEVEL_CAP,1500);assert.equal(PRIMORDIAL_POOL.length,7);assert.equal(ITEMS.primordialblade.level,700);
  assert.equal(CREATION_PRIMORDIAL_POOL.length,7);assert.equal(ITEMS.creationblade.rarity,'mythic');
  for(const id of CREATION_PRIMORDIAL_POOL){const it=ITEMS[id],old=ITEMS[id.replace('primordialcreation','creation')],r=RECIPES[id];
-  assert.ok(it&&old&&r);assert.equal(it.level,1500);assert.equal(it.rarity,'primordial');assert.equal(it.bound,true);assert.equal(it.tier,18);
+  assert.ok(it&&old&&r);assert.equal(it.level,1500);assert.equal(it.rarity,'primordial');assert.equal(it.bound,false);assert.equal(it.tier,18);
   assert.ok(it.atk>=old.atk&&it.def>=old.def&&it.hp>=old.hp);assert.equal(r.rank,12);assert.equal(r.seals,90);assert.equal(r.promotionMaterials.creationCore,180);
  }
 });
