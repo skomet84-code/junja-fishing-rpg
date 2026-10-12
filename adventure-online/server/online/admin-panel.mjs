@@ -180,6 +180,7 @@ export async function handleAdminPanel(req,res,url,ctx){
     if(cached){
      cached.roster=structuredClone(updatedRoster);cached.dirty=false;cached.rev++;cached.saveError=false;
      if(passwordHash){cached.salt=passwordSalt;cached.password_hash=passwordHash;}
+     if(passwordHash)ctx.revokeSessions(row.id);
     }
     json(req,res,{ok:true,username:row.username,detail,...(newPassword?{temporaryPassword:newPassword}:{})});
    }catch(e){if(db&&!committed)await db.query('ROLLBACK').catch(()=>{});throw e;}
