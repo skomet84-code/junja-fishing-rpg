@@ -28,7 +28,7 @@ test('give full level 700 set without replacing equipped items or level',()=>{
 });
 
 test('when bag has 80 items, primordial set is delivered to claim inbox',()=>{
- const s=profile({job:'warrior',level:565,rank:5,bag:Array(80).fill('leather')});
+ const s=profile({job:'warrior',level:565,rank:5,bag:['training',...Array(79).fill('leather')]});
  changeCharacter(s,{type:'grant-set',set:'primordial'});
  assert.equal(s.bag.length,80);
  assert.deepEqual(s.primordialPending,getSetIds('primordial','warrior'));
