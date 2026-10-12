@@ -10,12 +10,12 @@ function setup(random=()=>.99){
  return {w,advanceDay:()=>{now+=86400;w.tick(.1);},add:(id,raw={})=>w.add(id,id,profile(raw),'primordial-test')};
 }
 
-test('seven ultimate primordial items are soulbound and stronger than the current level 700 endgame gear',()=>{
+test('seven ultimate primordial items are tradable and stronger than the current level 700 endgame gear',()=>{
  assert.equal(PRIMORDIAL_POOL.length,7);
  for(const id of PRIMORDIAL_POOL){
   const item=ITEMS[id],recipe=RECIPES[id];
   assert.equal(item.rarity,'primordial');assert.equal(item.tier,11);assert.equal(item.level,700);
-  assert.equal(item.bound,true);assert.equal(recipe.seals,60);assert.equal(recipe.level,700);
+  assert.equal(item.bound,false);assert.equal(recipe.seals,60);assert.equal(recipe.level,700);
  }
  assert.ok(ITEMS.primordialblade.atk>ITEMS.eternalblade.atk);
  assert.ok(ITEMS.primordialarmor.hp>ITEMS.eternalarmor.hp);
@@ -71,7 +71,7 @@ test('dragon 0.0001 percent drop persists in inbox if inventory is full and bloc
  assert.equal(p.state.bag.length,after);
 });
 
-test('bound primordial gear cannot be traded or sold',()=>{
+test('unequipped primordial gear can be traded but not sold',()=>{
  const {w,add}=setup(),a=add('a',{level:750,bag:['training','primordialblade'],x:1000,y:350}),b=add('b',{x:1000,y:350});
  const gold=a.state.gold;
  w.action(a,{type:'sell',item:'primordialblade',qty:1});
@@ -79,7 +79,7 @@ test('bound primordial gear cannot be traded or sold',()=>{
  w.action(a,{type:'tradeInvite',player:b.id});const t=[...w.trades.values()][0];assert.ok(t);
  w.action(b,{type:'tradeAccept',id:t.id});
  w.action(a,{type:'tradeOffer',id:t.id,gold:0,items:['primordialblade'],materials:{}});
- assert.deepEqual(t.offers[a.id].items,[]);
+ assert.deepEqual(t.offers[a.id].items,['primordialblade']);
 });
 
 test('manual move cancels server navigation; tap navigation uses one authoritative server path',()=>{
