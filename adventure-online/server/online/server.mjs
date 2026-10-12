@@ -155,7 +155,7 @@ const server=http.createServer(async(req,res)=>{const url=new URL(req.url,'http:
     if(pool)await pool.query('DELETE FROM junja_adventure_online.sessions WHERE token_hash=$1',[hash(token)]);
     json(req,res,{ok:true});return;
    }
-   await handleAdminPanel(req,res,url,{pool,accounts,world,disconnect,json,body,actor:a,build:BUILD});return;
+   await handleAdminPanel(req,res,url,{pool,accounts,world,disconnect,json,body,actor:a,build:BUILD,revokeSessions:userId=>{for(const [key,value] of sessions)if(value.accountId===userId)sessions.delete(key);}});return;
   }
   if(url.pathname==='/api/me'){json(req,res,{name:a.username,roster:publicRoster(a)});return;}
   if(url.pathname==='/api/ranking'&&req.method==='GET'){json(req,res,await ranking(a.id));return;}
