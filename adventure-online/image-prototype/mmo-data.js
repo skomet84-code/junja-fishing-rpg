@@ -16,13 +16,13 @@ export const PROMOTION_MATERIALS={
 export const MATERIALS={wood:'나무',stone:'돌',ore:'철광석',crystal:'던전 수정',stardust:'별빛 파편'};
 export const QUICK_CHATS=['안녕하세요!','같이 사냥해요!','보스 잡으러 가요!','잠깐만요!','도와주세요!','고마워요!','축하해요!','ㅋㅋㅋㅋ','좋아요!','마을에서 만나요!'];
 export const EXTRA_ITEMS={
- primordialblade:{name:'태초 · 창세의 검',slot:'weapon',rarity:'primordial',atk:7400,def:390,hp:4800,speed:.29,tier:11,level:700,bound:true},
- primordialarmor:{name:'태초 · 기원의 갑주',slot:'armor',rarity:'primordial',atk:1380,def:3300,hp:47000,tier:11,level:700,bound:true},
- primordialcape:{name:'태초 · 무한의 망토',slot:'cape',rarity:'primordial',atk:2780,def:1390,hp:21000,tier:11,level:700,bound:true},
- primordialcrown:{name:'태초 · 운명의 관',slot:'head',rarity:'primordial',atk:1630,def:1170,hp:12800,tier:11,level:700,bound:true},
- primordialboots:{name:'태초 · 시공초월의 장화',slot:'boots',rarity:'primordial',atk:980,def:940,hp:17100,speed:.27,tier:11,level:700,bound:true},
- primordialring:{name:'태초 · 영겁의 반지',slot:'ring',rarity:'primordial',atk:2420,def:420,hp:10100,speed:.28,tier:11,level:700,bound:true},
- primordialear:{name:'태초 · 신들의 귀걸이',slot:'ear',rarity:'primordial',atk:1890,def:1030,hp:14000,tier:11,level:700,bound:true},
+ primordialblade:{name:'태초 · 창세의 검',slot:'weapon',rarity:'primordial',atk:7400,def:390,hp:4800,speed:.29,tier:11,level:700,bound:false},
+ primordialarmor:{name:'태초 · 기원의 갑주',slot:'armor',rarity:'primordial',atk:1380,def:3300,hp:47000,tier:11,level:700,bound:false},
+ primordialcape:{name:'태초 · 무한의 망토',slot:'cape',rarity:'primordial',atk:2780,def:1390,hp:21000,tier:11,level:700,bound:false},
+ primordialcrown:{name:'태초 · 운명의 관',slot:'head',rarity:'primordial',atk:1630,def:1170,hp:12800,tier:11,level:700,bound:false},
+ primordialboots:{name:'태초 · 시공초월의 장화',slot:'boots',rarity:'primordial',atk:980,def:940,hp:17100,speed:.27,tier:11,level:700,bound:false},
+ primordialring:{name:'태초 · 영겁의 반지',slot:'ring',rarity:'primordial',atk:2420,def:420,hp:10100,speed:.28,tier:11,level:700,bound:false},
+ primordialear:{name:'태초 · 신들의 귀걸이',slot:'ear',rarity:'primordial',atk:1890,def:1030,hp:14000,tier:11,level:700,bound:false},
  ironblade:{name:'단조 철검',slot:'weapon',rarity:'uncommon',atk:24,speed:.025,tier:1,level:15,shop:true,price:25000},
  ironarmor:{name:'단조 철갑',slot:'armor',rarity:'uncommon',def:12,hp:100,tier:1,level:15,shop:true,price:30000},
  crystalblade:{name:'수정빛 무기',slot:'weapon',rarity:'rare',atk:95,speed:.05,tier:2,level:50,shop:true,price:180000},
@@ -123,7 +123,7 @@ for(const t of ENDGAME_TIERS){
 export const CREATION_PRIMORDIAL_BASE=[["blade","weapon","창세신의 절대검"],["armor","armor","창세신의 근원갑주"],["cape","cape","창세신의 성운망토"],["crown","head","창세신의 왕관"],["boots","boots","창세신의 신행장화"],["ring","ring","창세신의 영겁반지"],["ear","ear","창세신의 기원귀걸이"]];
 for(const [suffix,slot,name] of CREATION_PRIMORDIAL_BASE){
  const old=EXTRA_ITEMS['creation'+suffix],id='primordialcreation'+suffix;
- EXTRA_ITEMS[id]={...old,name:'태초 · '+name,slot,rarity:'primordial',tier:18,level:1500,bound:true,
+ EXTRA_ITEMS[id]={...old,name:'태초 · '+name,slot,rarity:'primordial',tier:18,level:1500,bound:false,
  atk:Math.round((old.atk||0)*1.16),def:Math.round((old.def||0)*1.16),hp:Math.round((old.hp||0)*1.16),
  ...(old.speed?{speed:Math.min(.30,old.speed+.02)}:{})};
 }
