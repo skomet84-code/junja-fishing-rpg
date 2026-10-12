@@ -1,0 +1,29 @@
+name: Adventure admin panel checks
+on:
+  push:
+    branches: [railway-recovery]
+    paths:
+      - adventure-online/server/online/admin-panel.mjs
+      - adventure-online/server/online/server.mjs
+      - adventure-online/server/online/tests/admin-panel.test.mjs
+      - adventure-online/image-prototype/admin.html
+      - adventure-online/image-prototype/admin.js
+      - adventure-online/image-prototype/admin.css
+      - .github/workflows/adventure-admin-panel.yml
+  workflow_dispatch:
+jobs:
+  admin-panel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Parse production entrypoint and administration scripts
+        run: |
+          node --check adventure-online/server/online/server.mjs
+          node --check adventure-online/server/online/admin-panel.mjs
+          node --check adventure-online/image-prototype/admin.js
+      - name: Check grants, class-specific sets, and progression validation
+        run: node --test adventure-online/server/online/tests/admin-panel.test.mjs
