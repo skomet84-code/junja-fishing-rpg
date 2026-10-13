@@ -5,7 +5,7 @@ import {BOOSTS,WEAPON_FAMILIES,MATERIALS,RECIPES,ENDGAME_TIERS,ZONES,TRAVEL_PORT
 import {API_URL} from './config.js';
 import {createCombatQueue} from './combat-queue.js?v=20261009-primordial-motion1';
 import {monsterIllustration} from './monster-art.js?v=20261010-monster1';
-import {predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement,smoothRemotePosition,shouldSendMovement} from './movement-feel.js?v=20261012-audit1';
+import {predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement,smoothRemotePosition,shouldSendMovement,movementHeading} from './movement-feel.js?v=20261013-foundation1';
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const apiBase=location.hostname==='junja-adventure-preview.onrender.com'?API_URL:'';
 const endgameStyle=document.createElement('style');endgameStyle.textContent="#world[data-zone=void]:after{background:radial-gradient(ellipse at 50% 70%,transparent 22%,#160b2670 72%,#06030bcc 100%)!important}#world[data-zone=origin]:after{background:radial-gradient(ellipse at 50% 70%,transparent 25%,#473a1360 72%,#100c04bb 100%)!important}";document.head.append(endgameStyle);
@@ -207,9 +207,16 @@ function monsterBackground(family){
  return "url('./assets/monster-"+family+".svg?v=20261010-monster1')";
 }
 function preload(src,required=true,onload=()=>{}){return new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>{onload();resolve();};im.onerror=()=>required?reject(Error('캐릭터 이미지를 불러오지 못했어요. 다시 연결해 주세요.')):resolve();im.src=src;});}
+// Load the chosen class animation only. Preloading all four large atlases
+// before entering wastes mobile network, memory and GPU texture bandwidth.
+const motionRequests=new Map();
+function ensureMotionArt(art){
+ if(!characterArt.includes(art))return Promise.resolve();
+ if(!motionRequests.has(art))motionRequests.set(art,preload('./assets/'+art+'-motion.webp?v='+BUILD,false,()=>motionArt.add(art)));
+ return motionRequests.get(art);
+}
 const artReady=Promise.all([
  ...['hero','rogue','mage','healer','world','npcs','squirrel','monster-atlas'].map(name=>preload('./assets/'+name+'.png')),
- ...characterArt.map(name=>preload('./assets/'+name+'-motion.webp?v='+BUILD,false,()=>motionArt.add(name))),
  ...(monsterArtMode==='raster'?MONSTER_FAMILIES.map(rasterizeMonsterArt):[])
 ]);artReady.catch(()=>{});
 function toast(text,kind='notice'){const el=$('toast');el.textContent=text;el.classList.toggle('combat-toast',kind==='combat');el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),kind==='combat'?1150:2400);}
@@ -285,6 +292,7 @@ function applyHeading(el,dx,dy,fallbackRow=0,fallbackMirror=false){
 }
 
 function motionSprite(art,frame,state,row,mirror=false){
+ art._blendFrameKey=null;
  const stateIndex=state==='walk'?1:state==='attack'?2:0,r=stateIndex*3+row;
  const key=stateIndex+'|'+r+'|'+frame+'|'+(mirror?1:0);
  // A 12-frame sheet only changes 7-18 times a second: avoid rewriting its
@@ -297,10 +305,13 @@ function motionSprite(art,frame,state,row,mirror=false){
 }
 function blendSprite(art,a,b,mix,row,rows=3,mirror=false){
  art._motionFrameKey=null;
+ const t=Math.round(smoothstep(Math.max(0,Math.min(1,mix)))*12)/12;
+ const key=[a,b,t,row,rows,mirror?1:0].join('|');
+ if(art._blendFrameKey===key)return;
+ art._blendFrameKey=key;
  const twin=art.parentElement?.querySelector('.sprite-b');
- if(!twin){sprite(art,mix<.5?a:b,row,rows,mirror);return;}
+ if(!twin){sprite(art,t<.5?a:b,row,rows,mirror);return;}
  art.style.backgroundSize='400% 300%';twin.style.backgroundSize='400% 300%';
- const t=smoothstep(Math.max(0,Math.min(1,mix)));
  sprite(art,a,row,rows,mirror);sprite(twin,b,row,rows,mirror);
  art.style.opacity=String(1-t);twin.style.opacity=String(t);
 }
@@ -388,9 +399,10 @@ function attackPose(el,art,row,mirror,started,duration=.44,job='warrior',skill=-
  el.style.setProperty('--bob',bob+'px');el.style.setProperty('--lean',lean+'deg');el.style.setProperty('--squash',p>.18&&p<.62?.958:1);el.style.setProperty('--weapon-angle',weapon+'deg');el.style.setProperty('--arm-angle',(weapon*armFactor)+'deg');el.style.setProperty('--trail-angle',(weapon*trailFactor)+'deg');el.style.setProperty('--trail-scale',String(.74+Math.max(0,power)*.28));el.style.setProperty('--attack-power',String(Math.max(0,power)));el.style.setProperty('--lunge-x',(lunge*pose.nx)+'px');el.style.setProperty('--lunge-y',(lunge*pose.ny*.38)+'px');el.style.setProperty('--coat-sway',(lean*.55-weapon*.045)+'deg');el.style.setProperty('--cape-lag',(lean*-.32-weapon*.025)+'deg');el.style.setProperty('--shoulder-lift',(Math.max(0,power)*-2.2)+'px');el.style.setProperty('--offhand-angle',(-weapon*.72)+'deg');paintProductionSprite(el,skill>=0?'skill':'attack',clock,pose.nx,pose.ny,p);
 }
 function actorArt(el,s){
- const art=JOBS[s.job]?.art||'hero',useMotion=motionArt.has(art),url=`url('./assets/${art}${useMotion?'-motion.webp':'.png'}?v=${BUILD}')`,parent=el.parentElement;
+ const art=JOBS[s.job]?.art||'hero';ensureMotionArt(art).catch(()=>{});
+ const useMotion=motionArt.has(art),url=`url('./assets/${art}${useMotion?'-motion.webp':'.png'}?v=${BUILD}')`,parent=el.parentElement;
  if(parent&&parent.dataset.motionSheet!==(useMotion?'1':'0'))parent.dataset.motionSheet=useMotion?'1':'0';
- if(el.dataset.artSource!==url){el.style.backgroundImage=url;el.dataset.artSource=url;el.style.opacity='1';el._motionFrameKey=null;}
+ if(el.dataset.artSource!==url){el.style.backgroundImage=url;el.dataset.artSource=url;el.style.opacity='1';el._motionFrameKey=null;el._blendFrameKey=null;}
  const twin=parent?.querySelector('.sprite-b');
  if(twin&&twin.dataset.artSource!==url){twin.style.backgroundImage=url;twin.dataset.artSource=url;twin.style.opacity='0';}
 }
@@ -494,7 +506,7 @@ async function login(register=false){if(!$('authForm').reportValidity())return;c
  try{const r=await api(register?'register':'login',{username,password,...(register&&legacy&&$('legacyCheck').checked?{legacy}:{})});token=r.token;try{localStorage.setItem('junja-online-token',token);}catch{}$('password').value='';await showSelection();}catch(e){$('authMessage').textContent=e.message;}finally{$('loginBtn').disabled=$('registerBtn').disabled=false;}
 }
 $('authForm').onsubmit=e=>{e.preventDefault();login();};$('registerBtn').onclick=()=>login(true);$('switchAccount').onclick=()=>{token='';try{localStorage.removeItem('junja-online-token');}catch{}$('authPanel').hidden=false;$('selectPanel').hidden=true;$('authMessage').textContent='';};
-async function join(){$('joinBtn').disabled=true;$('loadMessage').textContent='준자마을에 접속 중…';try{await artReady;const r=await api('join',{slot:selectedSlot,channel:$('channelInput').value.trim()});connectionKey=r.connectionKey;wireSnapshot=null;lastSelfSampleAt=0;lastSelfServerAt=0;state=r.snapshot.self;view={x:state.x,y:state.y};selected=null;targetIntent=null;path=[];skillQueue.clear();remoteSkillPending=null;localActionLockUntil=0;lastLocalFx=null;pendingAttackAck=false;updateSnapshot(r.snapshot);resize();makeSkills();face=0;flip=false;headingX=0;headingY=1;placeEntity($('hero'),view.x,view.y);$('hero').style.zIndex=Math.round(view.y);motion($('hero'),$('heroArt'),'idle',0,false,clock);$('loading').hidden=true;last=performance.now();consumeStream(++streamGeneration);toast(state.channel+'에 접속했습니다. 친구에게 같은 채널을 알려 주세요.');}catch(e){$('loadMessage').textContent=e.message;}finally{$('joinBtn').disabled=false;}}
+async function join(){$('joinBtn').disabled=true;$('loadMessage').textContent='준자마을에 접속 중…';try{await artReady;const chosen=roster.find(c=>c.slot===selectedSlot);await ensureMotionArt(JOBS[chosen?.job]?.art||'hero');const r=await api('join',{slot:selectedSlot,channel:$('channelInput').value.trim()});connectionKey=r.connectionKey;wireSnapshot=null;lastSelfSampleAt=0;lastSelfServerAt=0;state=r.snapshot.self;view={x:state.x,y:state.y};selected=null;targetIntent=null;path=[];skillQueue.clear();remoteSkillPending=null;localActionLockUntil=0;lastLocalFx=null;pendingAttackAck=false;updateSnapshot(r.snapshot);resize();makeSkills();face=0;flip=false;headingX=0;headingY=1;placeEntity($('hero'),view.x,view.y);$('hero').style.zIndex=Math.round(view.y);motion($('hero'),$('heroArt'),'idle',0,false,clock);$('loading').hidden=true;last=performance.now();consumeStream(++streamGeneration);toast(state.channel+'에 접속했습니다. 친구에게 같은 채널을 알려 주세요.');}catch(e){$('loadMessage').textContent=e.message;}finally{$('joinBtn').disabled=false;}}
 $('joinBtn').onclick=join;$('retryBtn').onclick=()=>token?showSelection():location.reload();
 function nearestTarget(maxDistance=560){const safe=e=>(!e.boss&&!e.elite)||e.level<=state.level+(e.boss?5:3);return [...enemies.values()].filter(e=>e.alive&&distance(view,e)<=maxDistance&&safe(e)).sort((a,b)=>{const ad=distance(view,a)+(a.named?140:a.boss?90:a.elite?35:0),bd=distance(view,b)+(b.named?140:b.boss?90:b.elite?35:0);return ad-bd;})[0]||null;}
 function select(id,engage=false){const e=enemies.get(id);if(!e?.alive)return;skillQueue.clear();remoteSkillPending=null;selected=id;npcIntent=null;path=[];targetIntent=null;if(auto){command({type:'autoTarget',target:e.id});toast(e.name+' · 자동사냥 타겟 지정');}else if(engage){command({type:'engage',target:e.id,skill:-1});toast(e.name+' 타겟 고정 · 자동 추적/공격');}hud();}
@@ -816,6 +828,11 @@ function frame(time){
   // Animation cadence comes from distance actually traveled, never from the auto-hunt toggle.
   const steps=advanceFootsteps(beforeMove,view,dt,walkClock,walkSpeed);
   walkClock=steps.time;walkSpeed=steps.speed;
+  // Face where the feet actually travel during automatic navigation and hunting.
+  if(!locallySteering&&clock>=attackUntil&&steps.walking){
+   const heading=movementHeading(beforeMove,view);
+   if(heading){headingX=heading.x;headingY=heading.y;const pose=headingPose(heading.x,heading.y,face,flip);face=pose.row;flip=pose.mirror;}
+  }
   // The server keeps a motion vector for 600 ms; send only while steering.
    // One stop command replaces repeated idle POSTs (previously ~12.5/s).
    const maySend=manualMove||(!auto&&!state.navMoving&&performance.now()>navigationRequestedUntil);

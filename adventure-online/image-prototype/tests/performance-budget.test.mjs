@@ -51,3 +51,15 @@ test('manual movement is only transmitted on change or cadence, not each frame',
  assert.match(app,/shouldSendMovement\(lastMoveSent/);
  assert.doesNotMatch(app,/clock-lastSend>=\.08/);
 });
+
+test('motion sprite atlas is loaded on demand, not all classes at startup',()=>{
+ assert.match(app,/const motionRequests=new Map\(\)/);
+ assert.match(app,/await ensureMotionArt\(JOBS\[chosen\?\.job\]\?\.art\|\|'hero'\)/);
+ assert.doesNotMatch(app,/\.\.\.characterArt\.map\(name=>preload\(/);
+});
+test('composited character rendering avoids redundant paint and secondary animation lag',()=>{
+ assert.match(app,/if\(art\._blendFrameKey===key\)return;/);
+ assert.match(app,/movementHeading\(beforeMove,view\)/);
+ assert.match(css,/\.entity\.hero\[data-motion="walk"\]>.sprite/);
+ assert.match(css,/transition:none!important/);
+});

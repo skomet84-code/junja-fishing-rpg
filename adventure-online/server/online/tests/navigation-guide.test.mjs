@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {World} from '../engine.mjs';
+import {advanceRoute} from '../route-motion.mjs';
 import {profile} from '../../../image-prototype/catalog.js';
 import {pathfind,clearPath,walkable,project,distance} from '../../../image-prototype/core.js';
 import {ascensionGuide,PROMOTIONS} from '../../../image-prototype/mmo-data.js';
@@ -57,4 +58,34 @@ test('sixth ascension quest guidance points to the correct region, enemies, boss
  assert.equal(claimed.action,'promote');
  assert.match(claimed.text,/650/);
  assert.match(claimed.text,/70회/);
+});
+
+test('route corner consumes complete tick distance rather than freezing or snapping',()=>{
+ const path=[{x:11,y:0},{x:11,y:20}];
+ const step=advanceRoute({x:0,y:0},path,25,()=>true);
+ assert.ok(Math.abs(step.x-11)<.001,'arrives at the corner without a jump');
+ assert.ok(Math.abs(step.y-14)<.001,'remaining 14px continues through next segment');
+ assert.equal(path.length,1);
+ assert.ok(Math.abs(step.moved-Math.hypot(11,14))<.001);
+});
+test('route never penetrates an obstacle or discards an unreachable waypoint',()=>{
+ const path=[{x:100,y:0}];
+ const blocked=advanceRoute({x:0,y:0},path,25,x=>x<=8);
+ assert.deepEqual({x:blocked.x,y:blocked.y},{x:0,y:0});
+ assert.equal(path.length,1,'blocked target remains; no hidden teleport');
+});
+test('server tick navigation does not stop for small intermediate waypoint',()=>{
+ let time=400;const w=new World({now:()=>time,random:()=>.99});
+ const p=w.add('corner-test','corner-test',profile({job:'warrior',level:100,zone:'surface',x:768,y:355}),'corner-test-room');
+ p.navPath=[{x:773,y:355},{x:773,y:390}];p.auto=false;
+ const before={x:p.state.x,y:p.state.y};
+ time+=.1;w.tick(.1);
+ assert.ok(distance(before,p.state)>=19,'tick should cover most of 25px despite 5px corner');
+ assert.ok(walkable(p.state.x,p.state.y));
+});
+test('route movement honors fractional bounds and prevents NaN coordinates',()=>{
+ const path=[{x:5,y:0},{x:NaN,y:0},{x:5,y:10}];
+ const p=advanceRoute({x:0,y:0},path,25,()=>true);
+ assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y));
+ assert.equal(path.length,0,'invalid waypoint dropped, valid route completed');
 });

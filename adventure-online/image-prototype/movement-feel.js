@@ -94,3 +94,13 @@ export function shouldSendMovement(previous,next,at){
  const changed=Math.hypot(x-(Number(previous.x)||0),y-(Number(previous.y)||0))>.07;
  return age>=.24||(changed&&age>=.12);
 }
+
+/** Align the avatar with the world displacement actually rendered on screen.
+ * Cosmetic only: the server remains authoritative for movement and combat.
+ */
+export function movementHeading(previous,current,minimum=.65){
+ const dx=Number(current?.x)-Number(previous?.x),dy=Number(current?.y)-Number(previous?.y);
+ if(!Number.isFinite(dx)||!Number.isFinite(dy))return null;
+ const d=Math.hypot(dx,dy);
+ return d>=minimum?{x:dx/d,y:dy/d}:null;
+}
