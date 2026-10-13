@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {WALK_SPEED,predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement,smoothRemotePosition,shouldSendMovement} from '../movement-feel.js';
+import {WALK_SPEED,predictServerPosition,reconcileVisualPosition,advanceFootsteps,estimateNetworkVelocity,advanceLocalMovement,smoothRemotePosition,shouldSendMovement,movementHeading} from '../movement-feel.js';
 
 test('server extrapolation uses a bounded time horizon and never grants extra movement speed',()=>{
  const state={x:100,y:200};
@@ -120,4 +120,11 @@ test('joystick direction changes send only after minimum safe interval',()=>{
  assert.equal(shouldSendMovement(prev,{x:0,y:1,manual:true},5.04),false);
  assert.equal(shouldSendMovement(prev,{x:0,y:1,manual:true},5.13),true);
  assert.equal(shouldSendMovement(prev,{x:1,y:0,manual:true},5.25),true);
+});
+
+test('avatar facing follows rendered travel during server-led hunting and navigation',()=>{
+ assert.deepEqual(movementHeading({x:10,y:10},{x:10,y:-5}),{x:0,y:-1});
+ assert.deepEqual(movementHeading({x:0,y:0},{x:15,y:0}),{x:1,y:0});
+ assert.equal(movementHeading({x:0,y:0},{x:.3,y:.1}),null,'small jitter must not rotate a standing hero');
+ assert.equal(movementHeading({x:0,y:0},{x:NaN,y:0}),null,'invalid network coordinates ignored');
 });
