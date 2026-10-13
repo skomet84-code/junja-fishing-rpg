@@ -132,7 +132,7 @@ export class World{
    }
    if(!p.chaseSample||now-p.chaseSample.at>.9)p.chaseSample={x:s.x,y:s.y,at:now};
    const route=p.chaseRoute||[];
-   while(route.length&&distance(s,route[0])<Math.max(24,250*.1))route.shift();
+   while(route.length&&distance(s,route[0])<=.4)route.shift();
    const target=route[0];return target?{x:target.x-s.x,y:target.y-s.y}:{x:0,y:0};
   }
  autoSkill(p,now){
@@ -217,7 +217,8 @@ export class World{
   // Route traversal below consumes one fixed distance budget, including corners.
   // It must never snap to a waypoint and add a 100ms pause.
   if(p.navPath.length&&!p.auto){dx=dy=0;}
-  if(p.combatTarget!=null&&!p.auto){const e=this.channel(p.channel,p.state.zone).find(e=>e.id===p.combatTarget&&e.alive);if(!e){p.combatTarget=null;p.combatSkill=-1;}else if(distance(s,e)<=st.range*.9){if(now>=p.nextAttack){const skill=p.combatSkill;p.combatSkill=-1;this.attack(p,skill,e.id);}dx=dy=0;}else if(distance(s,e)<1100){const direction=this.chase(p,e,now);dx=direction.x;dy=direction.y;}else{p.combatTarget=null;p.combatSkill=-1;}}
+  let chasing=false;
+  if(p.combatTarget!=null&&!p.auto){const e=this.channel(p.channel,p.state.zone).find(e=>e.id===p.combatTarget&&e.alive);if(!e){p.combatTarget=null;p.combatSkill=-1;}else if(distance(s,e)<=st.range*.9){if(now>=p.nextAttack){const skill=p.combatSkill;p.combatSkill=-1;this.attack(p,skill,e.id);}dx=dy=0;}else if(distance(s,e)<1100){const direction=this.chase(p,e,now);dx=direction.x;dy=direction.y;chasing=!!p.chaseRoute?.length;}else{p.combatTarget=null;p.combatSkill=-1;}}
   if(p.auto){const mobs=this.channel(p.channel,p.state.zone),safe=e=>{const gap=e.level-s.level;if(e.summoned)return true;if(e.named)return gap<=10;if(e.boss)return gap<=6;if(e.elite)return gap<=3;return true; /* Regular mobs on higher hunting floors remain targetable. */},candidates=mobs.filter(e=>e.alive&&safe(e)),current=candidates.find(e=>e.id===p.autoTarget&&distance(e,s)<950),score=e=>distance(e,s)-(e.named?110:e.boss?80:e.elite?20:0),e=current||candidates.sort((a,b)=>score(a)-score(b))[0];p.autoTarget=e?.id??null;if(e){if(distance(s,e)<=st.range*.86){
     let manual=p.autoSkillQueue?.[0];
     if(manual!=null){const ability=JOBS[s.job].skills[manual],rank=Number(ability?.[5]?.rank)||0;
@@ -228,19 +229,19 @@ export class World{
     this.attack(p,skill,e.id);
     if(ready&&p.cooldowns[skill]>before)p.autoSkillQueue.shift();
     dx=dy=0;
-   }else{const direction=this.chase(p,e,now);dx=direction.x;dy=direction.y;}}}
+   }else{const direction=this.chase(p,e,now);dx=direction.x;dy=direction.y;chasing=!!p.chaseRoute?.length;}}}
   if(now>=p.attackUntil){
    // Only use tap-navigation when combat and auto-hunt are not controlling movement.
    const navigating=p.navPath.length>0&&!p.auto&&p.combatTarget==null;
-   if(navigating){
+   if(navigating||chasing){
     const oldX=s.x,oldY=s.y;
-    const position=advanceRoute(s,p.navPath,250*dt,walkable);
+    const position=advanceRoute(s,navigating?p.navPath:p.chaseRoute,250*dt,walkable);
     s.x=position.x;s.y=position.y;dx=s.x-oldX;dy=s.y-oldY;
    }
    const d=Math.hypot(dx,dy);
    if(d>.01){
     const nx=dx/d,ny=dy/d;
-    if(!navigating){const x=s.x+nx*250*dt,y=s.y+ny*250*dt;if(walkable(x,s.y))s.x=x;if(walkable(s.x,y))s.y=y;}
+    if(!navigating&&!chasing){const x=s.x+nx*250*dt,y=s.y+ny*250*dt;if(walkable(x,s.y))s.x=x;if(walkable(s.x,y))s.y=y;}
     p.dirX=nx;p.dirY=ny;p.face=Math.abs(dx)>Math.abs(dy)?2:dy<0?1:0;p.flip=p.face===2&&dx<0;
    }
   }
