@@ -96,6 +96,56 @@ async function deliverKidLevel700PrimordialGift(){
  }catch(e){if(db)await db.query('ROLLBACK').catch(()=>{});console.error('[GIFT] delivery failed:',e.code||e.message);throw e;}
  finally{db?.release();if(cached)cached.locked=false;}
 }
+
+// Owner-approved gifts for 우니 and 도도, matching the seven-piece gift previously sent to 키드.
+// Receipts are unique per recipient; character level, promotion, other equipment and progress stay unchanged.
+async function deliverOwnerPrimordialWarriorGift(username, receipt){
+ if(!pool)return;
+ const items=['primordialblade','primordialarmor','primordialcape','primordialcrown','primordialboots','primordialring','primordialear'];
+ await pool.query("CREATE TABLE IF NOT EXISTS junja_adventure_online.owner_gift_receipts (receipt text PRIMARY KEY, account_id text NOT NULL REFERENCES junja_adventure_online.accounts(id), character_slot integer NOT NULL, delivered_at timestamptz NOT NULL DEFAULT now())");
+ const prior=await pool.query('SELECT 1 FROM junja_adventure_online.owner_gift_receipts WHERE receipt=$1',[receipt]);
+ if(prior.rowCount){console.log('[GIFT] owner gift already recorded for '+username);return;}
+ const cached=[...accounts.values()].find(a=>a.username===username)||null;
+ if(cached){
+  while(cached.saving||cached.locked)await new Promise(r=>setTimeout(r,20));
+  for(const id of [...world.players.keys()])if(id.startsWith(cached.id+':'))disconnect(id,'운영자 선물이 도착했습니다. 다시 입장해주세요.');
+  cached.locked=true;
+  while(cached.saving)await new Promise(r=>setTimeout(r,20));
+ }
+ let db;
+ try{
+  db=await pool.connect();await db.query('BEGIN');
+  const result=await db.query('SELECT id,roster FROM junja_adventure_online.accounts WHERE username=$1 FOR UPDATE',[username]);
+  if(result.rowCount!==1){await db.query('ROLLBACK');console.warn('[GIFT] recipient account not found: '+username);return;}
+  const row=result.rows[0];
+  const exists=await db.query('SELECT 1 FROM junja_adventure_online.owner_gift_receipts WHERE receipt=$1',[receipt]);
+  if(exists.rowCount){await db.query('COMMIT');return;}
+  const roster=structuredClone(cached&&cached.id===row.id?cached.roster:row.roster);
+  const slot=Array.isArray(roster)?roster.findIndex(s=>s?.job==='warrior'):-1;
+  if(slot<0){await db.query('ROLLBACK');console.warn('[GIFT] warrior character not found: '+username);return;}
+  const s=roster[slot];
+  s.bag=Array.isArray(s.bag)?s.bag:[];
+  s.primordialPending=Array.isArray(s.primordialPending)?s.primordialPending:[];
+  if(Math.max(0,80-s.bag.length)+Math.max(0,80-s.primordialPending.length)<items.length){
+   await db.query('ROLLBACK');console.warn('[GIFT] not enough bag and inbox space for '+username);return;
+  }
+  for(const item of items){
+   if(s.bag.length<80)s.bag.push(item);
+   else s.primordialPending.push(item);
+  }
+  await db.query('UPDATE junja_adventure_online.accounts SET roster=$2,updated_at=now() WHERE id=$1',[row.id,JSON.stringify(roster)]);
+  await db.query('INSERT INTO junja_adventure_online.owner_gift_receipts(receipt,account_id,character_slot) VALUES($1,$2,$3)',[receipt,row.id,slot]);
+  await db.query('COMMIT');
+  if(cached&&cached.id===row.id){
+   cached.roster=structuredClone(roster);cached.dirty=false;cached.rev++;cached.saveError=false;
+  }
+  console.log('[GIFT] delivered seven-piece primordial warrior gift to '+username+' (slot '+slot+').');
+ }catch(e){
+  if(db)await db.query('ROLLBACK').catch(()=>{});
+  console.error('[GIFT] delivery failed for '+username+':',e.code||e.message);
+ }finally{db?.release();if(cached)cached.locked=false;}
+}
+
 const server=http.createServer(async(req,res)=>{const url=new URL(req.url,'http://localhost');try{
  if(req.method==='OPTIONS'){res.writeHead(204,headers(req));res.end();return;}
  if(url.pathname==='/health'){json(req,res,{ok:true,build:BUILD,online:world.players.size,capacity:{channel:CHANNEL_CAP,total:WORLD_CAP},storage:memory?'test':'postgres'});return;}
@@ -181,6 +231,10 @@ let tickCount=0;const tick=setInterval(()=>{world.tick(.1);tickCount++;for(const
 const saveTimer=setInterval(async()=>{for(const a of accounts.values())await flush(a);for(const [key,v] of limits)if(Date.now()>v.until)limits.delete(key);for(const [key,s] of sessions)if(s.expires<Date.now())sessions.delete(key);if(pool)await pool.query('DELETE FROM junja_adventure_online.sessions WHERE expires_at<now()').catch(()=>{});},30000);
 server.listen(Number(process.env.PORT)||4174,'0.0.0.0',()=>console.log('JUNJA ONLINE',BUILD,'ready'));
 // Wait for the previous Railway instance to finish shutdown before altering persisted player data.
-if(!memory)setTimeout(()=>deliverKidLevel700PrimordialGift().catch(e=>console.error('[GIFT] scheduling failure:',e.code||e.message)),45000).unref();
+if(!memory)setTimeout(async()=>{
+ await deliverKidLevel700PrimordialGift().catch(e=>console.error('[GIFT] prior gift check failed:',e.code||e.message));
+ await deliverOwnerPrimordialWarriorGift('우니','owner-gift-wooni-primordial-warrior-700-20261016');
+ await deliverOwnerPrimordialWarriorGift('도도','owner-gift-dodo-primordial-warrior-700-20261016');
+},45000).unref();
 async function shutdown(){clearInterval(tick);clearInterval(saveTimer);for(const p of world.players.values())touch(p);for(const res of streams.values())res.end();for(const a of accounts.values()){while(a.saving||a.locked)await new Promise(r=>setTimeout(r,20));await flush(a);}server.close();if(pool)await pool.end();process.exit(0);}
 process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
